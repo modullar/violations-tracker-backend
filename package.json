@@ -9,6 +9,7 @@
     "staging": "NODE_ENV=staging node src/server.js",
     "test": "NODE_ENV=test jest --detectOpenHandles",
     "test:watch": "NODE_ENV=test jest --watch",
+    "test:coverage": "NODE_ENV=test jest --coverage",
     "build": "NODE_ENV=production node -e \"console.log('Build completed successfully')\"",
     "seed": "node src/utils/seeder.js -i",
     "seed:delete": "node src/utils/seeder.js -d",
