@@ -1,0 +1,913 @@
+openapi: 3.0.0
+info:
+  title: Syria Violations Tracker API
+  description: API documentation for the Syria Violations Tracker backend
+  version: 1.0.0
+  contact:
+    email: support@syriaviolations.org
+
+servers:
+  - url: /api
+    description: API base URL
+
+tags:
+  - name: Violations
+    description: Operations for tracking violations data
+  - name: Authentication
+    description: Operations for user authentication
+  - name: Users
+    description: Operations for user management (admin only)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Location:
+      type: object
+      required:
+        - coordinates
+        - name
+      properties:
+        coordinates:
+          type: array
+          description: [longitude, latitude]
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        administrative_division:
+          type: string
+          maxLength: 100
+
+    Victim:
+      type: object
+      required:
+        - status
+      properties:
+        age:
+          type: integer
+          minimum: 0
+          maximum: 120
+        gender:
+          type: string
+          enum: [male, female, other, unknown]
+        status:
+          type: string
+          enum: [civilian, combatant, unknown]
+        group_affiliation:
+          type: string
+          maxLength: 100
+        sectarian_identity:
+          type: string
+          maxLength: 50
+        death_date:
+          type: string
+          format: date
+
+    Violation:
+      type: object
+      required:
+        - type
+        - date
+        - location
+        - description
+        - verified
+        - certainty_level
+      properties:
+        type:
+          type: string
+          enum:
+            - AIRSTRIKE
+            - CHEMICAL_ATTACK
+            - DETENTION
+            - DISPLACEMENT
+            - EXECUTION
+            - SHELLING
+            - SIEGE
+            - TORTURE
+            - MURDER
+            - SHOOTING
+            - HOME_INVASION
+            - EXPLOSION
+            - AMBUSH
+            - OTHER
+        date:
+          type: string
+          format: date
+          description: Date of the incident
+        reported_date:
+          type: string
+          format: date
+          description: Date when incident was reported
+        location:
+          $ref: '#/components/schemas/Location'
+        description:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        source:
+          type: string
+          maxLength: 200
+        source_url:
+          type: string
+          format: uri
+          maxLength: 500
+        verified:
+          type: boolean
+        certainty_level:
+          type: string
+          enum: [confirmed, probable, possible]
+        verification_method:
+          type: string
+          maxLength: 500
+        casualties:
+          type: integer
+          minimum: 0
+        victims:
+          type: array
+          items:
+            $ref: '#/components/schemas/Victim'
+        perpetrator:
+          type: string
+          maxLength: 200
+        perpetrator_affiliation:
+          type: string
+          maxLength: 100
+        media_links:
+          type: array
+          items:
+            type: string
+            format: uri
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+        related_violations:
+          type: array
+          items:
+            type: string
+
+    ViolationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Violation'
+
+    ViolationsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            totalPages:
+              type: integer
+            totalResults:
+              type: integer
+            hasNextPage:
+              type: boolean
+            hasPrevPage:
+              type: boolean
+            nextPage:
+              type: integer
+            prevPage:
+              type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+    User:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 6
+        role:
+          type: string
+          enum: [user, editor, admin]
+          default: user
+        organization:
+          type: string
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/User'
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+
+paths:
+  /violations:
+    get:
+      tags:
+        - Violations
+      summary: Get all violations
+      description: Return violations with filtering, pagination and sorting options
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - AIRSTRIKE
+              - CHEMICAL_ATTACK
+              - DETENTION
+              - DISPLACEMENT
+              - EXECUTION
+              - SHELLING
+              - SIEGE
+              - TORTURE
+              - MURDER
+              - SHOOTING
+              - HOME_INVASION
+              - EXPLOSION
+              - AMBUSH
+              - OTHER
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: administrative_division
+          in: query
+          schema:
+            type: string
+        - name: certainty_level
+          in: query
+          schema:
+            type: string
+            enum: [confirmed, probable, possible]
+        - name: verified
+          in: query
+          schema:
+            type: boolean
+        - name: perpetrator
+          in: query
+          schema:
+            type: string
+        - name: perpetrator_affiliation
+          in: query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: string
+            description: Comma-separated list of tags
+        - name: latitude
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: longitude
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: radius
+          in: query
+          schema:
+            type: number
+            format: float
+            description: Radius in kilometers
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: '-date,type'
+            description: Comma-separated fields to sort by. Prefix with - for descending order.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationsListResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags:
+        - Violations
+      summary: Create a new violation
+      description: Add a new violation record (requires editor or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Violation'
+      responses:
+        '201':
+          description: Violation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /violations/stats:
+    get:
+      tags:
+        - Violations
+      summary: Get violation statistics
+      description: Return statistics about violations by type, location, time, and casualties
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      totalViolations:
+                        type: integer
+                      totalCasualties:
+                        type: integer
+                      byType:
+                        type: array
+                        items:
+                          type: object
+                      byLocation:
+                        type: array
+                        items:
+                          type: object
+                      byYear:
+                        type: array
+                        items:
+                          type: object
+
+  /violations/radius/{latitude}/{longitude}/{radius}:
+    get:
+      tags:
+        - Violations
+      summary: Get violations within a radius
+      description: Return violations within a specified radius from coordinates
+      parameters:
+        - name: latitude
+          in: path
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: longitude
+          in: path
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: radius
+          in: path
+          required: true
+          schema:
+            type: number
+            format: float
+            description: Radius in kilometers
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Violation'
+
+  /violations/{id}:
+    get:
+      tags:
+        - Violations
+      summary: Get a single violation
+      description: Return a violation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationResponse'
+        '404':
+          description: Violation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags:
+        - Violations
+      summary: Update a violation
+      description: Update an existing violation (requires editor or admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Violation'
+      responses:
+        '200':
+          description: Violation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Violation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags:
+        - Violations
+      summary: Delete a violation
+      description: Delete a violation (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Violation deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Violation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate a user and get token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: User logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Get information about the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    get:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Log out the current user
+      responses:
+        '200':
+          description: User logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Get a list of all users (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags:
+        - Users
+      summary: Create a user
+      description: Create a new user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get a user
+      description: Get a user by ID (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags:
+        - Users
+      summary: Update a user
+      description: Update a user (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags:
+        - Users
+      summary: Delete a user
+      description: Delete a user (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
