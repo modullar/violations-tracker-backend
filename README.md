@@ -2,6 +2,9 @@
 
 A RESTful API backend for tracking human rights violations in Syria, built with Node.js, Express, and MongoDB.
 
+[![Violations Tracker CI](https://github.com/yourusername/violations-tracker-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/violations-tracker-backend/actions/workflows/ci.yml)
+[![Deploy to Staging](https://github.com/yourusername/violations-tracker-backend/actions/workflows/staging-deploy.yml/badge.svg)](https://github.com/yourusername/violations-tracker-backend/actions/workflows/staging-deploy.yml)
+
 ## Features
 
 - **RESTful API** with full CRUD operations for violations data

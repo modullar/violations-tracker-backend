@@ -1,0 +1,81 @@
+name: Violations Tracker CI
+
+on:
+  push:
+    branches: [ main, 'feature/**', 'bugfix/**', 'develop' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        mongodb-version: [6.0]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.10.0
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Lint code
+        run: npm run lint
+        
+      - name: Run tests
+        run: npm run test:coverage
+        env:
+          NODE_ENV: test
+          MONGO_URI: mongodb://localhost:27017/violations-tracker-test
+          JWT_SECRET: ci_test_secret_key
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env.production file
+        run: |
+          echo "NODE_ENV=production" > .env.production
+          echo "PORT=5001" >> .env.production
+          echo "MONGO_URI=${{ secrets.MONGO_URI || 'mongodb://localhost:27017/violations-tracker' }}" >> .env.production
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET || 'build_test_secret' }}" >> .env.production
+          echo "JWT_EXPIRES_IN=30d" >> .env.production
+          echo "JWT_COOKIE_EXPIRE=30" >> .env.production
+
+      - name: Build application
+        run: npm run build
