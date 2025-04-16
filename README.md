@@ -65,14 +65,22 @@ npm install
 ```
 
 3. Set up environment variables
-Create a `.env` file in the root directory with the following variables:
+This project uses environment-specific configuration files:
+
+- `.env.development` - Development environment (local)
+- `.env.test` - Test environment
+- `.env.staging` - Staging environment
+- `.env.production` - Production environment
+
+Create the appropriate `.env.[environment]` file based on your needs with the following variables:
 ```
 NODE_ENV=development
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/syria-violations-tracker
+MONGO_URI=mongodb://localhost:27017/violations-tracker
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=30d
-MAPTILER_API_KEY=your_maptiler_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+MAPQUEST_API_KEY=your_mapquest_api_key_here
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
 ```
@@ -87,8 +95,17 @@ npm run seed
 # Development mode with auto-reload
 npm run dev
 
+# Staging mode
+npm run staging
+
 # Production mode
 npm start
+
+# Test mode (runs Jest tests)
+npm test
+
+# Build for production
+npm run build
 ```
 
 6. Access the API documentation

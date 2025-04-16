@@ -3,13 +3,16 @@ const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
+
+// Load environment configuration
+const configPath = path.resolve(__dirname, '../config/config.js');
+require(configPath);
 
 // Load models
 const Violation = require('../models/Violation');
 const User = require('../models/User');
 
-// Connect to database
+// Connect to database using the loaded config
 mongoose.connect(process.env.MONGO_URI);
 
 // Sample violation data

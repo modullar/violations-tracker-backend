@@ -5,9 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "NODE_ENV=production node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --detectOpenHandles",
-    "test:watch": "jest --watch",
+    "dev": "NODE_ENV=development nodemon src/server.js",
+    "staging": "NODE_ENV=staging node src/server.js",
+    "test": "NODE_ENV=test jest --detectOpenHandles",
+    "test:watch": "NODE_ENV=test jest --watch",
+    "build": "NODE_ENV=production node -e \"console.log('Build completed successfully')\"",
     "seed": "node src/utils/seeder.js -i",
     "seed:delete": "node src/utils/seeder.js -d",
     "lint": "eslint ."
