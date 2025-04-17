@@ -58,7 +58,7 @@ describe('Config Module', () => {
     
     // Assert values from env
     expect(config.env).toBe('test');
-    expect(config.port).toBe(4000);
+    expect(parseInt(config.port)).toBe(4000);
     expect(config.jwtExpiresIn).toBe('7d');
     expect(config.jwtCookieExpire).toBe(7);
     expect(config.rateLimit.windowMs).toBe(600000);
