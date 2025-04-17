@@ -56,9 +56,28 @@ const violationControllerMock = {
 };
 
 // Mock the controllers in the routes
-jest.mock('../controllers/authController', () => authControllerMock);
-jest.mock('../controllers/userController', () => userControllerMock);
-jest.mock('../controllers/violationsController', () => violationControllerMock);
+jest.mock('../controllers/authController', () => ({
+  register: jest.fn((req, res) => res.status(201).json({ success: true, token: 'test-token' })),
+  login: jest.fn((req, res) => res.status(200).json({ success: true, token: 'test-token' })),
+  getMe: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.user.id } })),
+  logout: jest.fn((req, res) => res.status(200).json({ success: true, data: {} }))
+}));
+jest.mock('../controllers/userController', () => ({
+  getUsers: jest.fn((req, res) => res.status(200).json({ success: true, data: [] })),
+  getUser: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id } })),
+  createUser: jest.fn((req, res) => res.status(201).json({ success: true, data: req.body })),
+  updateUser: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id, ...req.body } })),
+  deleteUser: jest.fn((req, res) => res.status(200).json({ success: true, data: {} }))
+}));
+jest.mock('../controllers/violationsController', () => ({
+  getViolations: jest.fn((req, res) => res.status(200).json({ success: true, data: [] })),
+  getViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id } })),
+  createViolation: jest.fn((req, res) => res.status(201).json({ success: true, data: req.body })),
+  updateViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id, ...req.body } })),
+  deleteViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: {} })),
+  getViolationsInRadius: jest.fn((req, res) => res.status(200).json({ success: true, data: [] })),
+  getViolationStats: jest.fn((req, res) => res.status(200).json({ success: true, data: {} }))
+}));
 
 // Setup app with routes
 app.use(express.json());

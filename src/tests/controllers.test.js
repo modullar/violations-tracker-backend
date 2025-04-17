@@ -37,7 +37,8 @@ describe('Controller Tests', () => {
       
       res = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: jest.fn().mockReturnThis(),
+        cookie: jest.fn().mockReturnThis()
       };
       
       next = jest.fn();
@@ -63,7 +64,7 @@ describe('Controller Tests', () => {
       
       expect(Violation.paginate).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         count: 1,
         pagination: expect.any(Object),
@@ -87,7 +88,7 @@ describe('Controller Tests', () => {
       
       expect(Violation.find).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         count: 1,
         data: mockViolations
@@ -108,16 +109,16 @@ describe('Controller Tests', () => {
       };
       
       // Mock Violation.findById
-      Violation.findById = jest.fn().mockReturnThis();
-      Violation.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockViolation)
+      const populateMock = jest.fn().mockResolvedValue(mockViolation);
+      Violation.findById = jest.fn().mockReturnValue({
+        populate: populateMock
       });
       
       await violationsController.getViolation(req, res, next);
       
       expect(Violation.findById).toHaveBeenCalledWith(violationId.toString());
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockViolation
       });
@@ -155,7 +156,7 @@ describe('Controller Tests', () => {
       
       expect(Violation.create).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockCreatedViolation
       });
@@ -206,7 +207,7 @@ describe('Controller Tests', () => {
         { new: true, runValidators: true }
       );
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockUpdatedViolation
       });
@@ -244,7 +245,7 @@ describe('Controller Tests', () => {
       expect(Violation.findById).toHaveBeenCalledWith(violationId.toString());
       expect(mockViolation.remove).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: {}
       });
@@ -271,7 +272,7 @@ describe('Controller Tests', () => {
       expect(Violation.aggregate).toHaveBeenCalledTimes(4);
       expect(Violation.countDocuments).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: {
           totalViolations: 10,
@@ -297,8 +298,8 @@ describe('Controller Tests', () => {
       
       res = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-        cookie: jest.fn()
+        json: jest.fn().mockReturnThis(),
+        cookie: jest.fn().mockReturnThis()
       };
       
       next = jest.fn();
@@ -318,9 +319,6 @@ describe('Controller Tests', () => {
         role: 'user'
       };
       
-      // Mock User.findOne to return null (no existing user)
-      User.findOne.mockResolvedValue(null);
-      
       // Mock User.create
       const mockUser = {
         _id: new mongoose.Types.ObjectId(),
@@ -332,11 +330,17 @@ describe('Controller Tests', () => {
       
       await authController.register(req, res, next);
       
-      expect(User.findOne).toHaveBeenCalledWith({ email: req.body.email });
-      expect(User.create).toHaveBeenCalledWith(req.body);
+      expect(User.create).toHaveBeenCalledWith({
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password,
+        role: 'user',
+        organization: undefined
+      });
       expect(mockUser.getSignedJwtToken).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.cookie).toHaveBeenCalled();
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         token: 'test-token'
       });
@@ -358,15 +362,17 @@ describe('Controller Tests', () => {
       };
       
       // Mock User.findOne
-      User.findOne.mockResolvedValue(mockUser);
+      const selectMock = jest.fn().mockResolvedValue(mockUser);
+      User.findOne.mockReturnValue({ select: selectMock });
       
       await authController.login(req, res, next);
       
-      expect(User.findOne).toHaveBeenCalledWith({ email: req.body.email }).select('+password');
+      expect(User.findOne).toHaveBeenCalledWith({ email: req.body.email });
+      expect(selectMock).toHaveBeenCalledWith('+password');
       expect(mockUser.matchPassword).toHaveBeenCalledWith(req.body.password);
       expect(mockUser.getSignedJwtToken).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         token: 'test-token'
       });
@@ -387,10 +393,12 @@ describe('Controller Tests', () => {
       };
       
       // Mock User.findOne
-      User.findOne.mockResolvedValue(mockUser);
+      const selectMock = jest.fn().mockResolvedValue(mockUser);
+      User.findOne.mockReturnValue({ select: selectMock });
       
       await authController.login(req, res, next);
       
+      expect(selectMock).toHaveBeenCalledWith('+password');
       expect(mockUser.matchPassword).toHaveBeenCalledWith(req.body.password);
       expect(next).toHaveBeenCalled();
       expect(next.mock.calls[0][0].statusCode).toBe(401);
@@ -407,12 +415,16 @@ describe('Controller Tests', () => {
       };
       
       // Set req.user
-      req.user = mockUser;
+      req.user = { id: userId };
+      
+      // Mock User.findById
+      User.findById = jest.fn().mockResolvedValue(mockUser);
       
       await authController.getMe(req, res, next);
       
+      expect(User.findById).toHaveBeenCalledWith(userId);
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockUser
       });
@@ -423,7 +435,7 @@ describe('Controller Tests', () => {
       
       expect(res.cookie).toHaveBeenCalledWith('token', 'none', expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: {}
       });
@@ -443,7 +455,8 @@ describe('Controller Tests', () => {
       
       res = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: jest.fn().mockReturnThis(),
+        cookie: jest.fn().mockReturnThis()
       };
       
       next = jest.fn();
@@ -470,7 +483,7 @@ describe('Controller Tests', () => {
       
       expect(User.find).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         count: 2,
         data: mockUsers
@@ -497,7 +510,7 @@ describe('Controller Tests', () => {
       
       expect(User.findById).toHaveBeenCalledWith(userId.toString());
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockUser
       });
@@ -525,7 +538,7 @@ describe('Controller Tests', () => {
       
       expect(User.create).toHaveBeenCalledWith(req.body);
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockUser
       });
@@ -559,7 +572,7 @@ describe('Controller Tests', () => {
         { new: true, runValidators: true }
       );
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: mockUser
       });
@@ -577,7 +590,7 @@ describe('Controller Tests', () => {
       
       expect(User.findByIdAndDelete).toHaveBeenCalledWith(userId.toString());
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json.mock.calls[0][0]).toEqual({
         success: true,
         data: {}
       });
