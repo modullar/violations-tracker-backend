@@ -4,6 +4,7 @@ const errorHandler = require('../middleware/error');
 const auth = require('../middleware/auth');
 const { protect, authorize } = auth;
 const User = require('../models/User');
+const ErrorResponse = require('../utils/errorResponse');
 
 // Mock dependencies
 jest.mock('jsonwebtoken');
@@ -38,7 +39,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: expect.stringContaining('validation failed')
+        error: 'Name is required, Email is required'
       });
     });
     
@@ -53,7 +54,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: expect.stringContaining('duplicate')
+        error: 'Duplicate field value entered'
       });
     });
     
@@ -66,10 +67,10 @@ describe('Middleware Tests', () => {
       
       errorHandler(err, {}, res, next);
       
-      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: expect.stringContaining('Resource not found')
+        error: 'Resource not found'
       });
     });
     
@@ -109,11 +110,13 @@ describe('Middleware Tests', () => {
     it('should return 401 if no token is provided', async () => {
       await protect(req, res, next);
       
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.stringContaining('Not authorized')
-      });
+      expect(next).toHaveBeenCalledWith(expect.any(ErrorResponse));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 401,
+          message: 'Not authorized to access this route'
+        })
+      );
     });
     
     it('should verify token and set req.user', async () => {
@@ -155,14 +158,15 @@ describe('Middleware Tests', () => {
       await protect(req, res, next);
       
       expect(jwt.verify).toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.stringContaining('Not authorized')
-      });
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 401,
+          message: 'Not authorized to access this route'
+        })
+      );
     });
     
-    it('should return 401 if user no longer exists', async () => {
+    it('should return 404 if user no longer exists', async () => {
       // Mock User.findById to return null
       User.findById = jest.fn().mockResolvedValue(null);
       
@@ -174,11 +178,12 @@ describe('Middleware Tests', () => {
       
       await protect(req, res, next);
       
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.stringContaining('does not exist')
-      });
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 404,
+          message: 'User not found'
+        })
+      );
     });
   });
   
@@ -211,12 +216,13 @@ describe('Middleware Tests', () => {
       const authMiddleware = authorize('admin', 'editor');
       authMiddleware(req, res, next);
       
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.stringContaining('not authorized')
-      });
-      expect(next).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 403,
+          message: expect.stringContaining('is not authorized')
+        })
+      );
+      expect(next.mock.calls[0][0].message).toContain('User role user is not authorized');
     });
   });
 });

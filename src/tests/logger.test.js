@@ -1,19 +1,25 @@
-const winston = require('winston');
-const logger = require('../utils/logger');
+// Create a mock logger for testing
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  add: jest.fn()
+};
 
+// Mock winston before requiring the logger
 jest.mock('winston', () => {
-  const mockLogger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
-  };
   return {
     createLogger: jest.fn().mockReturnValue(mockLogger),
     format: {
-      combine: jest.fn(),
-      timestamp: jest.fn(),
-      printf: jest.fn()
+      combine: jest.fn().mockReturnValue({}),
+      timestamp: jest.fn().mockReturnValue({}),
+      printf: jest.fn().mockReturnValue({}),
+      errors: jest.fn().mockReturnValue({}),
+      splat: jest.fn().mockReturnValue({}),
+      json: jest.fn().mockReturnValue({}),
+      colorize: jest.fn().mockReturnValue({}),
+      simple: jest.fn().mockReturnValue({})
     },
     transports: {
       Console: jest.fn(),
@@ -21,6 +27,9 @@ jest.mock('winston', () => {
     }
   };
 });
+
+// Import logger after mocking winston
+const logger = require('../config/logger');
 
 describe('Logger', () => {
   beforeEach(() => {
@@ -30,24 +39,24 @@ describe('Logger', () => {
   it('should log info message', () => {
     const message = 'Test info message';
     logger.info(message);
-    expect(winston.createLogger().info).toHaveBeenCalledWith(message);
+    expect(mockLogger.info).toHaveBeenCalledWith(message);
   });
 
   it('should log error message', () => {
     const message = 'Test error message';
     logger.error(message);
-    expect(winston.createLogger().error).toHaveBeenCalledWith(message);
+    expect(mockLogger.error).toHaveBeenCalledWith(message);
   });
 
   it('should log warning message', () => {
     const message = 'Test warning message';
     logger.warn(message);
-    expect(winston.createLogger().warn).toHaveBeenCalledWith(message);
+    expect(mockLogger.warn).toHaveBeenCalledWith(message);
   });
 
   it('should log debug message', () => {
     const message = 'Test debug message';
     logger.debug(message);
-    expect(winston.createLogger().debug).toHaveBeenCalledWith(message);
+    expect(mockLogger.debug).toHaveBeenCalledWith(message);
   });
 });

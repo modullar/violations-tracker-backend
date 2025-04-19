@@ -217,7 +217,7 @@ exports.deleteViolation = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await violation.remove();
+  await Violation.findByIdAndDelete(req.params.id);
 
   res.status(200).json({
     success: true,

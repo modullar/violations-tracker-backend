@@ -1,5 +1,26 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+
+// Mock the node-geocoder module
+jest.mock('node-geocoder', () => {
+  return () => ({
+    geocode: jest.fn().mockImplementation((query) => {
+      if (query.includes('Valid Location')) {
+        return Promise.resolve([{
+          latitude: 34.5,
+          longitude: 35.5,
+          formattedAddress: 'Valid Location, Country',
+          city: 'Valid Location',
+          country: 'Country'
+        }]);
+      } else {
+        return Promise.resolve([]);
+      }
+    })
+  });
+});
+
+// Require the geocoder after mocking
 const geocoder = require('../utils/geocoder');
 
 describe('Utility Functions', () => {
@@ -65,34 +86,7 @@ describe('Utility Functions', () => {
   });
   
   describe('Geocoder', () => {
-    // Mock the node-geocoder library
-    beforeEach(() => {
-      jest.mock('node-geocoder', () => {
-        return () => ({
-          geocode: jest.fn().mockImplementation((query) => {
-            if (query === 'Valid Location') {
-              return Promise.resolve([{
-                latitude: 34.5,
-                longitude: 35.5,
-                formattedAddress: 'Valid Location, Country',
-                city: 'Valid Location',
-                country: 'Country'
-              }]);
-            } else {
-              return Promise.resolve([]);
-            }
-          })
-        });
-      });
-      
-      // Reset module cache
-      jest.resetModules();
-    });
-    
     it('should geocode a valid location', async () => {
-      // Get fresh instance after mock
-      const geocoder = require('../utils/geocoder');
-      
       // Test geocodeLocation function
       const result = await geocoder.geocodeLocation('Valid Location');
       
@@ -103,9 +97,6 @@ describe('Utility Functions', () => {
     });
     
     it('should return empty array for invalid location', async () => {
-      // Get fresh instance after mock
-      const geocoder = require('../utils/geocoder');
-      
       // Test geocodeLocation function
       const result = await geocoder.geocodeLocation('Invalid Location');
       
