@@ -10,9 +10,9 @@ describe('Config Module', () => {
     jest.resetModules();
     
     // Clear cached config
-    delete require.cache[require.resolve('../config/config')];
-    delete require.cache[require.resolve('../config/logger')];
-    delete require.cache[require.resolve('../config/db')];
+    delete require.cache[require.resolve('../../config/config')];
+    delete require.cache[require.resolve('../../config/logger')];
+    delete require.cache[require.resolve('../../config/db')];
     
     // Reset env variables to original state
     process.env = { ...originalEnv };
@@ -33,7 +33,7 @@ describe('Config Module', () => {
     delete process.env.RATE_LIMIT_MAX;
     
     // Load config
-    config = require('../config/config');
+    config = require('../../config/config');
     
     // Assert default values
     expect(config.env).toBe('development');
@@ -54,7 +54,7 @@ describe('Config Module', () => {
     process.env.RATE_LIMIT_MAX = '50';
     
     // Load config
-    config = require('../config/config');
+    config = require('../../config/config');
     
     // Assert values from env
     expect(config.env).toBe('test');
@@ -80,7 +80,7 @@ describe('Config Module', () => {
     process.env.NODE_ENV = 'test';
     
     // Load config
-    config = require('../config/config');
+    config = require('../../config/config');
     
     // Check that the correct environment was loaded
     const dotenv = require('dotenv');

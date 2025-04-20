@@ -29,7 +29,7 @@ jest.mock('winston', () => {
 });
 
 // Import logger after mocking winston
-const logger = require('../config/logger');
+const logger = require('../../config/logger');
 
 describe('Logger', () => {
   beforeEach(() => {

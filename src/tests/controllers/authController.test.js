@@ -4,18 +4,18 @@ const request = require('supertest');
 process.env.PORT = '5002';
 
 // Mock the external dependencies
-jest.mock('../config/logger', () => ({
+jest.mock('../../config/logger', () => ({
   info: jest.fn(),
   error: jest.fn()
 }));
 
 // Mock mongoose connection
-jest.mock('../config/db', () => jest.fn().mockImplementation(() => {
+jest.mock('../../config/db', () => jest.fn().mockImplementation(() => {
   return Promise.resolve();
 }));
 
 // Mock User model methods
-jest.mock('../models/User', () => {
+jest.mock('../../models/User', () => {
   const mockUser = {
     _id: '5f7d327c3642214df4d0e0f9',
     name: 'Test User',
@@ -24,14 +24,13 @@ jest.mock('../models/User', () => {
     matchPassword: jest.fn().mockImplementation((password) => {
       return Promise.resolve(password === 'password123');
     }),
-    getSignedJwtToken: jest.fn().mockReturnValue('mocked_token_for_tests')
+    getSignedJwtToken: jest.fn().mockReturnValue('test_token')
   };
-
+  
   return {
     create: jest.fn().mockImplementation((data) => {
-      if (data.email === 'test@example.com' && data.name !== 'Test User') {
-        // Simulate duplicate email error
-        const error = new Error('Duplicate key error');
+      if (data.email === 'test@example.com') {
+        const error = new Error('Duplicate field value entered');
         error.code = 11000;
         error.keyValue = { email: 'test@example.com' };
         throw error;
@@ -39,26 +38,15 @@ jest.mock('../models/User', () => {
       return Promise.resolve({
         ...mockUser,
         ...data,
-        getSignedJwtToken: jest.fn().mockReturnValue('mocked_token_for_tests')
+        getSignedJwtToken: jest.fn().mockReturnValue('test_token')
       });
     }),
-    findOne: jest.fn().mockImplementation(({ email }) => {
-      if (email === 'test@example.com') {
-        return {
-          select: jest.fn().mockResolvedValue(mockUser)
-        };
-      }
-      return {
-        select: jest.fn().mockResolvedValue(null)
-      };
-    }),
-    findById: jest.fn().mockImplementation((id) => {
-      if (id === mockUser._id || id === 'mocked_id_from_token') {
-        return Promise.resolve(mockUser);
-      }
-      return Promise.resolve(null);
-    }),
-    deleteMany: jest.fn().mockResolvedValue(true)
+    findOne: jest.fn().mockImplementation(({ email }) => ({
+      select: jest.fn().mockResolvedValue(
+        email === 'test@example.com' ? mockUser : null
+      )
+    })),
+    findById: jest.fn().mockResolvedValue(mockUser)
   };
 });
 
@@ -73,33 +61,13 @@ jest.mock('jsonwebtoken', () => ({
   })
 }));
 
-// Mock the actual implementation of the getMe controller
-jest.mock('../controllers/authController', () => {
-  const originalModule = jest.requireActual('../controllers/authController');
-  return {
-    ...originalModule,
-    getMe: jest.fn().mockImplementation((req, res) => {
-      return res.status(200).json({
-        success: true,
-        data: {
-          _id: '5f7d327c3642214df4d0e0f9',
-          name: 'Test User',
-          email: 'test@example.com',
-          role: 'user'
-        }
-      });
-    })
-  };
-});
-
 // Import the Express app after mocking dependencies
 let app;
 
-// Test suite
 describe('Auth API Tests', () => {
   beforeAll(() => {
     // Import the server after all mocks are in place
-    app = require('../server');
+    app = require('../../server');
   });
   
   afterAll(() => {
@@ -114,7 +82,7 @@ describe('Auth API Tests', () => {
         .post('/api/auth/register')
         .send({
           name: 'Test User',
-          email: 'test@example.com',
+          email: 'newuser@example.com',
           password: 'password123',
           organization: 'Test Organization'
         });
@@ -138,11 +106,10 @@ describe('Auth API Tests', () => {
     });
     
     it('should not allow duplicate emails', async () => {
-      // Use a different name but same email to trigger duplicate error
       const res = await request(app)
         .post('/api/auth/register')
         .send({
-          name: 'Another User', // Different name
+          name: 'Another User',
           email: 'test@example.com', // Same email
           password: 'password123',
           organization: 'Test Org'
@@ -212,4 +179,4 @@ describe('Auth API Tests', () => {
       expect(res.body.data).toEqual({});
     });
   });
-});
+}); 

@@ -1,5 +1,5 @@
-const asyncHandler = require('../utils/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const ErrorResponse = require('../../utils/errorResponse');
 
 // Mock the node-geocoder module
 jest.mock('node-geocoder', () => {
@@ -21,7 +21,7 @@ jest.mock('node-geocoder', () => {
 });
 
 // Require the geocoder after mocking
-const geocoder = require('../utils/geocoder');
+const geocoder = require('../../utils/geocoder');
 
 describe('Utility Functions', () => {
   describe('asyncHandler', () => {

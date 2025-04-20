@@ -6,7 +6,10 @@ const {
   updateViolation,
   deleteViolation,
   getViolationsInRadius,
-  getViolationStats
+  getViolationsByType,
+  getViolationsByLocation,
+  getViolationsByYear,
+  getViolationsTotal
 } = require('../controllers/violationsController');
 
 const {
@@ -22,7 +25,10 @@ const router = express.Router();
 
 // Public routes
 router.get('/', violationFilterRules, validateRequest, getViolations);
-router.get('/stats', getViolationStats);
+router.get('/stats/type', protect, authorize('admin'), getViolationsByType);
+router.get('/stats/location', protect, authorize('admin'), getViolationsByLocation);
+router.get('/stats/yearly', protect, authorize('admin'), getViolationsByYear);
+router.get('/stats/total', protect, authorize('admin'), getViolationsTotal);
 router.get('/radius/:latitude/:longitude/:radius', getViolationsInRadius);
 router.get('/:id', idParamRules, validateRequest, getViolation);
 

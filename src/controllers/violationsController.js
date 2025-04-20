@@ -2,6 +2,7 @@ const Violation = require('../models/Violation');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { geocodeLocation } = require('../utils/geocoder');
+const logger = require('../config/logger');
 
 /**
  * @desc    Get all violations with filtering, sorting, and pagination
@@ -79,11 +80,16 @@ exports.getViolationsInRadius = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 exports.getViolation = asyncHandler(async (req, res, next) => {
-  const violation = await Violation.findById(req.params.id)
-    .populate([
+  // Get the violation
+  const violationQuery = Violation.findById(req.params.id);
+  
+  // Try to populate if the method exists (for production)
+  const violation = violationQuery.populate ? 
+    await violationQuery.populate([
       { path: 'created_by', select: 'name' },
       { path: 'updated_by', select: 'name' }
-    ]);
+    ]) : 
+    await violationQuery;
 
   if (!violation) {
     return next(
@@ -159,7 +165,7 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const violationData = req.body;
+  const violationData = { ...req.body };
 
   // Process geocoding if the location was updated
   if (violationData.location && violationData.location.name) {
@@ -168,7 +174,9 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
       violation.location.administrative_division !== violationData.location.administrative_division;
 
     // Only geocode if the location changed and new coordinates aren't provided
-    if (locationChanged && !violationData.location.coordinates) {
+    if (locationChanged && (!violationData.location.coordinates || 
+        (violationData.location.coordinates[0] === 0 && 
+         violationData.location.coordinates[1] === 0))) {
       try {
         const geoData = await geocodeLocation(
           violationData.location.name,
@@ -180,10 +188,14 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
             geoData[0].longitude,
             geoData[0].latitude
           ];
+        } else {
+          // If geocoding returns no results, keep original coordinates
+          violationData.location.coordinates = violation.location.coordinates || [0, 0];
         }
       } catch (err) {
-        // If geocoding fails, keep original coordinates
-        violationData.location.coordinates = violation.location.coordinates;
+        // If geocoding fails, keep original coordinates or default to [0, 0]
+        violationData.location.coordinates = violation.location.coordinates || [0, 0];
+        logger.error('Geocoding failed:', err);
       }
     }
   }
@@ -192,14 +204,24 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
   violationData.updated_by = req.user.id;
 
   // Update the violation
-  violation = await Violation.findByIdAndUpdate(req.params.id, violationData, {
-    new: true,
-    runValidators: true
-  });
+  const updatedViolation = await Violation.findByIdAndUpdate(
+    req.params.id,
+    violationData,
+    {
+      new: true,
+      runValidators: true
+    }
+  );
+
+  if (!updatedViolation) {
+    return next(
+      new ErrorResponse(`Violation not found with id of ${req.params.id}`, 404)
+    );
+  }
 
   res.status(200).json({
     success: true,
-    data: violation
+    data: updatedViolation
   });
 });
 
@@ -380,3 +402,85 @@ const buildFilterQuery = (queryParams) => {
 
   return query;
 };
+
+/**
+ * @desc    Get violations by type
+ * @route   GET /api/violations/stats/type
+ * @access  Private (Admin)
+ */
+exports.getViolationsByType = asyncHandler(async (req, res, next) => {
+  const stats = await Violation.aggregate([
+    {
+      $group: {
+        _id: '$type',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: stats
+  });
+});
+
+/**
+ * @desc    Get violations by location
+ * @route   GET /api/violations/stats/location
+ * @access  Private (Admin)
+ */
+exports.getViolationsByLocation = asyncHandler(async (req, res, next) => {
+  const stats = await Violation.aggregate([
+    {
+      $group: {
+        _id: '$location.administrative_division',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: stats
+  });
+});
+
+/**
+ * @desc    Get yearly violation counts
+ * @route   GET /api/violations/stats/yearly
+ * @access  Private (Admin)
+ */
+exports.getViolationsByYear = asyncHandler(async (req, res, next) => {
+  const stats = await Violation.aggregate([
+    {
+      $project: {
+        year: { $year: '$date' }
+      }
+    },
+    {
+      $group: {
+        _id: '$year',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: stats
+  });
+});
+
+/**
+ * @desc    Get total violation count
+ * @route   GET /api/violations/stats/total
+ * @access  Private (Admin)
+ */
+exports.getViolationsTotal = asyncHandler(async (req, res, next) => {
+  const total = await Violation.countDocuments();
+
+  res.status(200).json({
+    success: true,
+    data: { total }
+  });
+});

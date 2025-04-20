@@ -235,9 +235,7 @@ const violationRules = [
 const idParamRules = [
   param('id')
     .notEmpty()
-    .withMessage('ID parameter is required')
-    .isMongoId()
-    .withMessage('Invalid ID format')
+    .withMessage('ID is required')
 ];
 
 // Violation filtering validation rules

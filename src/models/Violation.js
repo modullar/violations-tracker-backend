@@ -58,6 +58,11 @@ const VictimSchema = new mongoose.Schema({
 
 // Location schema with GeoJSON for coordinates
 const LocationSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['Point'],
+    default: 'Point'
+  },
   coordinates: {
     type: [Number],
     required: true,
