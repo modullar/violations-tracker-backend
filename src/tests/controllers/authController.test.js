@@ -1,8 +1,5 @@
 const request = require('supertest');
 
-// Change the port for tests to avoid conflicts
-process.env.PORT = '5002';
-
 // Mock the external dependencies
 jest.mock('../../config/logger', () => ({
   info: jest.fn(),
@@ -65,14 +62,23 @@ jest.mock('jsonwebtoken', () => ({
 let app;
 
 describe('Auth API Tests', () => {
-  beforeAll(() => {
-    // Import the server after all mocks are in place
+  beforeAll(async () => {
+    // Set test environment variables
+    process.env.NODE_ENV = 'test';
+    process.env.JWT_SECRET = 'test_secret';
+    process.env.MONGO_URI = 'mongodb://localhost:27017/violations-tracker-test';
+    
+    // Import the server after setting environment variables
     app = require('../../server');
   });
   
-  afterAll(() => {
+  afterAll(done => {
     if (app && app.close) {
-      app.close();
+      app.close(() => {
+        done();
+      });
+    } else {
+      done();
     }
   });
 
