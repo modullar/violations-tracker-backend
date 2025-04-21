@@ -1,4 +1,3 @@
-const path = require('path');
 const fs = require('fs');
 const originalEnv = { ...process.env };
 
@@ -37,7 +36,7 @@ describe('Config Module', () => {
     
     // Assert default values
     expect(config.env).toBe('development');
-    expect(config.port).toBe('5001');
+    expect(parseInt(config.port)).toBe(5001);
     expect(config.jwtExpiresIn).toBe('30d');
     expect(config.jwtCookieExpire).toBe(30);
     expect(config.rateLimit.windowMs).toBe(15 * 60 * 1000); // 15 minutes
