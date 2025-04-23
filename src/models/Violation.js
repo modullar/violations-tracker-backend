@@ -16,6 +16,7 @@ const ViolationTypes = {
   HOME_INVASION: 'HOME_INVASION',
   EXPLOSION: 'EXPLOSION',
   AMBUSH: 'AMBUSH',
+  KIDNAPPING: 'KIDNAPPING',
   OTHER: 'OTHER'
 };
 
@@ -65,14 +66,15 @@ const LocationSchema = new mongoose.Schema({
   },
   coordinates: {
     type: [Number],
-    required: true,
+    required: false,
     validate: {
-      validator: function(val) {
-        return val.length === 2 && 
-               val[0] >= -180 && val[0] <= 180 &&
-               val[1] >= -90 && val[1] <= 90;
+      validator: function(value) {
+        if (!value) return true;
+        if (value.length !== 2) return false;
+        const [longitude, latitude] = value;
+        return longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90;
       },
-      message: 'Coordinates must be [longitude, latitude] format with valid ranges'
+      message: 'Coordinates must be an array of two numbers [longitude, latitude] with valid ranges'
     }
   },
   name: {

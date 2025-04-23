@@ -458,4 +458,84 @@ describe('Violations API', () => {
       expect(typeof res.body.data.total).toBe('number');
     });
   });
+
+  describe('POST /api/violations/batch', () => {
+    it('should create multiple violations in batch', async () => {
+      const violationsBatch = [
+        {
+          type: 'AIRSTRIKE',
+          date: '2023-06-20',
+          location: {
+            type: 'Point',
+            coordinates: [36.2, 37.1],
+            name: 'Batch Location 1',
+            administrative_division: 'Batch Division 1'
+          },
+          description: 'This is a detailed description of the first violation in the batch.',
+          verified: true,
+          certainty_level: 'confirmed',
+          perpetrator: 'Batch Perpetrator 1',
+          casualties: 3
+        },
+        {
+          type: 'SHELLING',
+          date: '2023-06-21',
+          location: {
+            type: 'Point',
+            coordinates: [35.9, 36.8],
+            name: 'Batch Location 2',
+            administrative_division: 'Batch Division 2'
+          },
+          description: 'This is a detailed description of the second violation in the batch.',
+          verified: true,
+          certainty_level: 'probable',
+          perpetrator: 'Batch Perpetrator 2',
+          casualties: 5
+        }
+      ];
+      
+      const res = await request(app)
+        .post('/api/violations/batch')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(violationsBatch);
+      
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body).toHaveProperty('count');
+      expect(res.body.count).toBe(violationsBatch.length);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBe(violationsBatch.length);
+      expect(res.body.data[0]).toHaveProperty('_id');
+      expect(res.body.data[1]).toHaveProperty('_id');
+    });
+    
+    it('should require the request body to be an array', async () => {
+      const res = await request(app)
+        .post('/api/violations/batch')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ type: 'AIRSTRIKE' }); // Not an array
+      
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+    
+    it('should require at least one violation', async () => {
+      const res = await request(app)
+        .post('/api/violations/batch')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send([]); // Empty array
+      
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+    
+    it('should require authentication', async () => {
+      const res = await request(app)
+        .post('/api/violations/batch')
+        .send([{}]);
+      
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
 }); 

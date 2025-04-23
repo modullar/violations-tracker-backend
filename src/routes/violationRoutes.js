@@ -3,6 +3,7 @@ const {
   getViolations,
   getViolation,
   createViolation,
+  createViolationsBatch,
   updateViolation,
   deleteViolation,
   getViolationsInRadius,
@@ -15,6 +16,7 @@ const {
 const {
   validateRequest,
   violationRules,
+  batchViolationsRules,
   idParamRules,
   violationFilterRules
 } = require('../middleware/validators');
@@ -40,6 +42,15 @@ router.post(
   violationRules,
   validateRequest,
   createViolation
+);
+
+router.post(
+  '/batch',
+  protect,
+  authorize('editor', 'admin'),
+  batchViolationsRules,
+  validateRequest,
+  createViolationsBatch
 );
 
 router.put(

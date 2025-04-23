@@ -56,7 +56,7 @@ const violationRules = [
     .isIn([
       'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
       'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
-      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'OTHER'
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'OTHER'
     ])
     .withMessage('Invalid violation type'),
   
@@ -90,23 +90,24 @@ const violationRules = [
     .withMessage('Location must be an object'),
   
   body('location.coordinates')
-    .notEmpty()
-    .withMessage('Coordinates are required')
+    .optional()
     .isArray()
     .withMessage('Coordinates must be an array')
     .custom(value => {
-      if (value.length !== 2) {
+      if (value && value.length !== 2) {
         throw new Error('Coordinates must contain exactly 2 values [longitude, latitude]');
       }
       
-      const [longitude, latitude] = value;
-      
-      if (longitude < -180 || longitude > 180) {
-        throw new Error('Longitude must be between -180 and 180');
-      }
-      
-      if (latitude < -90 || latitude > 90) {
-        throw new Error('Latitude must be between -90 and 90');
+      if (value) {
+        const [longitude, latitude] = value;
+        
+        if (longitude < -180 || longitude > 180) {
+          throw new Error('Longitude must be between -180 and 180');
+        }
+        
+        if (latitude < -90 || latitude > 90) {
+          throw new Error('Latitude must be between -90 and 90');
+        }
       }
       
       return true;
@@ -170,8 +171,13 @@ const violationRules = [
   
   body('victims.*.age')
     .optional()
-    .isInt({ min: 0, max: 120 })
-    .withMessage('Victim age must be between 0 and 120'),
+    .custom(value => {
+      if (value === null || value === undefined) return true;
+      if (typeof value !== 'number') return false;
+      if (value < 0 || value > 120) return false;
+      return true;
+    })
+    .withMessage('Victim age must be between 0 and 120, or null'),
   
   body('victims.*.gender')
     .optional()
@@ -186,14 +192,18 @@ const violationRules = [
   
   body('victims.*.death_date')
     .optional()
-    .isISO8601()
-    .withMessage('Death date must be a valid ISO date (YYYY-MM-DD)')
     .custom(value => {
+      if (value === null || value === undefined) return true;
+      if (!value) return true;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new Error('Death date must be a valid ISO date (YYYY-MM-DD)');
+      }
       if (new Date(value) > new Date()) {
         throw new Error('Death date cannot be in the future');
       }
       return true;
-    }),
+    })
+    .withMessage('Death date must be a valid ISO date (YYYY-MM-DD) or null'),
   
   body('perpetrator')
     .optional()
@@ -226,6 +236,204 @@ const violationRules = [
     .withMessage('Tags cannot be more than 50 characters each'),
   
   body('related_violations')
+    .optional()
+    .isArray()
+    .withMessage('Related violations must be an array')
+];
+
+// Batch violations validation
+const batchViolationsRules = [
+  body()
+    .isArray()
+    .withMessage('Request body must be an array of violations')
+    .notEmpty()
+    .withMessage('At least one violation must be provided'),
+  body('*.type')
+    .notEmpty()
+    .withMessage('Violation type is required')
+    .isIn([
+      'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
+      'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'OTHER'
+    ])
+    .withMessage('Invalid violation type'),
+  
+  body('*.date')
+    .notEmpty()
+    .withMessage('Incident date is required')
+    .isISO8601()
+    .withMessage('Date must be a valid ISO date (YYYY-MM-DD)')
+    .custom(value => {
+      if (new Date(value) > new Date()) {
+        throw new Error('Incident date cannot be in the future');
+      }
+      return true;
+    }),
+  
+  body('*.reported_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Reported date must be a valid ISO date (YYYY-MM-DD)')
+    .custom(value => {
+      if (new Date(value) > new Date()) {
+        throw new Error('Reported date cannot be in the future');
+      }
+      return true;
+    }),
+  
+  body('*.location')
+    .notEmpty()
+    .withMessage('Location is required')
+    .isObject()
+    .withMessage('Location must be an object'),
+  
+  body('*.location.coordinates')
+    .optional()
+    .isArray()
+    .withMessage('Coordinates must be an array')
+    .custom(value => {
+      if (value && value.length !== 2) {
+        throw new Error('Coordinates must contain exactly 2 values [longitude, latitude]');
+      }
+      
+      if (value) {
+        const [longitude, latitude] = value;
+        
+        if (longitude < -180 || longitude > 180) {
+          throw new Error('Longitude must be between -180 and 180');
+        }
+        
+        if (latitude < -90 || latitude > 90) {
+          throw new Error('Latitude must be between -90 and 90');
+        }
+      }
+      
+      return true;
+    }),
+  
+  body('*.location.name')
+    .notEmpty()
+    .withMessage('Location name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Location name must be between 2 and 100 characters'),
+  
+  body('*.location.administrative_division')
+    .optional()
+    .isLength({ max: 100 })
+    .withMessage('Administrative division cannot be more than 100 characters'),
+  
+  body('*.description')
+    .notEmpty()
+    .withMessage('Description is required')
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Description must be between 10 and 2000 characters'),
+  
+  body('*.source')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('Source cannot be more than 200 characters'),
+  
+  body('*.source_url')
+    .optional()
+    .isURL()
+    .withMessage('Source URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Source URL cannot be more than 500 characters'),
+  
+  body('*.verified')
+    .notEmpty()
+    .withMessage('Verification status is required')
+    .isBoolean()
+    .withMessage('Verified must be a boolean value'),
+  
+  body('*.certainty_level')
+    .notEmpty()
+    .withMessage('Certainty level is required')
+    .isIn(['confirmed', 'probable', 'possible'])
+    .withMessage('Certainty level must be one of: confirmed, probable, possible'),
+  
+  body('*.verification_method')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Verification method cannot be more than 500 characters'),
+  
+  body('*.casualties')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Casualties must be a non-negative integer'),
+  
+  body('*.victims')
+    .optional()
+    .isArray()
+    .withMessage('Victims must be an array'),
+  
+  body('*.victims.*.age')
+    .optional()
+    .custom(value => {
+      if (value === null || value === undefined) return true;
+      if (typeof value !== 'number') return false;
+      if (value < 0 || value > 120) return false;
+      return true;
+    })
+    .withMessage('Victim age must be between 0 and 120, or null'),
+  
+  body('*.victims.*.gender')
+    .optional()
+    .isIn(['male', 'female', 'other', 'unknown'])
+    .withMessage('Victim gender must be one of: male, female, other, unknown'),
+  
+  body('*.victims.*.status')
+    .notEmpty()
+    .withMessage('Victim status is required')
+    .isIn(['civilian', 'combatant', 'unknown'])
+    .withMessage('Victim status must be one of: civilian, combatant, unknown'),
+  
+  body('*.victims.*.death_date')
+    .optional()
+    .custom(value => {
+      if (value === null || value === undefined) return true;
+      if (!value) return true;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new Error('Death date must be a valid ISO date (YYYY-MM-DD)');
+      }
+      if (new Date(value) > new Date()) {
+        throw new Error('Death date cannot be in the future');
+      }
+      return true;
+    })
+    .withMessage('Death date must be a valid ISO date (YYYY-MM-DD) or null'),
+  
+  body('*.perpetrator')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('Perpetrator cannot be more than 200 characters'),
+  
+  body('*.perpetrator_affiliation')
+    .optional()
+    .isLength({ max: 100 })
+    .withMessage('Perpetrator affiliation cannot be more than 100 characters'),
+  
+  body('*.media_links')
+    .optional()
+    .isArray()
+    .withMessage('Media links must be an array'),
+  
+  body('*.media_links.*')
+    .optional()
+    .isURL()
+    .withMessage('Media links must be valid URLs'),
+  
+  body('*.tags')
+    .optional()
+    .isArray()
+    .withMessage('Tags must be an array'),
+  
+  body('*.tags.*')
+    .optional()
+    .isLength({ max: 50 })
+    .withMessage('Tags cannot be more than 50 characters each'),
+  
+  body('*.related_violations')
     .optional()
     .isArray()
     .withMessage('Related violations must be an array')
@@ -325,6 +533,7 @@ module.exports = {
   userRegistrationRules,
   userLoginRules,
   violationRules,
+  batchViolationsRules,
   idParamRules,
   violationFilterRules
 };

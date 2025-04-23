@@ -484,3 +484,73 @@ exports.getViolationsTotal = asyncHandler(async (req, res, next) => {
     data: { total }
   });
 });
+
+/**
+ * @desc    Create multiple violations in a batch
+ * @route   POST /api/violations/batch
+ * @access  Private (Editors and Admins)
+ */
+exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
+  const violationsData = req.body;
+  
+  if (!Array.isArray(violationsData)) {
+    return next(new ErrorResponse('Request body must be an array of violations', 400));
+  }
+
+  if (violationsData.length === 0) {
+    return next(new ErrorResponse('At least one violation must be provided', 400));
+  }
+
+  // Process each violation
+  const processedViolations = await Promise.all(
+    violationsData.map(async (violationData) => {
+      // Process geocoding if needed
+      if (violationData.location && violationData.location.name) {
+        // Only geocode if coordinates aren't provided or need to be updated
+        const shouldGeocode = !violationData.location.coordinates || 
+                          (violationData.location.coordinates[0] === 0 && 
+                          violationData.location.coordinates[1] === 0);
+
+        if (shouldGeocode) {
+          try {
+            logger.info(`Attempting to geocode location: ${violationData.location.name}, ${violationData.location.administrative_division || ''}`);
+            
+            const geoData = await geocodeLocation(
+              violationData.location.name,
+              violationData.location.administrative_division || ''
+            );
+
+            if (geoData && geoData.length > 0) {
+              violationData.location.coordinates = [
+                geoData[0].longitude,
+                geoData[0].latitude
+              ];
+              logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
+            } else {
+              logger.warn(`No geocoding results found for: ${violationData.location.name}`);
+            }
+          } catch (err) {
+            // If geocoding fails, log detailed error
+            logger.error(`Geocoding failed for location "${violationData.location.name}": ${err.message}`);
+            logger.error('Full error:', err);
+          }
+        }
+      }
+
+      // Add user to violation data
+      violationData.created_by = req.user.id;
+      violationData.updated_by = req.user.id;
+
+      return violationData;
+    })
+  );
+
+  // Create all violations in a single operation
+  const violations = await Violation.create(processedViolations);
+
+  res.status(201).json({
+    success: true,
+    count: violations.length,
+    data: violations
+  });
+});
