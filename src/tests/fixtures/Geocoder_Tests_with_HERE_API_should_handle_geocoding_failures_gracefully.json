@@ -1,0 +1,222 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=xyznon-existentlocation12345completelyfake%2C+definitelynotarealplace%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:59 GMT",
+      "server": "openresty",
+      "x-correlation-id": "33f15d01-fc33-40a5-9a2c-3ac667f2f165",
+      "x-nlp-irt": "743",
+      "x-nlp-log": "",
+      "x-nlp-tid": "138f4ee0-6e90-463d-a5a9-7148b5307b2c",
+      "x-request-id": "REQ-04d311fd-eb59-4319-8e60-4d3e23ebd1d9",
+      "x-served-by": "i-03d274cbced309803.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=xyznon-existentlocation12345completelyfake%2C%20definitelynotarealplace%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:59 GMT",
+      "expires": "Sun, 26 Apr 1970 20:00:00 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "aeaa6fc8-4eaf-4567-92ef-638a375f9a14",
+      "x-request-id": "REQ-796049e4-4852-4960-b2b9-69fe1462d336",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=xyznon-existentlocation12345completelyfake%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:59 GMT",
+      "server": "openresty",
+      "x-correlation-id": "f534dc6c-8df0-452b-9045-f0929335a30e",
+      "x-nlp-irt": "737",
+      "x-nlp-log": "",
+      "x-nlp-tid": "92603415-9bce-499f-bccf-6750a6910060",
+      "x-request-id": "REQ-e1a2d02d-a851-49cf-9dbb-9c290b787199",
+      "x-served-by": "i-03d274cbced309803.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=xyznon-existentlocation12345completelyfake%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:11:00 GMT",
+      "expires": "Sun, 26 Apr 1970 20:00:00 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "9c58268b-ed6d-4ac1-89e8-3cff4843cab5",
+      "x-request-id": "REQ-eb552607-5739-4088-9878-e79975b7ef2b",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=definitelynotarealplace%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:11:00 GMT",
+      "server": "openresty",
+      "x-correlation-id": "1cbc9de5-173f-4d8f-b31b-b5b14b79e957",
+      "x-nlp-irt": "682",
+      "x-nlp-log": "",
+      "x-nlp-tid": "9f6bc267-50bf-4c94-a085-f84203287e92",
+      "x-request-id": "REQ-77df3a08-bc69-4a68-bf14-6adf7de13e40",
+      "x-served-by": "i-0244eb741b36db255.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=definitelynotarealplace%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:11:00 GMT",
+      "expires": "Sun, 26 Apr 1970 20:00:00 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "b0bd488c-63ae-45b5-ba13-bcaca37efa23",
+      "x-request-id": "REQ-d67403b9-e2b9-4069-adfa-e4c80dffefd8",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=xyznon-existentlocation12345completelyfake",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:11:00 GMT",
+      "server": "openresty",
+      "x-correlation-id": "2f84b97f-223a-4e36-b9e9-d6d9d58ab999",
+      "x-nlp-irt": "706",
+      "x-nlp-log": "",
+      "x-nlp-tid": "aea3c7e0-7496-437f-8d7b-22f65a9a06ce",
+      "x-request-id": "REQ-24eff43a-7083-44e0-a0c1-e6b1913fb36a",
+      "x-served-by": "i-03d274cbced309803.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=xyznon-existentlocation12345completelyfake&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:11:01 GMT",
+      "expires": "Sun, 26 Apr 1970 20:00:00 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "8359d986-eb05-4c63-94c2-ca593f96dec8",
+      "x-request-id": "REQ-9aa0b856-fb45-4c99-a4d4-c1e9ea3a1c7e",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

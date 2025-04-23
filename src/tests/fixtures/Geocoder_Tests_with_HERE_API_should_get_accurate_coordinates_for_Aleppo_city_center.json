@@ -1,0 +1,56 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Aleppo%2C+Aleppo+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:58 GMT",
+      "server": "openresty",
+      "x-correlation-id": "3ef3001c-ba27-462d-ab91-69f25bd810e0",
+      "x-nlp-irt": "623",
+      "x-nlp-log": "",
+      "x-nlp-tid": "7ca20506-e654-4a08-990c-3624314e5c86",
+      "x-request-id": "REQ-344cb4c4-eb81-4a8f-9217-c011c3702887",
+      "x-served-by": "i-0244eb741b36db255.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Aleppo%2C%20Aleppo%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000000006c8f314fc4300c85ff0af21c554973e44a36c4ce401112420ca1357791d22697a43a5555ff3b2ebd8885cdfe9edfb3bd80cd3824d01f0b649b1d82864787217876d7ced11a60607b82678ca8bb41076fb5e04721b8545c911a314d2ebfce61b33adf1967f34cbc9437a5dba9e97b32d0be059cf942f7cfbace4f638ef393ef375ffbfef2c79ecdf0cbcae49659026065107cb2d9fa718fcfa0a5aaea5a34f774ce78a2f65809299a86460713de2c5eb7c92ba6bc6b35578a41f2533eef5eae1e18a029fa410a06a38f4596aaa9292b753eda2d7f81cb84716ea9a73b7925c9fd6dd1f537b29447408b8a9707a85cd7f573fd010000ffff0300a58ef9dd8c010000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "267",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:58 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "3e5c80fe-7a9b-4952-a59b-84f264972237",
+      "x-request-id": "REQ-f5b24f06-15fd-427a-8ff1-10d29ab411cc",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

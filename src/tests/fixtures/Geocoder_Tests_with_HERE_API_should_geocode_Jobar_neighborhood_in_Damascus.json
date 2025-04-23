@@ -1,0 +1,56 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Jobar%2C+Damascus+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:55 GMT",
+      "server": "openresty",
+      "x-correlation-id": "fa6d1ba5-45ef-41a6-9623-1e96b5255852",
+      "x-nlp-irt": "688",
+      "x-nlp-log": "",
+      "x-nlp-tid": "fa4a03d0-8ca3-48e6-ab82-b51cbc0cdcfd",
+      "x-request-id": "REQ-fc3fb2d8-b360-4abd-949d-933c2965eed5",
+      "x-served-by": "i-02cd63a16d874d32a.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Jobar%2C%20Damascus%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000000006c4f416e833010fc4ab5670b010627f1b53df750aa4a55d5836b6f1b4b0653db284288bf779d8072e96d7766766676019bb08f203f1648363904094faa57514f913d7473b00a185843f019034addcb41f56846a734caba3dd5a22e1b92048c934baff3981d9cd7cad93413be8f1ba36fa832860e287601a7bed0fd9baafd34a4303f7a932fbbf7973bf64c1d32b62bb3ebdd025606a38f36593fdc221248ce8bb612ada04ac30fada2e0d5a13c92b457e39bc54b565e30a62b570b519f18443fa5f3f5b639349c3340b50938190d3e6c6c2b8ea222aba87db0d97e81df09c3dcd14e45cba269197c5b74664396fd13905551ee1fd0b8aeebe7fa070000ffff0300a0ad24cd96010000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "275",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:55 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "3f990eaa-2dfa-4652-a385-84f03e22cf2b",
+      "x-request-id": "REQ-4e2c21ef-e0b3-4fb9-8fd8-6eb0ac16b813",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

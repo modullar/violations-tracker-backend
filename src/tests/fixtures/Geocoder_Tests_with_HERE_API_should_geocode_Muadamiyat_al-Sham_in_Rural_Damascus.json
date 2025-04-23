@@ -1,0 +1,110 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Muadamiyat+al-Sham%2C+Rif+Dimashq+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:55 GMT",
+      "server": "openresty",
+      "x-correlation-id": "64fc7388-d20d-426d-9bf2-95238f48644e",
+      "x-nlp-irt": "745",
+      "x-nlp-log": "",
+      "x-nlp-tid": "417a27c7-e0d7-4268-ba67-d202aa94949c",
+      "x-request-id": "REQ-6440c2ff-3240-4f88-9b4f-2a2fb335c623",
+      "x-served-by": "i-028322cf703e2da28.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Muadamiyat%20al-Sham%2C%20Rif%20Dimashq%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:56 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "transfer-encoding": "chunked",
+      "usage": "_:1",
+      "x-correlation-id": "eac5a3ed-49b6-4420-954a-79625648dac7",
+      "x-request-id": "REQ-86b59e78-cbc6-4d4d-9e55-eb05aefb7406",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Muadamiyat+al-Sham%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:56 GMT",
+      "server": "openresty",
+      "x-correlation-id": "7e82a6b3-ea31-40d5-a936-d9cf415ded3e",
+      "x-nlp-irt": "659",
+      "x-nlp-log": "",
+      "x-nlp-tid": "149c293e-4024-4efd-98b7-a56beaf69cf2",
+      "x-request-id": "REQ-0dd01811-d892-471d-ace9-3c4a102a97cd",
+      "x-served-by": "i-02cd63a16d874d32a.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Muadamiyat%20al-Sham%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000000007c52cb4ec33010fc95c8e750392171d2dc10772ec0097130890b4669131c57a28a72e0252a4ef015550b02f194f813fbca97b076521e12e29264677767676753232ed9b042c94e8d249739430952337dae2fd4bbbe5233b5402ee219a0074cb0a4ccaaa4cc69ca1212fb87c75159ada4a9cf62cf0f22ba4a70cce2413488f7421ffb947838c8fad02f5835cee5d6a434ecb61d409a6580c3e41ae5748fe590fa3899fd9eed3aea05de8feaddb1894b3d35a1be72dbf8429fab27d7f1fc78d5b388c941c55b9b57cf4034550f80cd3f4ee630342dc6232926eb4566a46cae6d7f631b74b85cfe67dfb260b2cc75130cceff42335e49c153f965a4d10838a08c59f4ef95a0a42c2a49f34e9c5d0a3516e59217a3d62960f0831e8902cf45f9681f2501e9457e1c7a5049d3d43abaf34f21099a5d904e25db2f04676db53d30c17885f4e181719f809a516b085c63a1eed4a3633feed5abbed1d7ead5c8157c48055820c598356e4713014314181a2f087fd04cf599756a0e7b83c10b750b84b0b9035e9f76161869550aba8cde1a1d8d99986c420c04b817ba68c0599e7540ddf98f7b91dbfe54ed05210e9ba6d96d3e010000ffff0300f67099b1db020000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "456",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:56 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "7f1f6792-6821-4662-9ccc-b1f71646251c",
+      "x-request-id": "REQ-54d5b53d-50c3-4de2-8493-5b8c1b3f370d",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

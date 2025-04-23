@@ -52,7 +52,7 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 
 - Node.js (v18 or higher)
 - MongoDB
-- API key from MapTiler for geocoding (optional)
+- API key from HERE for geocoding (Optional but recommended for accurate location data)
 
 ### Installation
 
@@ -82,8 +82,10 @@ PORT=5000
 MONGO_URI=mongodb://localhost:27017/violations-tracker
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=30d
-GOOGLE_API_KEY=your_google_api_key_here
-MAPQUEST_API_KEY=your_mapquest_api_key_here
+HERE_API_KEY=your_here_api_key_here
+# Alternative geocoding options
+# GOOGLE_API_KEY=your_google_api_key_here
+# MAPQUEST_API_KEY=your_mapquest_api_key_here
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
 ```
@@ -200,4 +202,4 @@ This project is licensed under the ISC License.
 ## Acknowledgements
 
 - Based on the work of human rights documentation organizations in Syria
-- Uses MapTiler for geocoding services
+- Uses HERE Geocoding API for location services

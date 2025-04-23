@@ -1,0 +1,110 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Bustan+al-Qasr%2C+Aleppo+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:52 GMT",
+      "server": "openresty",
+      "x-correlation-id": "10cc32b0-d831-4b70-aab2-04c02deba40e",
+      "x-nlp-irt": "707",
+      "x-nlp-log": "",
+      "x-nlp-tid": "b609ba88-6284-4142-bc4d-b1438c957df4",
+      "x-request-id": "REQ-05ad1b35-3411-4328-9f58-6f22803b4a11",
+      "x-served-by": "i-0244eb741b36db255.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Bustan%20al-Qasr%2C%20Aleppo%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:52 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "80da3114-ee2b-4948-b2aa-bb5fd02e0cbf",
+      "x-request-id": "REQ-15caade1-fe76-424e-888c-fd3a0d6adc63",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Bustan+al-Qasr%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:53 GMT",
+      "server": "openresty",
+      "x-correlation-id": "8fbe2d32-e7fb-4eba-bc24-f4c1a1bb61c1",
+      "x-nlp-irt": "628",
+      "x-nlp-log": "",
+      "x-nlp-tid": "aded49f6-d1ac-4fee-89a0-e3a5436e7541",
+      "x-request-id": "REQ-7a0d04ac-14bb-4759-bc91-ab7c1a079f3d",
+      "x-served-by": "i-0244eb741b36db255.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Bustan%20al-Qasr%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000b454cb8ed33014fd15e47514397e25ce0eb1628304036c108b9018c652da84c4d528aaba19cd8cd0fc480b1b188d000d5fe2fc0d374dd2b425ad181eabd8f7e17bec7372e6481b352951f86a8e8c36a94221b2cbfac2aeecadfd04ab2be741b3af2fed97facaaeda1de4eeea0ff6737d6d3f2207e904ba4e55a1c278124ea3894af2348a5548b82494610925852a67a9795ee5cd80348ba3549b0ae2fdb2cb24ba34858e0d64a224812640364769f446a57f022cce665353548fb2a439fce4e18b21f60460f6478e34555dae3eb75febebfab289eb21da0d85e806f13e3cc8e55969a2b49bce05271c2dd6516d74366d6f068d84bb01953880d798be4321632ea19c4a289d44f94badce9aca33559a36e749cc1d54663373daf612467c07a9a82f609e140e9a66455fc08814705a1967856e26ccd1fb992aaa13d80332ec72e9a0b75aa54917996fde0072db57c4aecf178b85b3a595f57de145063ae0bd3674dcd91bf89eef6b24cf74e861297c167838f867f2f85d2cbbb278fcece9b82cf61aaa76c4d2aeea8b5fe4b01eb427870d9c51d629717d2ad9403ac54cf80748871c1d485fb706c136e914f3a6a023bd3ddb67c7486fca77491fb07b2edea379e4cfb33fe02dbedfcf1004167013f13f0de108acbfb7037b03d1a5fdb6cb7f3bf23e66e0719fd07133102e267ef343f7ba908210ef802e24e7be18cca0e9c58c6ce9420ada184b6f06504009f58e9a013d6c06fe8819bc5efc040000ffff03001158019644060000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "561",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:53 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "f89bc76b-a70c-48c0-9af6-6fa700a04c9d",
+      "x-request-id": "REQ-0a7bdc7a-2c90-466c-b66f-4528651cbfcd",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

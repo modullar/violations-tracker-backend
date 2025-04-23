@@ -1,0 +1,110 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Al-Waer%2C+Homs+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:56 GMT",
+      "server": "openresty",
+      "x-correlation-id": "f6dfbba4-4a41-41a0-b58b-878a75948a29",
+      "x-nlp-irt": "716",
+      "x-nlp-log": "",
+      "x-nlp-tid": "1a1906c1-19bb-4928-9fab-d0eb5642bdd0",
+      "x-request-id": "REQ-4eff8fb4-c2dc-4f26-84fe-d6019c26778a",
+      "x-served-by": "i-016f4ca8f1d37b11e.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Al-Waer%2C%20Homs%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:57 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "2c3f47a6-0ed1-48b6-8ef9-c21e022d2bd6",
+      "x-request-id": "REQ-0e976df0-0828-41a9-bc1e-3c5d99020af0",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Al-Waer%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:57 GMT",
+      "server": "openresty",
+      "x-correlation-id": "892016c6-f716-4604-ab01-74186d3312d7",
+      "x-nlp-irt": "686",
+      "x-nlp-log": "",
+      "x-nlp-tid": "089a31d5-d0e3-476f-b4f6-77edf88fd466",
+      "x-request-id": "REQ-930d1015-4c83-4d8a-b2c1-3445bfa50e66",
+      "x-served-by": "i-028322cf703e2da28.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Al-Waer%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000a452cb4ac34014fd9572d743686a1e26bb52572e94d2e246ba48935b3b9047cd4cac2164e10b8a3f525c1605f14f267fe31d9a5485ee5cde73ce9d73ce652ae0121301fe750592cb18c107f5a1b66aa7be7aeabdd9a85df3aab6aca7b6cd73f3a2a9e6a19d36cd13c9de58af79549f6a070c7844eb4bccd10f16be9039a214184a9ea5fe65e0dc7b0917e5a4189fcdcfef86961be288767214452ca7e54a5bef77080da28808ca55411ccc31fe57ac302b529997a32cd21ee3e1f407bb08128dfd9596daedd7531ae7c7d08853601eca8e698310d316399a1a6a06ab4c707d977d41120e6cc33c1d780e8338bd01df360ddb715c5226c1ea8ae35a0bd728644bd99e4b26592197ddaa6b33c0e020702d8b419ae507c18969d16b22cc72ae0d2ab82d302f2734d301fa86673258708ca316a9daca7dc335bb3afa9b907256d7f5acfe060000ffff0300c09d34363a020000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "347",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:58 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "7a5cceb2-e7c7-4851-92f9-53e00a972fa4",
+      "x-request-id": "REQ-4ba0e925-2769-44f1-9635-24c1f203958d",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

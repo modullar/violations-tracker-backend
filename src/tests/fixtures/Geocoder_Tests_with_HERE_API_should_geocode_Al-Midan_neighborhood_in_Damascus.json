@@ -1,0 +1,110 @@
+[
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Al-Midan%2C+Damascus+Governorate%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:53 GMT",
+      "server": "openresty",
+      "x-correlation-id": "e9748834-2823-48a0-a7dd-f9cd5303086b",
+      "x-nlp-irt": "675",
+      "x-nlp-log": "",
+      "x-nlp-tid": "65b0c218-77f2-4bb0-afb3-1e447eeb1934",
+      "x-request-id": "REQ-f3625504-068b-4a83-b24e-e41c31c73d23",
+      "x-served-by": "i-0244eb741b36db255.eu-west-1a"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Al-Midan%2C%20Damascus%20Governorate%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000aa56ca2c49cd2d56b28a8ead05000000ffff03001d1f43ea0c000000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "38",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:53 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "d7d82533-2892-43be-9e3d-cc61e607901b",
+      "x-request-id": "REQ-c280fbb5-f16e-47cb-9d62-6aeb3396605e",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocoder.ls.hereapi.com:443",
+    "method": "GET",
+    "path": "/6.2/geocode.json?additionaldata=Country2%2Ctrue&gen=8&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk&searchtext=Al-Midan%2C+Syria",
+    "body": "",
+    "status": 403,
+    "response": {
+      "details": "invalid credentials for ",
+      "additionalData": [],
+      "type": "PermissionError",
+      "subtype": "InvalidCredentials"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "connection": "Close",
+      "content-length": "114",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Wed, 23 Apr 2025 21:10:54 GMT",
+      "server": "openresty",
+      "x-correlation-id": "8ca2df4a-9ed8-4edf-960b-1995309ec6db",
+      "x-nlp-irt": "737",
+      "x-nlp-log": "",
+      "x-nlp-tid": "d681734f-92b6-4421-acc6-0741b1e9a72f",
+      "x-request-id": "REQ-fa43b06a-304d-41f8-b3e6-e58518a51aa5",
+      "x-served-by": "i-03d274cbced309803.eu-west-1b"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://geocode.search.hereapi.com:443",
+    "method": "GET",
+    "path": "/v1/geocode?q=Al-Midan%2C%20Syria&apiKey=EdpsesjZid9Z0SSYTLP9eZUconcoayzhLohdrrGaWTk",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b0800000000000000ac50b14ec33010fd95ca7314d94923da8cb0a22e2016c46012434f72e2603baaa2285bdba13f4298100342fc89f3375c68d340c5c876f7debbbbf7ae26604566487c5b130b560a1213f7dcadbb4db773af586dbd89fb746fae9db8f76f62d76d10eaabad6bdd07ca5ebc49b7762df628271e8114972c85167192c5858298314aa74140e714592d4c29ed7555f4a7a44ab8045b213e9407260563352416199ea638841e6b22f9bd90ff603151656e7575a1d2fed6e5f962c4163cebb15f7263b93d7ee6b87398a9fe64608f9f1a43ea18ed3407693c5228031654be4f8b9a30f4a7e19405f8a1fc11dbc88fe88ccd519af1e206c4aa57ae84b10347cfd0b02aed7298a5338f083e0a42e6915ce951c022dc6612a5a1bf5093a752e8ea0a7bcc4cfd08c71f40c8f480d43f02309f364d73d77c010000ffff03006ec40d8947020000"
+    ],
+    "rawHeaders": {
+      "cache-control": "no-store, must-revalidate",
+      "connection": "Close",
+      "content-encoding": "gzip",
+      "content-length": "331",
+      "content-type": "application/json",
+      "date": "Wed, 23 Apr 2025 21:10:54 GMT",
+      "pragma": "no-cache",
+      "server": "openresty",
+      "strict-transport-security": "max-age=8640000; includeSubDomains",
+      "usage": "_:1",
+      "x-correlation-id": "a40068e8-bb84-4f02-aa43-f4eebd10a5e6",
+      "x-request-id": "REQ-99f79f54-047a-46c2-8ee2-dc4a4b6397ac",
+      "x-served-by": "eu-west-1"
+    },
+    "responseIsBinary": false
+  }
+]

@@ -1,9 +1,11 @@
 const NodeGeocoder = require('node-geocoder');
+const axios = require('axios');
 const logger = require('../config/logger');
 
-// Using OpenStreetMap as the provider (doesn't require an API key)
+// Using HERE as the provider
 const options = {
-  provider: 'openstreetmap',
+  provider: 'here',
+  apiKey: process.env.HERE_API_KEY, // Reads from environment variables
   formatter: null
 };
 
@@ -18,6 +20,12 @@ const options = {
 // const options = {
 //   provider: 'mapquest',
 //   apiKey: config.mapquestApiKey, // Would need to be added to config
+// };
+//
+// 3. For OpenStreetMap:
+// const options = {
+//   provider: 'openstreetmap',
+//   formatter: null
 // };
 
 const geocoder = NodeGeocoder(options);
@@ -36,20 +44,85 @@ const cleanLocationName = (name) => {
 };
 
 /**
+ * Try to geocode with HERE API directly (fallback for when NodeGeocoder fails)
+ * @param {string} query - The query string to geocode
+ * @returns {Promise<Array>} - Returns geocoding results in same format as NodeGeocoder
+ */
+const directHereGeocode = async (query) => {
+  try {
+    const encodedQuery = encodeURIComponent(query);
+    const url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodedQuery}&apiKey=${process.env.HERE_API_KEY}`;
+    
+    const response = await axios.get(url);
+    
+    if (response.data && response.data.items && response.data.items.length > 0) {
+      // Filter results to prioritize Syria
+      let items = response.data.items;
+      const syriaItems = items.filter(item => 
+        item.address && (item.address.countryCode === 'SYR' || item.address.countryName === 'Syria')
+      );
+      
+      // Use Syria items if available, otherwise use all items
+      const resultsToUse = syriaItems.length > 0 ? syriaItems : items;
+      
+      // Convert HERE API format to NodeGeocoder format
+      const formattedResults = resultsToUse.map(item => ({
+        latitude: item.position.lat,
+        longitude: item.position.lng,
+        country: item.address.countryName || '',
+        city: item.address.city || '',
+        state: item.address.state || '',
+        formattedAddress: item.address.label || '',
+      }));
+      
+      if (formattedResults.length > 0) {
+        logger.info(`Direct HERE geocoding successful for ${query}: [${formattedResults[0].longitude}, ${formattedResults[0].latitude}]`);
+      }
+      
+      return formattedResults;
+    }
+    
+    return [];
+  } catch (error) {
+    logger.warn(`Direct HERE geocoding failed for "${query}": ${error.message}`);
+    return [];
+  }
+};
+
+/**
  * Try to geocode with different query strategies
  * @param {string} query - The query string to try
  * @returns {Promise<Array>} - Returns geocoding results
  */
 const tryGeocode = async (query) => {
   try {
+    // First try with NodeGeocoder
     const results = await geocoder.geocode(query);
     if (results && results.length > 0) {
       logger.info(`Geocoding successful for ${query}: [${results[0].longitude}, ${results[0].latitude}]`);
       return results;
     }
+    
+    // If NodeGeocoder fails, try direct HERE API call
+    const directResults = await directHereGeocode(query);
+    if (directResults && directResults.length > 0) {
+      return directResults;
+    }
+    
     return null;
   } catch (error) {
     logger.warn(`Geocoding attempt failed for "${query}": ${error.message}`);
+    
+    // Try direct HERE API as fallback on exception
+    try {
+      const directResults = await directHereGeocode(query);
+      if (directResults && directResults.length > 0) {
+        return directResults;
+      }
+    } catch (directError) {
+      logger.error(`Direct geocoding also failed: ${directError.message}`);
+    }
+    
     return null;
   }
 };
@@ -95,6 +168,12 @@ const geocodeLocation = async (placeName, adminDivision = '') => {
       if (results) {
         return results;
       }
+    }
+    
+    // Final attempt: try just the placeName without Syria (might help with international recognition)
+    const lastChanceResults = await tryGeocode(cleanedPlaceName);
+    if (lastChanceResults) {
+      return lastChanceResults;
     }
 
     logger.warn(`No geocoding results found for any strategy: ${placeName}`);
