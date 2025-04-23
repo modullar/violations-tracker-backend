@@ -1,7 +1,7 @@
 const request = require('supertest');
 
 // Change the port for tests to avoid conflicts
-process.env.PORT = '5003';
+process.env.PORT = 3001;
 
 // Mock the external dependencies
 jest.mock('../../config/logger', () => ({
@@ -81,7 +81,18 @@ jest.mock('../../models/Violation', () => {
       }
       return Promise.resolve(null);
     }),
-    create: jest.fn().mockImplementation((data) => Promise.resolve({ ...mockViolation, ...data })),
+    create: jest.fn().mockImplementation((data) => {
+      // If data is an array (batch creation), return an array of created violations
+      if (Array.isArray(data)) {
+        return Promise.resolve(data.map((item, index) => ({
+          ...mockViolation,
+          ...item,
+          _id: `batch-violation-id-${index}`
+        })));
+      }
+      // Single creation
+      return Promise.resolve({ ...mockViolation, ...data });
+    }),
     findByIdAndUpdate: jest.fn().mockImplementation((id, data) => {
       if (id === violationId) {
         const updatedViolation = { ...mockViolation, ...data };
