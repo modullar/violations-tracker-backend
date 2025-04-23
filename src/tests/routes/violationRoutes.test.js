@@ -24,8 +24,24 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/validators', () => ({
-  validateRequest: jest.fn((req, res, next) => next()),
+  validateRequest: jest.fn((req, res, next) => {
+    // Only validate POST and PUT/PATCH requests with a body
+    if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') && req.body) {
+      // Check for invalid coordinates
+      if (req.body.location && req.body.location.coordinates) {
+        const [longitude, latitude] = req.body.location.coordinates;
+        if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Invalid coordinates' 
+          });
+        }
+      }
+    }
+    return next();
+  }),
   violationRules: [],
+  batchViolationsRules: [],
   violationFilterRules: [],
   idParamRules: []
 }));
@@ -35,6 +51,7 @@ jest.mock('../../controllers/violationsController', () => ({
   getViolations: jest.fn((req, res) => res.status(200).json({ success: true, data: [] })),
   getViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: {} })),
   createViolation: jest.fn((req, res) => res.status(201).json({ success: true, data: req.body })),
+  createViolationsBatch: jest.fn((req, res) => res.status(201).json({ success: true, count: req.body.length, data: req.body })),
   updateViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id, ...req.body } })),
   deleteViolation: jest.fn((req, res) => res.status(200).json({ success: true, data: {} })),
   getViolationsInRadius: jest.fn((req, res) => res.status(200).json({ 
@@ -77,8 +94,8 @@ describe('Violation Routes', () => {
       type: 'AIRSTRIKE',
       date: '2023-05-15',
       location: {
-        coordinates: [35, 34],
-        name: 'Test Location'
+        name: 'Test Location',
+        administrative_division: 'Test Division'
       },
       description: 'Test violation',
       verified: true,
@@ -93,6 +110,53 @@ describe('Violation Routes', () => {
     
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
+  });
+
+  it('should create a violation with coordinates', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-05-15',
+      location: {
+        coordinates: [35, 34],
+        name: 'Test Location',
+        administrative_division: 'Test Division'
+      },
+      description: 'Test violation',
+      verified: true,
+      certainty_level: 'confirmed'
+    };
+    
+    const res = await request(app)
+      .post('/api/violations')
+      .set('Authorization', 'Bearer valid-token')
+      .set('X-Role', 'editor')
+      .send(violationData);
+    
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('should reject invalid coordinates', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-05-15',
+      location: {
+        coordinates: [200, 200], // Invalid coordinates
+        name: 'Test Location',
+        administrative_division: 'Test Division'
+      },
+      description: 'Test violation',
+      verified: true,
+      certainty_level: 'confirmed'
+    };
+    
+    const res = await request(app)
+      .post('/api/violations')
+      .set('Authorization', 'Bearer valid-token')
+      .set('X-Role', 'editor')
+      .send(violationData);
+    
+    expect(res.status).toBe(400);
   });
 
   it('should update a violation with editor role', async () => {
