@@ -6,6 +6,12 @@ const dotenv = require('dotenv');
 // Load environment variables from test config
 dotenv.config({ path: '.env.test' });
 
+// Make sure we have a HERE API key for the tests
+console.log('HERE_API_KEY available:', !!process.env.HERE_API_KEY);
+if (!process.env.HERE_API_KEY) {
+  console.warn('WARNING: HERE_API_KEY is not set. Tests may fail. Please set it in your .env.test file or CI environment.');
+}
+
 // Import our geocoder utility
 const { geocodeLocation } = require('../../utils/geocoder');
 
@@ -54,6 +60,10 @@ const syrianLocations = [
 
 describe('Geocoder Tests with HERE API', () => {
   beforeEach(() => {
+    // Verify HERE API key is set before each test
+    expect(process.env.HERE_API_KEY).toBeDefined();
+    expect(process.env.HERE_API_KEY.length).toBeGreaterThan(0);
+    
     // Enable real HTTP requests to record responses for the first run
     // After the first run, nock will use recorded responses
     nock.cleanAll();

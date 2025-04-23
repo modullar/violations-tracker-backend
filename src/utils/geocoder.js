@@ -2,6 +2,16 @@ const NodeGeocoder = require('node-geocoder');
 const axios = require('axios');
 const logger = require('../config/logger');
 
+// Check if HERE API key is available
+if (!process.env.HERE_API_KEY) {
+  logger.warn('HERE_API_KEY environment variable is not set. Geocoding will not work correctly.');
+  
+  // In test environment, provide guidance without revealing keys
+  if (process.env.NODE_ENV === 'test') {
+    logger.info('Using test environment, ensure HERE_API_KEY is set in .env.test or CI environment');
+  }
+}
+
 // Using HERE as the provider
 const options = {
   provider: 'here',
@@ -28,7 +38,21 @@ const options = {
 //   formatter: null
 // };
 
-const geocoder = NodeGeocoder(options);
+let geocoder;
+try {
+  geocoder = NodeGeocoder(options);
+  logger.info('Geocoder initialized successfully');
+} catch (error) {
+  logger.error(`Failed to initialize geocoder: ${error.message}`);
+  // Create a dummy geocoder that will always return empty results
+  // This prevents the application from crashing if geocoding fails
+  geocoder = {
+    geocode: async () => {
+      logger.error('Geocoder not properly initialized. Using fallback that returns empty results.');
+      return [];
+    }
+  };
+}
 
 /**
  * Clean up location name by removing common words that might interfere with geocoding
@@ -50,6 +74,11 @@ const cleanLocationName = (name) => {
  */
 const directHereGeocode = async (query) => {
   try {
+    if (!process.env.HERE_API_KEY) {
+      logger.error('Cannot perform direct HERE geocoding: HERE_API_KEY is not set');
+      return [];
+    }
+    
     const encodedQuery = encodeURIComponent(query);
     const url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodedQuery}&apiKey=${process.env.HERE_API_KEY}`;
     
