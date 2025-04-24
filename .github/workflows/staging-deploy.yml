@@ -43,7 +43,8 @@ jobs:
         env:
           NODE_ENV: test
           MONGO_URI: mongodb://localhost:27017/violations-tracker-test
-          JWT_SECRET: ci_test_secret_key
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_key' }}
+          HERE_API_KEY: ${{ secrets.HERE_API_KEY }}  # Make sure HERE_API_KEY is included in test environment
 
   deploy-staging:
     name: Deploy to Staging
