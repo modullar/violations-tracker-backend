@@ -26,6 +26,18 @@ components:
       bearerFormat: JWT
 
   schemas:
+    LocalizedString:
+      type: object
+      required:
+        - en
+      properties:
+        en:
+          type: string
+          description: English text
+        ar:
+          type: string
+          description: Arabic text
+          
     Location:
       type: object
       required:
@@ -40,12 +52,11 @@ components:
           minItems: 2
           maxItems: 2
         name:
-          type: string
-          minLength: 2
-          maxLength: 100
+          $ref: '#/components/schemas/LocalizedString'
+          description: Location name in English and Arabic
         administrative_division:
-          type: string
-          maxLength: 100
+          $ref: '#/components/schemas/LocalizedString'
+          description: Administrative division in English and Arabic
 
     Victim:
       type: object
@@ -63,11 +74,11 @@ components:
           type: string
           enum: [civilian, combatant, unknown]
         group_affiliation:
-          type: string
-          maxLength: 100
+          $ref: '#/components/schemas/LocalizedString'
+          description: Group affiliation in English and Arabic
         sectarian_identity:
-          type: string
-          maxLength: 50
+          $ref: '#/components/schemas/LocalizedString'
+          description: Sectarian identity in English and Arabic
         death_date:
           type: string
           format: date
@@ -110,24 +121,22 @@ components:
         location:
           $ref: '#/components/schemas/Location'
         description:
-          type: string
-          minLength: 10
-          maxLength: 2000
+          $ref: '#/components/schemas/LocalizedString'
+          description: Detailed description of the violation in English and Arabic
         source:
-          type: string
-          maxLength: 200
+          $ref: '#/components/schemas/LocalizedString'
+          description: Source of information in English and Arabic
         source_url:
-          type: string
-          format: uri
-          maxLength: 500
+          $ref: '#/components/schemas/LocalizedString'
+          description: Source URL in English and Arabic, each URL up to 500 characters
         verified:
           type: boolean
         certainty_level:
           type: string
           enum: [confirmed, probable, possible]
         verification_method:
-          type: string
-          maxLength: 500
+          $ref: '#/components/schemas/LocalizedString'
+          description: Method used for verification in English and Arabic
         casualties:
           type: integer
           minimum: 0
@@ -136,11 +145,11 @@ components:
           items:
             $ref: '#/components/schemas/Victim'
         perpetrator:
-          type: string
-          maxLength: 200
+          $ref: '#/components/schemas/LocalizedString'
+          description: Perpetrator information in English and Arabic
         perpetrator_affiliation:
-          type: string
-          maxLength: 100
+          $ref: '#/components/schemas/LocalizedString'
+          description: Perpetrator affiliation in English and Arabic
         media_links:
           type: array
           items:
@@ -149,8 +158,16 @@ components:
         tags:
           type: array
           items:
-            type: string
-            maxLength: 50
+            type: object
+            properties:
+              en:
+                type: string
+                maxLength: 50
+                description: Tag in English
+              ar:
+                type: string
+                maxLength: 50
+                description: Tag in Arabic
         related_violations:
           type: array
           items:
@@ -285,10 +302,19 @@ paths:
           in: query
           schema:
             type: string
+          description: Location name to search for
         - name: administrative_division
           in: query
           schema:
             type: string
+          description: Administrative division to search for
+        - name: lang
+          in: query
+          schema:
+            type: string
+            enum: [en, ar]
+            default: en
+          description: Language preference for search and filtering
         - name: certainty_level
           in: query
           schema:

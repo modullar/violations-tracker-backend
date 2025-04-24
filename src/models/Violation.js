@@ -20,6 +20,18 @@ const ViolationTypes = {
   OTHER: 'OTHER'
 };
 
+// Schema for localized string
+const LocalizedStringSchema = new mongoose.Schema({
+  en: {
+    type: String,
+    required: [true, 'English text is required']
+  },
+  ar: {
+    type: String,
+    required: [false, 'Arabic text is optional']
+  }
+}, { _id: false });
+
 // Schema for victim information
 const VictimSchema = new mongoose.Schema({
   age: {
@@ -39,12 +51,12 @@ const VictimSchema = new mongoose.Schema({
     default: 'unknown'
   },
   group_affiliation: {
-    type: String,
-    maxlength: [100, 'Group affiliation cannot be more than 100 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' }
   },
   sectarian_identity: {
-    type: String,
-    maxlength: [50, 'Sectarian identity cannot be more than 50 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' }
   },
   death_date: {
     type: Date,
@@ -78,16 +90,18 @@ const LocationSchema = new mongoose.Schema({
     }
   },
   name: {
-    type: String,
+    type: LocalizedStringSchema,
     required: [true, 'Location name is required'],
-    trim: true,
-    minlength: [2, 'Location name must be at least 2 characters'],
-    maxlength: [100, 'Location name cannot be more than 100 characters']
+    validate: {
+      validator: function(value) {
+        return value && value.en && value.en.length >= 2 && value.en.length <= 100;
+      },
+      message: 'English location name must be between 2 and 100 characters'
+    }
   },
   administrative_division: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Administrative division cannot be more than 100 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' }
   }
 }, { _id: false });
 
@@ -122,27 +136,43 @@ const ViolationSchema = new mongoose.Schema({
     required: [true, 'Location information is required']
   },
   description: {
-    type: String,
+    type: LocalizedStringSchema,
     required: [true, 'Description is required'],
-    trim: true,
-    minlength: [10, 'Description must be at least 10 characters'],
-    maxlength: [2000, 'Description cannot be more than 2000 characters']
+    validate: {
+      validator: function(value) {
+        return value && value.en && value.en.length >= 10 && value.en.length <= 2000;
+      },
+      message: 'English description must be between 10 and 2000 characters'
+    }
   },
   source: {
-    type: String,
-    trim: true,
-    maxlength: [200, 'Source cannot be more than 200 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' },
+    validate: {
+      validator: function(value) {
+        if (!value) return true;
+        if (value.en && value.en.length > 200) return false;
+        if (value.ar && value.ar.length > 200) return false;
+        return true;
+      },
+      message: 'Source cannot be more than 200 characters in either language'
+    }
   },
   source_url: {
-    type: String,
-    trim: true,
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' },
     validate: {
-      validator: function(v) {
-        return !v || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
+      validator: function(value) {
+        if (!value) return true;
+        const validateUrl = (url) => !url || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url);
+        if (value.en && !validateUrl(value.en)) return false;
+        if (value.ar && !validateUrl(value.ar)) return false;
+        if (value.en && value.en.length > 500) return false;
+        if (value.ar && value.ar.length > 500) return false;
+        return true;
       },
-      message: props => `${props.value} is not a valid URL`
-    },
-    maxlength: [500, 'Source URL cannot be more than 500 characters']
+      message: 'One or more source URLs are invalid or exceed 500 characters'
+    }
   },
   verified: {
     type: Boolean,
@@ -155,9 +185,17 @@ const ViolationSchema = new mongoose.Schema({
     required: [true, 'Certainty level is required']
   },
   verification_method: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Verification method cannot be more than 500 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' },
+    validate: {
+      validator: function(value) {
+        if (!value) return true;
+        if (value.en && value.en.length > 500) return false;
+        if (value.ar && value.ar.length > 500) return false;
+        return true;
+      },
+      message: 'Verification method cannot be more than 500 characters in either language'
+    }
   },
   casualties: {
     type: Number,
@@ -169,14 +207,30 @@ const ViolationSchema = new mongoose.Schema({
     default: []
   },
   perpetrator: {
-    type: String,
-    trim: true,
-    maxlength: [200, 'Perpetrator cannot be more than 200 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' },
+    validate: {
+      validator: function(value) {
+        if (!value) return true;
+        if (value.en && value.en.length > 200) return false;
+        if (value.ar && value.ar.length > 200) return false;
+        return true;
+      },
+      message: 'Perpetrator cannot be more than 200 characters in either language'
+    }
   },
   perpetrator_affiliation: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Perpetrator affiliation cannot be more than 100 characters']
+    type: LocalizedStringSchema,
+    default: { en: '', ar: '' },
+    validate: {
+      validator: function(value) {
+        if (!value) return true;
+        if (value.en && value.en.length > 100) return false;
+        if (value.ar && value.ar.length > 100) return false;
+        return true;
+      },
+      message: 'Perpetrator affiliation cannot be more than 100 characters in either language'
+    }
   },
   media_links: {
     type: [String],
@@ -189,12 +243,16 @@ const ViolationSchema = new mongoose.Schema({
     }
   },
   tags: {
-    type: [String],
+    type: [{
+      en: String,
+      ar: String
+    }],
     validate: {
       validator: function(v) {
-        return !v || v.every(tag => tag.length <= 50);
+        if (!v) return true;
+        return v.every(tag => (!tag.en || tag.en.length <= 50) && (!tag.ar || tag.ar.length <= 50));
       },
-      message: 'Tags cannot be more than 50 characters each'
+      message: 'Tags cannot be more than 50 characters each in either language'
     }
   },
   related_violations: {

@@ -120,9 +120,14 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
 
     if (shouldGeocode) {
       try {
+        // Use English location name for geocoding
+        const locationName = violationData.location.name.en || '';
+        const adminDivision = violationData.location.administrative_division ? 
+                             (violationData.location.administrative_division.en || '') : '';
+        
         const geoData = await geocodeLocation(
-          violationData.location.name,
-          violationData.location.administrative_division || ''
+          locationName,
+          adminDivision
         );
 
         if (geoData && geoData.length > 0) {
@@ -133,7 +138,7 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
         }
       } catch (err) {
         // If geocoding fails, continue with user-provided coordinates or fail gracefully
-        console.error('Geocoding failed:', err);
+        logger.error('Geocoding failed:', err);
       }
     }
   }
@@ -170,17 +175,27 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
   // Process geocoding if the location was updated
   if (violationData.location && violationData.location.name) {
     const locationChanged = 
-      violation.location.name !== violationData.location.name ||
-      violation.location.administrative_division !== violationData.location.administrative_division;
+      // Check if English or Arabic location names have changed
+      (violation.location.name.en !== violationData.location.name.en || 
+       violation.location.name.ar !== violationData.location.name.ar) ||
+      // Check if administrative division has changed
+      (violation.location.administrative_division && violationData.location.administrative_division &&
+       (violation.location.administrative_division.en !== violationData.location.administrative_division.en ||
+        violation.location.administrative_division.ar !== violationData.location.administrative_division.ar));
 
     // Only geocode if the location changed and new coordinates aren't provided
     if (locationChanged && (!violationData.location.coordinates || 
         (violationData.location.coordinates[0] === 0 && 
          violationData.location.coordinates[1] === 0))) {
       try {
+        // Use English name for geocoding
+        const locationName = violationData.location.name.en || '';
+        const adminDivision = violationData.location.administrative_division ? 
+                             (violationData.location.administrative_division.en || '') : '';
+        
         const geoData = await geocodeLocation(
-          violationData.location.name,
-          violationData.location.administrative_division || ''
+          locationName,
+          adminDivision
         );
 
         if (geoData && geoData.length > 0) {
@@ -350,12 +365,16 @@ const buildFilterQuery = (queryParams) => {
 
   // Filter by location name (case-insensitive)
   if (queryParams.location) {
-    query['location.name'] = new RegExp(queryParams.location, 'i');
+    // Set language for search
+    const langField = queryParams.lang === 'ar' ? 'location.name.ar' : 'location.name.en';
+    query[langField] = new RegExp(queryParams.location, 'i');
   }
 
   // Filter by administrative division
   if (queryParams.administrative_division) {
-    query['location.administrative_division'] = new RegExp(queryParams.administrative_division, 'i');
+    // Set language for search
+    const langField = queryParams.lang === 'ar' ? 'location.administrative_division.ar' : 'location.administrative_division.en';
+    query[langField] = new RegExp(queryParams.administrative_division, 'i');
   }
 
   // Filter by certainty level
@@ -368,20 +387,35 @@ const buildFilterQuery = (queryParams) => {
     query.verified = queryParams.verified === 'true';
   }
 
-  // Filter by perpetrator
+  // Filter by perpetrator (in the specified language)
   if (queryParams.perpetrator) {
-    query.perpetrator = new RegExp(queryParams.perpetrator, 'i');
+    const langField = queryParams.lang === 'ar' ? 'perpetrator.ar' : 'perpetrator.en';
+    query[langField] = new RegExp(queryParams.perpetrator, 'i');
   }
 
   // Filter by perpetrator affiliation
   if (queryParams.perpetrator_affiliation) {
-    query.perpetrator_affiliation = new RegExp(queryParams.perpetrator_affiliation, 'i');
+    const langField = queryParams.lang === 'ar' ? 'perpetrator_affiliation.ar' : 'perpetrator_affiliation.en';
+    query[langField] = new RegExp(queryParams.perpetrator_affiliation, 'i');
+  }
+
+  // Filter by description
+  if (queryParams.description) {
+    const langField = queryParams.lang === 'ar' ? 'description.ar' : 'description.en';
+    query[langField] = new RegExp(queryParams.description, 'i');
   }
 
   // Filter by tags
   if (queryParams.tags) {
     const tags = queryParams.tags.split(',').map(tag => tag.trim());
-    query.tags = { $in: tags };
+    const langField = queryParams.lang === 'ar' ? 'ar' : 'en';
+    
+    // Create query to match tags in the specified language
+    query.tags = {
+      $elemMatch: {
+        [langField]: { $in: tags.map(tag => new RegExp(tag, 'i')) }
+      }
+    };
   }
 
   // Geospatial query if coordinates and radius provided
@@ -513,11 +547,16 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
 
         if (shouldGeocode) {
           try {
-            logger.info(`Attempting to geocode location: ${violationData.location.name}, ${violationData.location.administrative_division || ''}`);
+            // Use English location name for geocoding
+            const locationName = violationData.location.name.en || '';
+            const adminDivision = violationData.location.administrative_division ? 
+                                 (violationData.location.administrative_division.en || '') : '';
+            
+            logger.info(`Attempting to geocode location: ${locationName}, ${adminDivision}`);
             
             const geoData = await geocodeLocation(
-              violationData.location.name,
-              violationData.location.administrative_division || ''
+              locationName,
+              adminDivision
             );
 
             if (geoData && geoData.length > 0) {
@@ -527,11 +566,11 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
               ];
               logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
             } else {
-              logger.warn(`No geocoding results found for: ${violationData.location.name}`);
+              logger.warn(`No geocoding results found for: ${locationName}`);
             }
           } catch (err) {
             // If geocoding fails, log detailed error
-            logger.error(`Geocoding failed for location "${violationData.location.name}": ${err.message}`);
+            logger.error(`Geocoding failed for location "${violationData.location.name.en}": ${err.message}`);
             logger.error('Full error:', err);
           }
         }

@@ -37,6 +37,38 @@ jest.mock('../../middleware/validators', () => ({
           });
         }
       }
+      
+      // Check for required localized fields
+      if (req.body.description && (!req.body.description.en || req.body.description.en.length < 10)) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'English description must be at least 10 characters' 
+        });
+      }
+      
+      if (req.body.location && req.body.location.name && (!req.body.location.name.en || req.body.location.name.en.length < 2)) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'English location name must be at least 2 characters' 
+        });
+      }
+      
+      // Check for valid URL format in localized source_url
+      if (req.body.source_url) {
+        const isValidUrl = (url) => !url || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url);
+        if (req.body.source_url.en && !isValidUrl(req.body.source_url.en)) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'English source URL is invalid' 
+          });
+        }
+        if (req.body.source_url.ar && !isValidUrl(req.body.source_url.ar)) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Arabic source URL is invalid' 
+          });
+        }
+      }
     }
     return next();
   }),
@@ -79,6 +111,22 @@ describe('Violation Routes', () => {
     expect(res.body.success).toBe(true);
   });
   
+  it('should get violations with Arabic language preference', async () => {
+    const res = await request(app)
+      .get('/api/violations?lang=ar');
+    
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+  
+  it('should get violations with English language preference', async () => {
+    const res = await request(app)
+      .get('/api/violations?lang=en');
+    
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+  
   it('should get a single violation without authentication', async () => {
     const violationId = new mongoose.Types.ObjectId();
     
@@ -94,10 +142,27 @@ describe('Violation Routes', () => {
       type: 'AIRSTRIKE',
       date: '2023-05-15',
       location: {
-        name: 'Test Location',
-        administrative_division: 'Test Division'
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
       },
-      description: 'Test violation',
+      description: {
+        en: 'Test violation',
+        ar: 'انتهاك للاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
       verified: true,
       certainty_level: 'confirmed'
     };
@@ -118,10 +183,27 @@ describe('Violation Routes', () => {
       date: '2023-05-15',
       location: {
         coordinates: [35, 34],
-        name: 'Test Location',
-        administrative_division: 'Test Division'
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
       },
-      description: 'Test violation',
+      description: {
+        en: 'Test violation',
+        ar: 'انتهاك للاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
       verified: true,
       certainty_level: 'confirmed'
     };
@@ -142,10 +224,27 @@ describe('Violation Routes', () => {
       date: '2023-05-15',
       location: {
         coordinates: [200, 200], // Invalid coordinates
-        name: 'Test Location',
-        administrative_division: 'Test Division'
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
       },
-      description: 'Test violation',
+      description: {
+        en: 'Test violation',
+        ar: 'انتهاك للاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
       verified: true,
       certainty_level: 'confirmed'
     };
@@ -158,11 +257,55 @@ describe('Violation Routes', () => {
     
     expect(res.status).toBe(400);
   });
+  
+  it('should reject invalid source URL format', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-05-15',
+      location: {
+        coordinates: [35, 34],
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
+      },
+      description: {
+        en: 'Test violation description with sufficient length',
+        ar: 'انتهاك للاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'not-a-valid-url', // Invalid URL format
+        ar: 'https://example.com/ar/report'
+      },
+      verified: true,
+      certainty_level: 'confirmed'
+    };
+    
+    const res = await request(app)
+      .post('/api/violations')
+      .set('Authorization', 'Bearer valid-token')
+      .set('X-Role', 'editor')
+      .send(violationData);
+    
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('URL is invalid');
+  });
 
   it('should update a violation with editor role', async () => {
     const violationId = new mongoose.Types.ObjectId();
     const updateData = {
-      description: 'Updated description',
+      description: {
+        en: 'Updated description with enough characters to pass validation',
+        ar: 'وصف محدث مع عدد كافٍ من الأحرف لاجتياز التحقق'
+      },
       verified: false
     };
     
@@ -215,6 +358,22 @@ describe('Violation Routes', () => {
     
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+  
+  it('should filter violations by location with language preference', async () => {
+    // Test English location filter
+    const resEn = await request(app)
+      .get('/api/violations?location=Aleppo&lang=en');
+    
+    expect(resEn.status).toBe(200);
+    expect(resEn.body.success).toBe(true);
+    
+    // Test Arabic location filter
+    const resAr = await request(app)
+      .get('/api/violations?location=حلب&lang=ar');
+    
+    expect(resAr.status).toBe(200);
+    expect(resAr.body.success).toBe(true);
   });
 
   it('should get violations by year', async () => {

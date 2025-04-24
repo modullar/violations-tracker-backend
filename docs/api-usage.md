@@ -9,6 +9,7 @@ This document provides examples of how to use the Syria Violations Tracker API.
 - [Geospatial Queries](#geospatial-queries)
 - [Filtering and Pagination](#filtering-and-pagination)
 - [Error Handling](#error-handling)
+- [Language Support](#language-support)
 
 ## Authentication
 
@@ -59,6 +60,16 @@ curl -X GET http://localhost:5000/api/auth/me \
 curl -X GET http://localhost:5000/api/violations
 ```
 
+### Get All Violations with Language Preference
+
+```bash
+# Get violations with filters in Arabic
+curl -X GET "http://localhost:5000/api/violations?lang=ar"
+
+# Get violations with filters in English (default)
+curl -X GET "http://localhost:5000/api/violations?lang=en"
+```
+
 ### Get a Specific Violation
 
 ```bash
@@ -77,32 +88,67 @@ curl -X POST http://localhost:5000/api/violations \
     "reported_date": "2023-06-16",
     "location": {
       "coordinates": [37.1, 36.2],
-      "name": "Aleppo",
-      "administrative_division": "Aleppo Governorate"
+      "name": {
+        "en": "Aleppo",
+        "ar": "حلب"
+      },
+      "administrative_division": {
+        "en": "Aleppo Governorate",
+        "ar": "محافظة حلب"
+      }
     },
-    "description": "Aerial bombardment of civilian area in eastern Aleppo",
-    "source": "Syrian Observatory for Human Rights",
-    "source_url": "https://example.com/sohr/report/12345",
+    "description": {
+      "en": "Aerial bombardment of civilian area in eastern Aleppo",
+      "ar": "قصف جوي على منطقة مدنية في شرق حلب"
+    },
+    "source": {
+      "en": "Syrian Observatory for Human Rights",
+      "ar": "المرصد السوري لحقوق الإنسان"
+    },
+    "source_url": {
+      "en": "https://example.com/en/sohr/report/12345",
+      "ar": "https://example.com/ar/sohr/report/12345"
+    },
     "verified": true,
     "certainty_level": "confirmed",
-    "verification_method": "Multiple eyewitness accounts and satellite imagery",
+    "verification_method": {
+      "en": "Multiple eyewitness accounts and satellite imagery",
+      "ar": "شهادات متعددة من شهود عيان وصور الأقمار الصناعية"
+    },
     "casualties": 12,
     "victims": [
       {
         "age": 34,
         "gender": "male",
         "status": "civilian",
-        "sectarian_identity": "Sunni",
+        "group_affiliation": {
+          "en": "Local Humanitarian Group",
+          "ar": "مجموعة إنسانية محلية"
+        },
+        "sectarian_identity": {
+          "en": "Sunni",
+          "ar": "سني"
+        },
         "death_date": "2023-06-15"
       }
     ],
-    "perpetrator": "Syrian Air Force",
-    "perpetrator_affiliation": "government",
+    "perpetrator": {
+      "en": "Syrian Air Force",
+      "ar": "سلاح الجو السوري"
+    },
+    "perpetrator_affiliation": {
+      "en": "government",
+      "ar": "حكومة"
+    },
     "media_links": [
       "https://example.com/evidence/airstrike_1.jpg",
       "https://example.com/evidence/airstrike_1_video.mp4"
     ],
-    "tags": ["airstrike", "civilian", "urban area"]
+    "tags": [
+      { "en": "airstrike", "ar": "قصف جوي" },
+      { "en": "civilian", "ar": "مدني" },
+      { "en": "urban area", "ar": "منطقة حضرية" }
+    ]
   }'
 ```
 
@@ -113,7 +159,10 @@ curl -X PUT http://localhost:5000/api/violations/VIOLATION_ID_HERE \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -d '{
-    "description": "Updated description with new information",
+    "description": {
+      "en": "Updated description with new information",
+      "ar": "وصف محدث مع معلومات جديدة"
+    },
     "verified": true,
     "certainty_level": "confirmed",
     "casualties": 15
@@ -158,13 +207,31 @@ curl -X GET "http://localhost:5000/api/violations?startDate=2023-01-01&endDate=2
 ### Filter by Administrative Division
 
 ```bash
+# In English (default)
 curl -X GET "http://localhost:5000/api/violations?administrative_division=Aleppo%20Governorate"
+
+# In Arabic
+curl -X GET "http://localhost:5000/api/violations?administrative_division=محافظة%20حلب&lang=ar"
 ```
 
 ### Filter by Perpetrator
 
 ```bash
+# In English (default)
 curl -X GET "http://localhost:5000/api/violations?perpetrator=Syrian%20Air%20Force"
+
+# In Arabic
+curl -X GET "http://localhost:5000/api/violations?perpetrator=سلاح%20الجو%20السوري&lang=ar"
+```
+
+### Filter by Description Content
+
+```bash
+# Search within English descriptions (default)
+curl -X GET "http://localhost:5000/api/violations?description=bombardment"
+
+# Search within Arabic descriptions
+curl -X GET "http://localhost:5000/api/violations?description=قصف&lang=ar"
 ```
 
 ### Filter by Verification Status
@@ -248,4 +315,65 @@ Response:
     ]
   }
 }
+```
+
+## Language Support
+
+The API supports both English (en) and Arabic (ar) content for violations. Text fields are stored with localized versions:
+
+### Localized Fields
+
+The following fields support both English and Arabic content:
+
+- `location.name` - Name of the location
+- `location.administrative_division` - Administrative division
+- `description` - Violation description
+- `source` - Source of the violation report
+- `source_url` - URL of the source in different languages
+- `verification_method` - Method used for verification
+- `perpetrator` - Perpetrator information
+- `perpetrator_affiliation` - Affiliation of the perpetrator
+- `victims[].group_affiliation` - Group affiliation of victims
+- `victims[].sectarian_identity` - Sectarian identity of victims
+- `tags` - Tags for categorizing violations
+
+### Language Selection
+
+When querying violations, you can specify a language preference using the `lang` query parameter:
+
+```bash
+# Get violations with Arabic content prioritized
+curl -X GET "http://localhost:5000/api/violations?lang=ar"
+
+# Get violations with English content prioritized (default)
+curl -X GET "http://localhost:5000/api/violations?lang=en"
+```
+
+This parameter affects search filters like location, description, perpetrator, etc.
+
+### Example Response with Localized Fields
+
+```json
+{
+  "location": {
+    "coordinates": [37.1, 36.2],
+    "name": {
+      "en": "Aleppo",
+      "ar": "حلب"
+    },
+    "administrative_division": {
+      "en": "Aleppo Governorate",
+      "ar": "محافظة حلب"
+    }
+  },
+  "description": {
+    "en": "Aerial bombardment of civilian area in eastern Aleppo",
+    "ar": "قصف جوي على منطقة مدنية في شرق حلب"
+  },
+  "source_url": {
+    "en": "https://example.com/en/report",
+    "ar": "https://example.com/ar/report"
+  }
+}
+```
 ```

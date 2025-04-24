@@ -47,13 +47,23 @@ jest.mock('../../models/Violation', () => {
             errors['location.coordinates'] = { message: 'Invalid coordinates' };
           }
         }
-        if (this.location.name && this.location.name.length < 2) {
-          errors['location.name'] = { message: 'Location name too short' };
+        if (this.location.name && (!this.location.name.en || this.location.name.en.length < 2)) {
+          errors['location.name.en'] = { message: 'English location name too short' };
         }
       }
 
-      if (this.description && this.description.length < 10) {
-        errors.description = { message: 'Description must be at least 10 characters' };
+      if (this.description && (!this.description.en || this.description.en.length < 10)) {
+        errors['description.en'] = { message: 'English description must be at least 10 characters' };
+      }
+      
+      // Check source_url validation
+      if (this.source_url) {
+        const validateUrl = (url) => !url || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url);
+        if (this.source_url.en && !validateUrl(this.source_url.en)) {
+          errors.source_url = { message: 'Invalid URL format' };
+        } else if (this.source_url.ar && !validateUrl(this.source_url.ar)) {
+          errors.source_url = { message: 'Invalid URL format' };
+        }
       }
 
       if (!validCertaintyLevels.includes(this.certainty_level)) {
@@ -88,13 +98,33 @@ describe('Violation Model', () => {
       date: '2023-06-15',
       location: {
         coordinates: [37.1, 36.2],
-        name: 'Test Location',
-        administrative_division: 'Test Division'
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
       },
-      description: 'Test violation description',
+      description: {
+        en: 'Test violation description',
+        ar: 'وصف انتهاك الاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
       verified: true,
       certainty_level: 'confirmed',
-      perpetrator: 'Test Perpetrator',
+      perpetrator: {
+        en: 'Test Perpetrator',
+        ar: 'مرتكب الاختبار'
+      },
       casualties: 5
     };
 
@@ -113,9 +143,17 @@ describe('Violation Model', () => {
       date: '2025-01-01', // Future date
       location: {
         coordinates: [200, 100], // Invalid coordinates
-        name: 'A' // Too short
+        name: {
+          en: 'A' // Too short
+        }
       },
-      description: 'Short', // Too short
+      description: {
+        en: 'Short' // Too short
+      },
+      source_url: {
+        en: 'not-a-valid-url', // Invalid URL format
+        ar: 'غير-صالح'
+      },
       verified: true,
       certainty_level: 'invalid' // Invalid certainty level
     };
@@ -127,7 +165,8 @@ describe('Violation Model', () => {
     } catch (error) {
       expect(error.errors.type).toBeDefined();
       expect(error.errors['location.coordinates']).toBeDefined();
-      expect(error.errors.description).toBeDefined();
+      expect(error.errors['description.en']).toBeDefined();
+      expect(error.errors.source_url).toBeDefined();
       expect(error.errors.certainty_level).toBeDefined();
     }
   });
