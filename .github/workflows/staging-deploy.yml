@@ -74,6 +74,7 @@ jobs:
           echo "JWT_COOKIE_EXPIRE=30" >> .env.staging
           echo "GOOGLE_API_KEY=${{ secrets.STAGING_GOOGLE_API_KEY }}" >> .env.staging
           echo "MAPQUEST_API_KEY=${{ secrets.STAGING_MAPQUEST_API_KEY }}" >> .env.staging
+          echo "HERE_API_KEY=${{ secrets.HERE_API_KEY }}" >> .env.staging
 
       # Example: Deploy to a cloud platform (uncomment and configure for your setup)
       # This is just a placeholder and needs to be adapted to your actual deployment target
