@@ -377,6 +377,525 @@ const violations = [
       { en: 'humanitarian', ar: 'إنساني' },
       { en: 'starvation', ar: 'تجويع' }
     ]
+  },
+  {
+    type: 'DISPLACEMENT',
+    date: '2023-08-12',
+    reported_date: '2023-08-14',
+    location: {
+      coordinates: [38.3, 35.8],
+      name: {
+        en: 'Raqqa',
+        ar: 'الرقة'
+      },
+      administrative_division: {
+        en: 'Raqqa Governorate',
+        ar: 'محافظة الرقة'
+      }
+    },
+    description: {
+      en: 'Forced displacement of hundreds of residents after heavy clashes',
+      ar: 'تهجير قسري لمئات السكان بعد اشتباكات عنيفة'
+    },
+    source: {
+      en: 'UNHCR field report',
+      ar: 'تقرير المفوضية السامية لشؤون اللاجئين'
+    },
+    source_url: {
+      en: 'https://example.com/unhcr/report/8001',
+      ar: 'https://example.com/unhcr/report/8001'
+    },
+    verified: false,
+    certainty_level: 'possible',
+    verification_method: {
+      en: 'Field interviews with displaced families',
+      ar: 'مقابلات ميدانية مع عائلات نازحة'
+    },
+    casualties: 0,
+    perpetrator: {
+      en: 'Syrian Military',
+      ar: 'الجيش السوري'
+    },
+    perpetrator_affiliation: {
+      en: 'government',
+      ar: 'حكومي'
+    },
+    tags: [
+      { en: 'displacement', ar: 'نزوح' },
+      { en: 'civilians', ar: 'مدنيون' }
+    ]
+  },
+  {
+    type: 'TORTURE',
+    date: '2023-03-10',
+    reported_date: '2023-03-12',
+    location: {
+      coordinates: [35.5, 35.8],
+      name: {
+        en: 'Latakia',
+        ar: 'اللاذقية'
+      },
+      administrative_division: {
+        en: 'Latakia Governorate',
+        ar: 'محافظة اللاذقية'
+      }
+    },
+    description: {
+      en: 'Combatant captured and subjected to severe torture in detention center',
+      ar: 'تعذيب قاس لمقاتل محتجز في مركز احتجاز'
+    },
+    source: {
+      en: 'Amnesty International',
+      ar: 'منظمة العفو الدولية'
+    },
+    source_url: {
+      en: 'https://example.com/amnesty/report/4455',
+      ar: 'https://example.com/amnesty/report/4455'
+    },
+    verified: true,
+    certainty_level: 'probable',
+    verification_method: {
+      en: 'Medical examination and photographic evidence',
+      ar: 'فحص طبي وأدلة تصويرية'
+    },
+    casualties: 1,
+    victims: [
+      {
+        age: 28,
+        gender: 'male',
+        status: 'combatant',
+        group_affiliation: {
+          en: 'Opposition armed group',
+          ar: 'فصيل معارض مسلح'
+        },
+        sectarian_identity: { en: 'Unknown', ar: 'غير معروف' },
+        death_date: '2023-03-10'
+      }
+    ],
+    perpetrator: {
+      en: 'Military Intelligence Directorate',
+      ar: 'إدارة المخابرات العسكرية'
+    },
+    perpetrator_affiliation: {
+      en: 'government',
+      ar: 'حكومي'
+    },
+    tags: [
+      { en: 'torture', ar: 'تعذيب' },
+      { en: 'detention', ar: 'احتجاز' },
+      { en: 'combatant', ar: 'مقاتل' }
+    ]
+  },
+  {
+    type: 'EXECUTION',
+    date: '2023-04-22',
+    reported_date: '2023-04-23',
+    location: {
+      coordinates: [40.2, 36.6],
+      name: {
+        en: 'Al-Hasakah',
+        ar: 'الحسكة'
+      },
+      administrative_division: {
+        en: 'Al-Hasakah Governorate',
+        ar: 'محافظة الحسكة'
+      }
+    },
+    description: {
+      en: 'Public execution of suspected collaborators in town square',
+      ar: 'إعدام علني لمشتبه بتعاونهم في ساحة البلدة'
+    },
+    source: {
+      en: 'Local media outlets',
+      ar: 'وسائل إعلام محلية'
+    },
+    source_url: {
+      en: 'https://example.com/localmedia/report/9912',
+      ar: 'https://example.com/localmedia/report/9912'
+    },
+    verified: true,
+    certainty_level: 'confirmed',
+    verification_method: {
+      en: 'Video circulated on social media verified by analysts',
+      ar: 'فيديو متداول على وسائل التواصل تم التحقق منه بواسطة محللين'
+    },
+    casualties: 4,
+    victims: [
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-04-22' },
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-04-22' },
+      { gender: 'female', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-04-22' },
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-04-22' }
+    ],
+    perpetrator: {
+      en: 'ISIS',
+      ar: 'داعش'
+    },
+    perpetrator_affiliation: {
+      en: 'extremist',
+      ar: 'متطرف'
+    },
+    media_links: [
+      'https://example.com/evidence/execution_1.jpg'
+    ],
+    tags: [
+      { en: 'execution', ar: 'إعدام' },
+      { en: 'extremist', ar: 'متطرف' }
+    ]
+  },
+  {
+    type: 'EXPLOSION',
+    date: '2023-09-01',
+    reported_date: '2023-09-02',
+    location: {
+      coordinates: [37.3, 37.0],
+      name: {
+        en: 'Azaz',
+        ar: 'أعزاز'
+      },
+      administrative_division: {
+        en: 'Aleppo Governorate',
+        ar: 'محافظة حلب'
+      }
+    },
+    description: {
+      en: 'Car bomb explosion near busy marketplace',
+      ar: 'انفجار سيارة مفخخة قرب سوق مزدحم'
+    },
+    source: {
+      en: 'Civil Defense (White Helmets)',
+      ar: 'الدفاع المدني (الخوذ البيضاء)'
+    },
+    source_url: {
+      en: 'https://example.com/whitehelmets/report/3021',
+      ar: 'https://example.com/whitehelmets/report/3021'
+    },
+    verified: false,
+    certainty_level: 'possible',
+    verification_method: {
+      en: 'First responders reports and photographs',
+      ar: 'تقارير المستجيبين الأوائل وصور'
+    },
+    casualties: 9,
+    victims: [
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-09-01' },
+      { gender: 'female', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-09-01' }
+    ],
+    perpetrator: {
+      en: 'Unknown',
+      ar: 'مجهول'
+    },
+    perpetrator_affiliation: {
+      en: 'unknown',
+      ar: 'مجهول'
+    },
+    media_links: [
+      'https://example.com/evidence/explosion_4.jpg'
+    ],
+    tags: [
+      { en: 'explosion', ar: 'انفجار' },
+      { en: 'market', ar: 'سوق' }
+    ]
+  },
+  {
+    type: 'AMBUSH',
+    date: '2023-11-05',
+    reported_date: '2023-11-06',
+    location: {
+      coordinates: [36.0, 32.6],
+      name: {
+        en: 'Daraa',
+        ar: 'درعا'
+      },
+      administrative_division: {
+        en: 'Daraa Governorate',
+        ar: 'محافظة درعا'
+      }
+    },
+    description: {
+      en: 'Ambush on military convoy leading to multiple combatant deaths',
+      ar: 'كمين استهدف قافلة عسكرية أدى إلى مقتل عدة مقاتلين'
+    },
+    source: {
+      en: 'Rebel media center',
+      ar: 'مركز إعلامي معارض'
+    },
+    source_url: {
+      en: 'https://example.com/rebel/report/5566',
+      ar: 'https://example.com/rebel/report/5566'
+    },
+    verified: true,
+    certainty_level: 'probable',
+    verification_method: {
+      en: 'Photographs of destroyed vehicles and bodies',
+      ar: 'صور للمركبات المدمرة والجثث'
+    },
+    casualties: 6,
+    victims: [
+      { gender: 'male', status: 'combatant', group_affiliation: { en: 'Opposition armed group', ar: 'فصيل معارض مسلح' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-11-05' },
+      { gender: 'male', status: 'combatant', group_affiliation: { en: 'Opposition armed group', ar: 'فصيل معارض مسلح' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-11-05' }
+    ],
+    perpetrator: {
+      en: 'Opposition armed group',
+      ar: 'فصيل معارض مسلح'
+    },
+    perpetrator_affiliation: {
+      en: 'rebel',
+      ar: 'معارض'
+    },
+    tags: [
+      { en: 'ambush', ar: 'كمين' },
+      { en: 'combatant', ar: 'مقاتل' }
+    ]
+  },
+  {
+    type: 'KIDNAPPING',
+    date: '2023-10-15',
+    reported_date: '2023-10-16',
+    location: {
+      coordinates: [41.2, 37.1],
+      name: {
+        en: 'Qamishli',
+        ar: 'القامشلي'
+      },
+      administrative_division: {
+        en: 'Al-Hasakah Governorate',
+        ar: 'محافظة الحسكة'
+      }
+    },
+    description: {
+      en: 'Abduction of humanitarian worker at checkpoint',
+      ar: 'اختطاف عامل إغاثي عند نقطة تفتيش'
+    },
+    source: {
+      en: 'Humanitarian NGO statement',
+      ar: 'بيان منظمة إنسانية'
+    },
+    source_url: {
+      en: 'https://example.com/ngo/report/7412',
+      ar: 'https://example.com/ngo/report/7412'
+    },
+    verified: false,
+    certainty_level: 'possible',
+    verification_method: {
+      en: 'Contact with organization and family members',
+      ar: 'الاتصال بالمنظمة وأفراد الأسرة'
+    },
+    casualties: 0,
+    perpetrator: {
+      en: 'Unknown armed group',
+      ar: 'مجموعة مسلحة مجهولة'
+    },
+    perpetrator_affiliation: {
+      en: 'unknown',
+      ar: 'مجهول'
+    },
+    tags: [
+      { en: 'kidnapping', ar: 'اختطاف' },
+      { en: 'humanitarian', ar: 'إنساني' }
+    ]
+  },
+  {
+    type: 'MURDER',
+    date: '2023-07-30',
+    reported_date: '2023-08-01',
+    location: {
+      coordinates: [36.7, 35.1],
+      name: {
+        en: 'Hama',
+        ar: 'حماة'
+      },
+      administrative_division: {
+        en: 'Hama Governorate',
+        ar: 'محافظة حماة'
+      }
+    },
+    description: {
+      en: 'Targeted killing of local council member',
+      ar: 'قتل مستهدف لعضو مجلس محلي'
+    },
+    source: {
+      en: 'Syrian Network for Human Rights',
+      ar: 'الشبكة السورية لحقوق الإنسان'
+    },
+    source_url: {
+      en: 'https://example.com/snhr/report/8841',
+      ar: 'https://example.com/snhr/report/8841'
+    },
+    verified: true,
+    certainty_level: 'probable',
+    verification_method: {
+      en: 'Witness accounts and medical report',
+      ar: 'شهادات شهود وتقرير طبي'
+    },
+    casualties: 1,
+    victims: [
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-07-30' }
+    ],
+    perpetrator: {
+      en: 'Extremist cell',
+      ar: 'خلية متطرفة'
+    },
+    perpetrator_affiliation: {
+      en: 'extremist',
+      ar: 'متطرف'
+    },
+    tags: [
+      { en: 'murder', ar: 'قتل' },
+      { en: 'targeted', ar: 'مستهدف' }
+    ]
+  },
+  {
+    type: 'HOME_INVASION',
+    date: '2023-12-08',
+    reported_date: '2023-12-09',
+    location: {
+      coordinates: [35.9, 34.9],
+      name: {
+        en: 'Tartus',
+        ar: 'طرطوس'
+      },
+      administrative_division: {
+        en: 'Tartus Governorate',
+        ar: 'محافظة طرطوس'
+      }
+    },
+    description: {
+      en: 'Night raid on civilian home leading to arrest of occupants',
+      ar: 'مداهمة ليلية لمنزل مدني أدى إلى اعتقال السكان'
+    },
+    source: {
+      en: 'Local news agency',
+      ar: 'وكالة أنباء محلية'
+    },
+    source_url: {
+      en: 'https://example.com/localnews/report/1122',
+      ar: 'https://example.com/localnews/report/1122'
+    },
+    verified: false,
+    certainty_level: 'possible',
+    verification_method: {
+      en: 'Interview with neighbors and CCTV footage',
+      ar: 'مقابلة مع الجيران وتسجيلات كاميرات المراقبة'
+    },
+    casualties: 0,
+    victims: [
+      {
+        gender: 'female',
+        status: 'civilian',
+        group_affiliation: { en: 'None', ar: 'لا يوجد' },
+        sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }
+      }
+    ],
+    perpetrator: {
+      en: 'Pro-government militia',
+      ar: 'ميليشيا موالية للحكومة'
+    },
+    perpetrator_affiliation: {
+      en: 'government',
+      ar: 'حكومي'
+    },
+    tags: [
+      { en: 'home invasion', ar: 'مداهمة' },
+      { en: 'arrest', ar: 'اعتقال' }
+    ]
+  },
+  {
+    type: 'SHOOTING',
+    date: '2023-06-25',
+    reported_date: '2023-06-26',
+    location: {
+      coordinates: [37.1, 36.3],
+      name: {
+        en: 'Aleppo (west)',
+        ar: 'غرب حلب'
+      },
+      administrative_division: {
+        en: 'Aleppo Governorate',
+        ar: 'محافظة حلب'
+      }
+    },
+    description: {
+      en: 'Sniper shooting at checkpoint killing two passersby',
+      ar: 'إطلاق نار قناص عند نقطة تفتيش أدى إلى مقتل اثنين من المارة'
+    },
+    source: {
+      en: 'Syrian Observatory for Human Rights',
+      ar: 'المرصد السوري لحقوق الإنسان'
+    },
+    source_url: {
+      en: 'https://example.com/sohr/report/6677',
+      ar: 'https://example.com/sohr/report/6677'
+    },
+    verified: true,
+    certainty_level: 'confirmed',
+    verification_method: {
+      en: 'Verified video footage and geolocation',
+      ar: 'تسجيل فيديو تم التحقق منه وتحديد الموقع الجغرافي'
+    },
+    casualties: 2,
+    victims: [
+      { gender: 'male', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-06-25' },
+      { gender: 'female', status: 'civilian', group_affiliation: { en: 'None', ar: 'لا يوجد' }, sectarian_identity: { en: 'Unknown', ar: 'غير معروف' }, death_date: '2023-06-25' }
+    ],
+    perpetrator: {
+      en: 'Rebel sniper',
+      ar: 'قناص معارض'
+    },
+    perpetrator_affiliation: {
+      en: 'rebel',
+      ar: 'معارض'
+    },
+    tags: [
+      { en: 'shooting', ar: 'إطلاق نار' },
+      { en: 'civilian', ar: 'مدني' }
+    ]
+  },
+  {
+    type: 'OTHER',
+    date: '2023-09-17',
+    reported_date: '2023-09-17',
+    location: {
+      coordinates: [36.4, 34.8],
+      name: {
+        en: 'Salamiyah',
+        ar: 'السلمية'
+      },
+      administrative_division: {
+        en: 'Hama Governorate',
+        ar: 'محافظة حماة'
+      }
+    },
+    description: {
+      en: 'Mysterious fire at ammunition depot causing panic',
+      ar: 'حريق غامض في مستودع ذخيرة تسبب في ذعر'
+    },
+    source: {
+      en: 'Reuters',
+      ar: 'رويترز'
+    },
+    source_url: {
+      en: 'https://example.com/reuters/report/2222',
+      ar: 'https://example.com/reuters/report/2222'
+    },
+    verified: false,
+    certainty_level: 'possible',
+    verification_method: {
+      en: 'Satellite imagery indicates fire; cause unverified',
+      ar: 'صور الأقمار الصناعية تظهر حريق؛ السبب غير محقق'
+    },
+    casualties: 0,
+    perpetrator: {
+      en: 'Unknown',
+      ar: 'مجهول'
+    },
+    perpetrator_affiliation: {
+      en: 'unknown',
+      ar: 'مجهول'
+    },
+    tags: [
+      { en: 'fire', ar: 'حريق' },
+      { en: 'other', ar: 'أخرى' }
+    ]
   }
 ];
 
