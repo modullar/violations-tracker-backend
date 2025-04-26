@@ -81,8 +81,8 @@ const violations = [
       ar: 'القوات الجوية السورية'
     },
     perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
+      en: 'assad_regime',
+      ar: 'نظام الأسد'
     },
     media_links: [
       'https://example.com/evidence/airstrike_1.jpg',
@@ -177,8 +177,8 @@ const violations = [
       ar: 'الجيش السوري'
     },
     perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
+      en: 'assad_regime',
+      ar: 'نظام الأسد'
     },
     media_links: [
       'https://example.com/evidence/chemical_attack_2.jpg'
@@ -313,12 +313,12 @@ const violations = [
       }
     ],
     perpetrator: {
-      en: 'IS-affiliated group',
-      ar: 'مجموعة تابعة لداعش'
+      en: 'ISIS',
+      ar: 'داعش'
     },
     perpetrator_affiliation: {
-      en: 'extremist',
-      ar: 'متطرف'
+      en: 'isis',
+      ar: 'داعش'
     },
     media_links: [
       'https://example.com/evidence/shelling_3.jpg',
@@ -531,8 +531,8 @@ const violations = [
       ar: 'داعش'
     },
     perpetrator_affiliation: {
-      en: 'extremist',
-      ar: 'متطرف'
+      en: 'isis',
+      ar: 'داعش'
     },
     media_links: [
       'https://example.com/evidence/execution_1.jpg'
@@ -586,7 +586,7 @@ const violations = [
     },
     perpetrator_affiliation: {
       en: 'unknown',
-      ar: 'مجهول'
+      ar: 'غير معروف'
     },
     media_links: [
       'https://example.com/evidence/explosion_4.jpg'
