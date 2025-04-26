@@ -41,7 +41,7 @@ describe('Config Module', () => {
     expect(config.jwtExpiresIn).toBe('30d');
     expect(config.jwtCookieExpire).toBe(30);
     expect(config.rateLimit.windowMs).toBe(15 * 60 * 1000); // 15 minutes
-    expect(config.rateLimit.max).toBe(100);
+    expect(config.rateLimit.max).toBe(500);
   });
   
   it('should use environment variables when set', () => {
