@@ -1,4 +1,3 @@
-const path = require('path');
 const fs = require('fs');
 const originalEnv = { ...process.env };
 
@@ -41,7 +40,7 @@ describe('Config Module', () => {
     expect(config.jwtExpiresIn).toBe('30d');
     expect(config.jwtCookieExpire).toBe(30);
     expect(config.rateLimit.windowMs).toBe(15 * 60 * 1000); // 15 minutes
-    expect(config.rateLimit.max).toBe(500);
+    expect(config.rateLimit.max).toBe(500); // Development environment default
   });
   
   it('should use environment variables when set', () => {
@@ -87,5 +86,17 @@ describe('Config Module', () => {
     expect(dotenv.config).toHaveBeenCalledWith({
       path: expect.stringContaining('.env.test')
     });
+  });
+  
+  it('should use production defaults when NODE_ENV is production', () => {
+    // Set NODE_ENV to production but remove other variables
+    process.env.NODE_ENV = 'production';
+    delete process.env.RATE_LIMIT_MAX;
+    
+    // Load config
+    config = require('../../config/config');
+    
+    // Assert production default for rate limit max
+    expect(config.rateLimit.max).toBe(100);
   });
 });
