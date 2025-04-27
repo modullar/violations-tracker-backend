@@ -17,7 +17,7 @@ module.exports = {
     // Arabic translations for the new values
     const arabicTranslations = {
       'assad_regime': 'نظام الأسد',
-      'post_8th_december_government': 'حكومة ما بعد 8 ديسمبر',
+      'post_8th_december_government': 'حكومة الشرع و قوى ثورية أخرى',
       'various_armed_groups': 'مجموعات مسلحة متنوعة',
       'isis': 'داعش',
       'sdf': 'قوات سوريا الديمقراطية',
