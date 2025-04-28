@@ -38,6 +38,10 @@ const mockViolation = {
   certainty_level: 'confirmed',
   perpetrator: 'Test Perpetrator',
   casualties: 5,
+  source_url: {
+    en: 'https://example.com/en',
+    ar: 'https://example.com/ar'
+  },
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
@@ -55,6 +59,10 @@ jest.mock('../../models/Violation', () => {
       location: {
         type: 'Point',
         coordinates: [35.5, -118.2]
+      },
+      source_url: {
+        en: 'https://example.com/en2',
+        ar: 'https://example.com/ar2'
       },
       createdAt: new Date('2023-01-02'),
       updatedAt: new Date('2023-01-02')
@@ -233,7 +241,17 @@ const editorToken = 'editor_token';
 
 describe('Violations API', () => {
   beforeAll(() => {
-    app = require('../../server');
+    const express = require('express');
+    app = express();
+    app.use(express.json());
+    
+    // Import and use routes
+    const violationRoutes = require('../../routes/violationRoutes');
+    app.use('/api/violations', violationRoutes);
+
+    // Add error handling middleware
+    const errorHandler = require('../../middleware/error');
+    app.use(errorHandler);
   });
 
   afterAll(async () => {
@@ -486,7 +504,11 @@ describe('Violations API', () => {
           verified: true,
           certainty_level: 'confirmed',
           perpetrator: 'Batch Perpetrator 1',
-          casualties: 3
+          casualties: 3,
+          source_url: {
+            en: 'https://example.com/batch1/en',
+            ar: 'https://example.com/batch1/ar'
+          }
         },
         {
           type: 'SHELLING',
@@ -501,7 +523,11 @@ describe('Violations API', () => {
           verified: true,
           certainty_level: 'probable',
           perpetrator: 'Batch Perpetrator 2',
-          casualties: 5
+          casualties: 5,
+          source_url: {
+            en: 'https://example.com/batch2/en',
+            ar: 'https://example.com/batch2/ar'
+          }
         }
       ];
       

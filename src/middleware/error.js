@@ -32,9 +32,14 @@ const errorHandler = (err, req, res, next) => {
     error = new ErrorResponse(message, 400);
   }
 
-  res.status(error.statusCode || 500).json({
+  // Set status code and response
+  const statusCode = error.statusCode || 500;
+  const message = error.message || 'Server Error';
+
+  res.status(statusCode).json({
     success: false,
-    error: error.message || 'Server Error'
+    error: message,
+    data: null
   });
 };
 

@@ -31,6 +31,6 @@ module.exports = {
   mapquestApiKey: process.env.MAPQUEST_API_KEY,
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX) || (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' ? 100 : 500), // Defaults: 100 for prod/test, 500 for dev
+    max: 500
   }
 };

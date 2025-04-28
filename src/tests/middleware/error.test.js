@@ -31,7 +31,8 @@ describe('Error Middleware', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
-      error: 'Name is required, Email is required'
+      error: 'Name is required, Email is required',
+      data: null
     });
   });
   
@@ -46,7 +47,8 @@ describe('Error Middleware', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
-      error: 'Duplicate field value entered'
+      error: 'Duplicate field value entered',
+      data: null
     });
   });
   
@@ -62,7 +64,8 @@ describe('Error Middleware', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
-      error: 'Resource not found'
+      error: 'Resource not found',
+      data: null
     });
   });
   
@@ -77,7 +80,8 @@ describe('Error Middleware', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
-      error: 'Server error'
+      error: 'Server error',
+      data: null
     });
   });
 }); 

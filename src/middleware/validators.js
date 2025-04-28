@@ -137,10 +137,22 @@ const violationRules = [
   
   body('source_url')
     .optional()
+    .isObject()
+    .withMessage('Source URL must be an object with language codes'),
+  
+  body('source_url.en')
+    .optional()
     .isURL()
-    .withMessage('Source URL must be a valid URL')
+    .withMessage('English source URL must be a valid URL')
     .isLength({ max: 500 })
-    .withMessage('Source URL cannot be more than 500 characters'),
+    .withMessage('English source URL cannot be more than 500 characters'),
+  
+  body('source_url.ar')
+    .optional()
+    .isURL()
+    .withMessage('Arabic source URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Arabic source URL cannot be more than 500 characters'),
   
   body('verified')
     .notEmpty()
@@ -335,10 +347,22 @@ const batchViolationsRules = [
   
   body('*.source_url')
     .optional()
+    .isObject()
+    .withMessage('Source URL must be an object with language codes'),
+  
+  body('*.source_url.en')
+    .optional()
     .isURL()
-    .withMessage('Source URL must be a valid URL')
+    .withMessage('English source URL must be a valid URL')
     .isLength({ max: 500 })
-    .withMessage('Source URL cannot be more than 500 characters'),
+    .withMessage('English source URL cannot be more than 500 characters'),
+  
+  body('*.source_url.ar')
+    .optional()
+    .isURL()
+    .withMessage('Arabic source URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Arabic source URL cannot be more than 500 characters'),
   
   body('*.verified')
     .notEmpty()
