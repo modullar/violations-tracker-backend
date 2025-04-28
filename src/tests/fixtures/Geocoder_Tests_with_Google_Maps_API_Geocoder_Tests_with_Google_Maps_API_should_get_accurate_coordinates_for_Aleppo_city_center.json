@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed555d6f9b30147defafb0fc1c557c0544dfba76aabaae6b94b4dbaaa8422edc26968c8d8c499b46f9efc5908d10a3857ea84ff303607cae7deeb997c3ea00218425e4055339464748cfa7fa528ed5e6ae2124494a541ec522cd0407dea0eb316d1edb919b7826f82ce224051d868f196499c0030396cf85543d706a99c10e832e1e7f0f8f09a36a696ea4573351aed112817757ef5a2fd68357e578290aaed084a620383aa5b9923456fb53ee1bf63a05489252ae37238a2e20221248c460012c723e5594baa0e84c2c407251b281be4db027e6a3e4b03f558ec95252b25f81c9edbb338e755bc9f77e01cdec6e6b23fc20644a948224dad8c456dd06c84812cf40a4a0d9b4d8b7c5c2f725e3c44cd094b4ec09350792ab2e310cb88e60a4c2bafea11384f6d0f5c37a748ac3f8ac0207878ee73b4ee0ee82d61df513859a3fc29b28d9ae1bd8437f0f176b68859e131a5cfed58d950f2a2a780f51b724b21cdbf20233c9868ced7a8e6fb9bdce8e74dfd6fd311a8daf7e9f5f1e5f7fdd694bbca0f0989565fd5ffd6e2efdaadfccb649e28c9118229a544538999f7f93cfbfbe14e391f7fde9667c91ff3879fa19c243d6f29c2eb7999a05eef8c9769acb1f5ba928d65682734554513bc7d5053e58bf0097620bf19b080000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:13 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=63",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

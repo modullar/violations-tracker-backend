@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=xyznon-existentlocation12345completelyfake%2C+definitelynotarealplace%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed54514f8330107ef757903e1b026363e0db346699c60ca72692652115ea20292d427199cbfebb2d0359a19a65cff60128fdeeeebbefaeb7bbd0340de4a828312b8076a589fd523cf8dad56f018151c4514510d234a30491167d58cbf653b6aced3125eb80c0140933f0b4cd13082e7ba822a6393b82f90a0cdb66a8135c45a14687b4242cdff6fd88c38ce2842521c4a07bba927eecdbddeac81178a7790a19435150cba34e0eac114d916021b19645026f9c69d44fac2f25e11ac508164c25420f2e2c30acb0d658b706c6d81829c5c0642d40c3816e8d6dcb70bb98bda25cb464f1069dc18407314dd3b2ff62628d747be0d8eecfea31928b24fbe21d174296507282a20daba1ee185ca06113b09f7143cdd15dd776ccd1490c02d1b2556b4c3c6f317f9d3d4c9e6f3b1d093e13b4c97865ff1be0ec066877c75441067396401cf0ab1ac6c22fcb4b2401300c51904455896ee2d95de6f8ce63f4954eaf5f1633cfff48bcc534f243e94e2bc6903c807e193dcaa1d38c9b2a85c388010583ac3c4c94f93db8d87f03a294a0e4ab050000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:13 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=148",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

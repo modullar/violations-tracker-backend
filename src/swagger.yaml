@@ -77,8 +77,15 @@ components:
           $ref: '#/components/schemas/LocalizedString'
           description: Group affiliation in English and Arabic
         sectarian_identity:
-          $ref: '#/components/schemas/LocalizedString'
-          description: Sectarian identity in English and Arabic
+          type: object
+          description: Sectarian identity in English and Arabic (both fields optional)
+          properties:
+            en:
+              type: string
+              description: English text (optional)
+            ar:
+              type: string
+              description: Arabic text (optional)
         death_date:
           type: string
           format: date
@@ -135,8 +142,15 @@ components:
           type: string
           enum: [confirmed, probable, possible]
         verification_method:
-          $ref: '#/components/schemas/LocalizedString'
-          description: Method used for verification in English and Arabic
+          type: object
+          description: Method used for verification in English and Arabic (both fields optional)
+          properties:
+            en:
+              type: string
+              description: English text (optional)
+            ar:
+              type: string
+              description: Arabic text (optional)
         casualties:
           type: integer
           minimum: 0

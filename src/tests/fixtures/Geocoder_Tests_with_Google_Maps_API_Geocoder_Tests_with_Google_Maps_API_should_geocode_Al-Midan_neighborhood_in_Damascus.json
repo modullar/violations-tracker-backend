@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Al-Midan%2C+Damascus+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed565b4f8330147ef757347d9e86cb46986ff31a35cbbc261a634885e356535a420bcb62f6df0586615c1c7889c6c43e0085efb4dff79dc3495fb61042380419312531da45e9fc3ebd24e325bfa710e279094a3aaef003c18117e8d5b82f1ecb91793c137cea70e2431a86470c8da94738eed580722642d509a9160154583471c9d18160545197b0fa4ad9b6d12313c957aa16ad0087410cccd17115f7507ab1ec7dc89303e213e946b2dd930dc88f79b25971e1d85fd7493c9f722a5548148dc12121903c87c6af4847c72286908b840f74b7a125eabb2cd17fd492ab454849bb0757775f56ec8a88abf0abb55ecc1ed616c24f22f48952e03979a32c35af1e7acb610fd504e329081f5266252565e3f063c2deab8baddb9bd4879a0191aac9981a3c8d6024c39ae6ce40d3fa56df6e7488f16986b2764ccd32b4a155052d1b922822359bc3a7b8f46d4d1fd87a0b17c3b675cbac73d9549259db5354f00e6eaef119ea66bf81cf3a99a16d1ab6d5696f272dde55919c9f5f4e6e4fc6a3ebc34a6de298c23c48f2f99ff60a976e692f66eb2471c0880b0ef532f7f76727a73038a2db93a7e9f1decde5687c71eb3ecf6323ba29fda40dbda6dc65de3d606c385ab41c2ade5a4f2664d56eb0544445abee3239c35bcb571334e0cbc1090000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:12 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=23",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

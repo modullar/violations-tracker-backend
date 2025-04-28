@@ -1,0 +1,254 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffabe6525050504a2d2aca2f8acf4d2d2e4e4c4f5552b052500ac9c82c56700cf0542828cacf4a4d2e510072f3f24b14124b4b32f28b32ab5253144af2154a8b53154aa02af59474c06615a51697e69414834c898e85081597249694824594825c03435d8343e25d5cfd3c5d5d94b86a01ae05658c81000000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=6",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Aleppo%20Governorate%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "body": "",
+    "status": 200,
+    "response": {
+      "error_message": "This API project is not authorized to use this API.",
+      "results": [],
+      "status": "REQUEST_DENIED"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-length": "129",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=8",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffabe6525050504a2d2aca2f8acf4d2d2e4e4c4f5552b052500ac9c82c56700cf0542828cacf4a4d2e510072f3f24b14124b4b32f28b32ab5253144af2154a8b53154aa02af59474c06615a51697e69414834c898e85081597249694824594825c03435d8343e25d5cfd3c5d5d94b86a01ae05658c81000000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=7",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "body": "",
+    "status": 200,
+    "response": {
+      "error_message": "This API project is not authorized to use this API.",
+      "results": [],
+      "status": "REQUEST_DENIED"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-length": "129",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=6",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffabe6525050504a2d2aca2f8acf4d2d2e4e4c4f5552b052500ac9c82c56700cf0542828cacf4a4d2e510072f3f24b14124b4b32f28b32ab5253144af2154a8b53154aa02af59474c06615a51697e69414834c898e85081597249694824594825c03435d8343e25d5cfd3c5d5d94b86a01ae05658c81000000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=7",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?address=Aleppo%20Governorate%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "body": "",
+    "status": 200,
+    "response": {
+      "error_message": "This API project is not authorized to use this API.",
+      "results": [],
+      "status": "REQUEST_DENIED"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-length": "129",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=8",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffabe6525050504a2d2aca2f8acf4d2d2e4e4c4f5552b052500ac9c82c56700cf0542828cacf4a4d2e510072f3f24b14124b4b32f28b32ab5253144af2154a8b53154aa02af59474c06615a51697e69414834c898e85081597249694824594825c03435d8343e25d5cfd3c5d5d94b86a01ae05658c81000000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=11",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  },
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?address=Aleppo&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "body": "",
+    "status": 200,
+    "response": {
+      "error_message": "This API project is not authorized to use this API.",
+      "results": [],
+      "status": "REQUEST_DENIED"
+    },
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-length": "129",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 13:52:30 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=7",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

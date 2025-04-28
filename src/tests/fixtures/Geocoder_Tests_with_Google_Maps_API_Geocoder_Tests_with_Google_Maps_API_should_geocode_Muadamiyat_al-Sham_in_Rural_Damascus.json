@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Muadamiyat+al-Sham%2C+Rif+Dimashq+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed55d16e9b30147def57587e8e2a010981bd45cd14b55dd42ad9a44551856ec109968c4d8d930855f9f7d9245b02460b6da73ecd0f80f1b9e69c73af2faf5708212c49b161aac0e80b32f3a5b9e8f17abc1b0824894615512cb25c70c24fe8c3589e1eeb91c77826f83ae290111386470c4d0524909524c53d0b5ca442aace6855e6a4c1a68dd31f223130aa4a7b23b39a0bbd46350237579f6a2ff6bd37e91d8384b20434a68592345697357788789b6e4832cacd66a0e896442009448c6c098bdc4fb56246575a540645fa8226624b24179a12b9ec48f7c07f658cf3a9c6cc4b49e1b20df3c58715c762c395fce80938cd9ece36c22b2133508a24d1b1655847b8872ca9784d44460ca79a86ba65f859f34e6c99b6b1ba32544aa0506d96587013c1a0c27ade757f380803afdfea0de3eb0ae55fbbced0f75cb709dab7a44f6c54ba23efe33270c330742e7071869e3b18061697bf1563d5061515bc839b677c7cc77383c0167946267407fdc0ebf4edc894eda13c1e1f670f3f6fa7a3ef5f1b5589b794ec729dcfff696f70e996f6d3ec9c24ce19c424a249e5fe4d7a7b37dd2dc60b7fb49ecc7ecc26abfb9b6ff397a97f276a87b4a5cb2cedccb6fc5c5b9bcaef7652513cb4105c28509b43c778b8c757fb5fab43e15c9f080000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:13 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=73",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

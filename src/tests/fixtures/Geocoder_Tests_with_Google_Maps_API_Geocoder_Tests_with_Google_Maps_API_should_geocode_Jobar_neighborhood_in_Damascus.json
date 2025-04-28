@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Jobar%2C+Damascus+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed565d4f8330147df757903e2f66c03636dffc8ad98c99dfd198a5e9e0ca9a9416db325dccfebbc0308c816353a331b10f40e1dcf69c732f377ddd310c03495011d30a197b46327f482ef178cdee0984785e8c52d815412838f01cbd180ff96331328b6782fb98930092303410632251a384521321753d4ccf4258d9bf8a45860e05a39aba8495574af78cc64cc45fa99ed502308329306ca255dca8f062ded8ca8d231210e546aade9035c8ed3c59af3877ecafeb245e4039555a124da780890492e5d0fa15e9c6899882e422e6039bdb5013f55d96983f6ac9d54c5252efc1d5fd9715bb22e25a7eb5d6f3d9686921f4286440b4060f672d32ef5c0de33d810da3a416f9200248681564145d43e398ba57565af6362e0e3d01a274952b257812c1488ab5edddb6ddb54cb3d21dc6fd14d4d9b55bbd660c5b05cd2b1228223d7986cf5169b6dadd3a2666b76d75acde629408adabc9b4ef692af8068e2e91327b56abe394952e71b29bdd96b3d1d63829deb448f6cfcf2f8777fdb3fdebe395da44530acf619cd2ffcc7f3af3f96c99290a197101532fcdc0e1a43f18dcbe8c87f74e70727073e937bd63a7eff84ff8a2f0af56f49b62a7f9f090b1e6785173b0786f3fa99045cb414a131d2d3accf014edccdf0019028431bf090000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:12 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=62",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

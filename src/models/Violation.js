@@ -32,6 +32,18 @@ const LocalizedStringSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+// Schema for optional localized string
+const OptionalLocalizedStringSchema = new mongoose.Schema({
+  en: {
+    type: String,
+    required: false
+  },
+  ar: {
+    type: String,
+    required: false
+  }
+}, { _id: false });
+
 // Schema for victim information
 const VictimSchema = new mongoose.Schema({
   age: {
@@ -51,11 +63,13 @@ const VictimSchema = new mongoose.Schema({
     default: 'unknown'
   },
   group_affiliation: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' }
   },
   sectarian_identity: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' }
   },
   death_date: {
@@ -185,7 +199,8 @@ const ViolationSchema = new mongoose.Schema({
     required: [true, 'Certainty level is required']
   },
   verification_method: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' },
     validate: {
       validator: function(value) {
