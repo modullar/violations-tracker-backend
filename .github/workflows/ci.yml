@@ -53,6 +53,7 @@ jobs:
         with:
           name: coverage-report-node-${{ matrix.node-version }}
           path: coverage/
+          retention-days: 0.5  # Keep artifacts for 12 hours (0.5 days)
 
   build:
     name: Build
