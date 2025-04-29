@@ -48,13 +48,6 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_key' }}
           HERE_API_KEY: ${{ secrets.HERE_API_KEY }}  # Use GitHub secrets for API key
 
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-node-${{ matrix.node-version }}
-          path: coverage/
-          retention-days: 0.5  # Keep artifacts for 12 hours (0.5 days)
-
   build:
     name: Build
     runs-on: ubuntu-latest
