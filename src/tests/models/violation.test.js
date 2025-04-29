@@ -66,10 +66,7 @@ describe('Violation Model', () => {
         en: 'Test Perpetrator',
         ar: 'مرتكب الاختبار'
       },
-      perpetrator_affiliation: {
-        en: 'Test Affiliation',
-        ar: 'الانتماء'
-      },
+      perpetrator_affiliation: 'assad_regime',
       casualties: 5
     };
 
@@ -101,7 +98,8 @@ describe('Violation Model', () => {
         en: 'not-a-valid-url'
       },
       verified: true,
-      certainty_level: 'invalid'
+      certainty_level: 'invalid',
+      perpetrator_affiliation: 'invalid_affiliation'
     };
 
     try {
@@ -111,7 +109,7 @@ describe('Violation Model', () => {
     } catch (error) {
       // Check for required field errors
       expect(error.errors['perpetrator.en']).toBeDefined();
-      expect(error.errors['perpetrator_affiliation.en']).toBeDefined();
+      expect(error.errors['perpetrator_affiliation']).toBeDefined();
       expect(error.errors['source.en']).toBeDefined();
       expect(error.errors['location.administrative_division.en']).toBeDefined();
       
@@ -162,10 +160,7 @@ describe('Violation Model', () => {
         en: 'Test Perpetrator',
         ar: 'مرتكب الاختبار'
       },
-      perpetrator_affiliation: {
-        en: 'Test Affiliation',
-        ar: 'الانتماء'
-      }
+      perpetrator_affiliation: 'assad_regime'
     });
 
     const jsonViolation = violation.toJSON();
@@ -190,7 +185,7 @@ describe('Victim Information Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' },
+      perpetrator_affiliation: 'assad_regime',
       victims: [{
         gender: 'male',
         status: 'civilian',
@@ -218,7 +213,7 @@ describe('Victim Information Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' },
+      perpetrator_affiliation: 'assad_regime',
       victims: [{
         gender: 'male',
         status: 'civilian',
@@ -247,7 +242,7 @@ describe('Victim Information Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' },
+      perpetrator_affiliation: 'assad_regime',
       victims: [{
         gender: 'male',
         status: 'civilian',
@@ -276,7 +271,7 @@ describe('Victim Information Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' },
+      perpetrator_affiliation: 'assad_regime',
       victims: [{
         gender: 'male',
         status: 'civilian'
@@ -304,7 +299,7 @@ describe('Verification Method Validation', () => {
       verified: true,
       certainty_level: 'confirmed',
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' }
+      perpetrator_affiliation: 'assad_regime'
     };
 
     const violation = new Violation(violationData);
@@ -327,7 +322,7 @@ describe('Verification Method Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { ar: 'طريقة التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' }
+      perpetrator_affiliation: 'assad_regime'
     };
 
     const violation = new Violation(violationData);
@@ -350,7 +345,7 @@ describe('Verification Method Validation', () => {
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification method', ar: 'طريقة التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
-      perpetrator_affiliation: { en: 'Test Affiliation', ar: 'الانتماء' }
+      perpetrator_affiliation: 'assad_regime'
     };
 
     const violation = new Violation(violationData);

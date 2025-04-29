@@ -395,8 +395,7 @@ const buildFilterQuery = (queryParams) => {
 
   // Filter by perpetrator affiliation
   if (queryParams.perpetrator_affiliation) {
-    const langField = queryParams.lang === 'ar' ? 'perpetrator_affiliation.ar' : 'perpetrator_affiliation.en';
-    query[langField] = new RegExp(queryParams.perpetrator_affiliation, 'i');
+    query.perpetrator_affiliation = queryParams.perpetrator_affiliation;
   }
 
   // Filter by description

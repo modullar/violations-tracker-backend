@@ -80,10 +80,7 @@ const violations = [
       en: 'Syrian Air Force',
       ar: 'القوات الجوية السورية'
     },
-    perpetrator_affiliation: {
-      en: 'assad_regime',
-      ar: 'نظام الأسد'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     media_links: [
       'https://example.com/evidence/airstrike_1.jpg',
       'https://example.com/evidence/airstrike_1_video.mp4'
@@ -176,10 +173,7 @@ const violations = [
       en: 'Syrian Military',
       ar: 'الجيش السوري'
     },
-    perpetrator_affiliation: {
-      en: 'assad_regime',
-      ar: 'نظام الأسد'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     media_links: [
       'https://example.com/evidence/chemical_attack_2.jpg'
     ],
@@ -226,10 +220,7 @@ const violations = [
       en: 'General Intelligence Directorate',
       ar: 'مديرية المخابرات العامة'
     },
-    perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'detention', ar: 'اعتقال' },
       { en: 'activist', ar: 'ناشط' },
@@ -316,10 +307,7 @@ const violations = [
       en: 'ISIS',
       ar: 'داعش'
     },
-    perpetrator_affiliation: {
-      en: 'isis',
-      ar: 'داعش'
-    },
+    perpetrator_affiliation: 'isis',
     media_links: [
       'https://example.com/evidence/shelling_3.jpg',
       'https://example.com/evidence/shelling_3_video.mp4'
@@ -368,10 +356,7 @@ const violations = [
       en: 'Syrian Military',
       ar: 'الجيش السوري'
     },
-    perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'siege', ar: 'حصار' },
       { en: 'humanitarian', ar: 'إنساني' },
@@ -416,10 +401,7 @@ const violations = [
       en: 'Syrian Military',
       ar: 'الجيش السوري'
     },
-    perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'displacement', ar: 'نزوح' },
       { en: 'civilians', ar: 'مدنيون' }
@@ -476,10 +458,7 @@ const violations = [
       en: 'Military Intelligence Directorate',
       ar: 'إدارة المخابرات العسكرية'
     },
-    perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'torture', ar: 'تعذيب' },
       { en: 'detention', ar: 'احتجاز' },
@@ -530,10 +509,7 @@ const violations = [
       en: 'ISIS',
       ar: 'داعش'
     },
-    perpetrator_affiliation: {
-      en: 'isis',
-      ar: 'داعش'
-    },
+    perpetrator_affiliation: 'isis',
     media_links: [
       'https://example.com/evidence/execution_1.jpg'
     ],
@@ -584,10 +560,7 @@ const violations = [
       en: 'Unknown',
       ar: 'مجهول'
     },
-    perpetrator_affiliation: {
-      en: 'unknown',
-      ar: 'غير معروف'
-    },
+    perpetrator_affiliation: 'unknown',
     media_links: [
       'https://example.com/evidence/explosion_4.jpg'
     ],
@@ -638,10 +611,7 @@ const violations = [
       en: 'Opposition armed group',
       ar: 'فصيل معارض مسلح'
     },
-    perpetrator_affiliation: {
-      en: 'rebel',
-      ar: 'معارض'
-    },
+    perpetrator_affiliation: 'opposition',
     tags: [
       { en: 'ambush', ar: 'كمين' },
       { en: 'combatant', ar: 'مقاتل' }
@@ -685,10 +655,7 @@ const violations = [
       en: 'Unknown armed group',
       ar: 'مجموعة مسلحة مجهولة'
     },
-    perpetrator_affiliation: {
-      en: 'unknown',
-      ar: 'مجهول'
-    },
+    perpetrator_affiliation: 'unknown',
     tags: [
       { en: 'kidnapping', ar: 'اختطاف' },
       { en: 'humanitarian', ar: 'إنساني' }
@@ -735,10 +702,7 @@ const violations = [
       en: 'Extremist cell',
       ar: 'خلية متطرفة'
     },
-    perpetrator_affiliation: {
-      en: 'extremist',
-      ar: 'متطرف'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'murder', ar: 'قتل' },
       { en: 'targeted', ar: 'مستهدف' }
@@ -790,10 +754,7 @@ const violations = [
       en: 'Pro-government militia',
       ar: 'ميليشيا موالية للحكومة'
     },
-    perpetrator_affiliation: {
-      en: 'government',
-      ar: 'حكومي'
-    },
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'home invasion', ar: 'مداهمة' },
       { en: 'arrest', ar: 'اعتقال' }
@@ -841,10 +802,7 @@ const violations = [
       en: 'Rebel sniper',
       ar: 'قناص معارض'
     },
-    perpetrator_affiliation: {
-      en: 'rebel',
-      ar: 'معارض'
-    },
+    perpetrator_affiliation: 'opposition',
     tags: [
       { en: 'shooting', ar: 'إطلاق نار' },
       { en: 'civilian', ar: 'مدني' }
@@ -888,10 +846,7 @@ const violations = [
       en: 'Unknown',
       ar: 'مجهول'
     },
-    perpetrator_affiliation: {
-      en: 'unknown',
-      ar: 'مجهول'
-    },
+    perpetrator_affiliation: 'unknown',
     tags: [
       { en: 'fire', ar: 'حريق' },
       { en: 'other', ar: 'أخرى' }

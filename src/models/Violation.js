@@ -235,17 +235,10 @@ const ViolationSchema = new mongoose.Schema({
     }
   },
   perpetrator_affiliation: {
-    type: LocalizedStringSchema,
-    default: { en: '', ar: '' },
-    validate: {
-      validator: function(value) {
-        if (!value) return true;
-        if (value.en && value.en.length > 100) return false;
-        if (value.ar && value.ar.length > 100) return false;
-        return true;
-      },
-      message: 'Perpetrator affiliation cannot be more than 100 characters in either language'
-    }
+    type: String,
+    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'unknown'],
+    required: [true, 'Perpetrator affiliation is required'],
+    default: 'unknown'
   },
   media_links: {
     type: [String],

@@ -224,8 +224,8 @@ const violationRules = [
   
   body('perpetrator_affiliation')
     .optional()
-    .isLength({ max: 100 })
-    .withMessage('Perpetrator affiliation cannot be more than 100 characters'),
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'unknown'])
+    .withMessage('Invalid perpetrator affiliation'),
   
   body('media_links')
     .optional()
@@ -434,8 +434,8 @@ const batchViolationsRules = [
   
   body('*.perpetrator_affiliation')
     .optional()
-    .isLength({ max: 100 })
-    .withMessage('Perpetrator affiliation cannot be more than 100 characters'),
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'unknown'])
+    .withMessage('Invalid perpetrator affiliation'),
   
   body('*.media_links')
     .optional()
