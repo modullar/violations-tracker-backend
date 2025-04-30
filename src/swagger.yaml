@@ -41,12 +41,11 @@ components:
     Location:
       type: object
       required:
-        - coordinates
         - name
       properties:
         coordinates:
           type: array
-          description: [longitude, latitude]
+          description: Array of [longitude, latitude]. This field is optional and will be automatically set via geocoding based on the location name.
           items:
             type: number
           minItems: 2
