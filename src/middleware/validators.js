@@ -552,6 +552,37 @@ const violationFilterRules = [
     .withMessage('Sort must be a string')
 ];
 
+// Violation parsing validation rules
+const violationParsingRules = [
+  body('text')
+    .notEmpty()
+    .withMessage('Report text is required')
+    .isString()
+    .withMessage('Report text must be a string')
+    .isLength({ min: 50 })
+    .withMessage('Report text must be at least 50 characters long'),
+  
+  body('language')
+    .optional()
+    .isIn(['en', 'ar'])
+    .withMessage('Language must be either "en" or "ar"'),
+  
+  body('detectDuplicates')
+    .optional()
+    .isBoolean()
+    .withMessage('detectDuplicates must be a boolean value'),
+  
+  body('updateExisting')
+    .optional()
+    .isBoolean()
+    .withMessage('updateExisting must be a boolean value'),
+    
+  body('preview')
+    .optional()
+    .isBoolean()
+    .withMessage('preview must be a boolean value')
+];
+
 module.exports = {
   validateRequest,
   userRegistrationRules,
@@ -559,5 +590,6 @@ module.exports = {
   violationRules,
   batchViolationsRules,
   idParamRules,
-  violationFilterRules
+  violationFilterRules,
+  violationParsingRules
 };

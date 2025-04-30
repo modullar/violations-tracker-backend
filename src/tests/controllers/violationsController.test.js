@@ -180,6 +180,41 @@ jest.mock('../../utils/geocoder', () => ({
   ])
 }));
 
+// Mock Anthropic service
+jest.mock('../../services/anthropicService', () => ({
+  parseViolationReport: jest.fn().mockResolvedValue({
+    type: 'SHELLING',
+    date: '2023-01-15',
+    location: {
+      name: {
+        en: 'Aleppo City Center',
+        ar: 'وسط مدينة حلب'
+      },
+      administrative_division: {
+        en: 'Aleppo Governorate',
+        ar: 'محافظة حلب'
+      }
+    },
+    description: {
+      en: 'Shelling of civilian areas in Aleppo city center resulting in 12 casualties.',
+      ar: 'قصف مناطق مدنية في وسط مدينة حلب أدى إلى سقوط 12 ضحية.'
+    },
+    verified: false,
+    certainty_level: 'confirmed',
+    casualties: 12,
+    perpetrator: {
+      en: 'Syrian Government Forces',
+      ar: 'قوات الحكومة السورية'
+    },
+    perpetrator_affiliation: 'assad_regime'
+  }),
+  detectDuplicates: jest.fn().mockResolvedValue({
+    isDuplicate: false,
+    confidence: 0.1,
+    relationshipType: 'distinct'
+  })
+}));
+
 // Mock JWT verification
 jest.mock('jsonwebtoken', () => ({
   sign: jest.fn().mockImplementation((payload) => {
@@ -572,6 +607,75 @@ describe('Violations API', () => {
         .send([{}]);
       
       expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/violations/parse', () => {
+    it('should parse report in preview mode without saving', async () => {
+      const reportData = {
+        text: 'On January 15, 2023, civilian areas in Aleppo city center were subjected to shelling by Syrian government forces. The attack resulted in 12 casualties and widespread damage to residential buildings. Local sources confirmed the attack originated from government-controlled areas.',
+        language: 'en',
+        preview: true
+      };
+
+      const res = await request(app)
+        .post('/api/violations/parse')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(reportData);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.preview).toBe(true);
+      expect(res.body.data).toHaveProperty('type');
+      expect(res.body.data.type).toBe('SHELLING');
+    });
+
+    it('should parse and save violations when not in preview mode', async () => {
+      const reportData = {
+        text: 'On January 15, 2023, civilian areas in Aleppo city center were subjected to shelling by Syrian government forces. The attack resulted in 12 casualties and widespread damage to residential buildings. Local sources confirmed the attack originated from government-controlled areas.',
+        language: 'en',
+        preview: false
+      };
+
+      const res = await request(app)
+        .post('/api/violations/parse')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(reportData);
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('type');
+      expect(res.body.data.type).toBe('SHELLING');
+    });
+
+    it('should not allow users without proper permissions to parse violations', async () => {
+      const reportData = {
+        text: 'On January 15, 2023, civilian areas in Aleppo city center were subjected to shelling by Syrian government forces.',
+        language: 'en'
+      };
+
+      // Test without token
+      const res1 = await request(app)
+        .post('/api/violations/parse')
+        .send(reportData);
+
+      expect(res1.status).toBe(401);
+      expect(res1.body.success).toBe(false);
+    });
+
+    it('should validate input requirements', async () => {
+      const reportData = {
+        text: 'Too short',
+        language: 'en'
+      };
+
+      const res = await request(app)
+        .post('/api/violations/parse')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(reportData);
+
+      expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
   });

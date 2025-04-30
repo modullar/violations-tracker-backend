@@ -70,6 +70,95 @@ curl -X GET "http://localhost:5000/api/violations?lang=ar"
 curl -X GET "http://localhost:5000/api/violations?lang=en"
 ```
 
+### Parse Violation Reports Using Claude LLM
+
+Parse unstructured textual reports (in English or Arabic) into structured violation objects using Claude LLM.
+
+```bash
+curl -X POST http://localhost:5000/api/violations/parse \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "text": "On January 15, 2023, civilian areas in Aleppo city center were subjected to shelling by Syrian government forces. The attack resulted in 12 casualties and widespread damage to residential buildings. Local sources confirmed the attack originated from government-controlled areas.",
+    "language": "en",
+    "detectDuplicates": true,
+    "updateExisting": true,
+    "preview": false
+  }'
+```
+
+Parameters:
+- `text` (required): The text report to parse into structured violations
+- `language` (optional): Primary language of the report ("en" or "ar", defaults to "en")
+- `detectDuplicates` (optional): Whether to detect and handle duplicates (defaults to true)
+- `updateExisting` (optional): Whether to update existing records when duplicates are found (defaults to true)
+- `preview` (optional): If true, returns parsed violations without saving them (defaults to false)
+
+Response with `preview=true`:
+```json
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "type": "SHELLING",
+      "date": "2023-01-15",
+      "location": {
+        "name": {
+          "en": "Aleppo City Center",
+          "ar": "وسط مدينة حلب"
+        },
+        "administrative_division": {
+          "en": "Aleppo Governorate",
+          "ar": "محافظة حلب"
+        }
+      },
+      "description": {
+        "en": "Shelling of civilian areas in Aleppo city center resulting in 12 casualties and widespread damage to residential buildings.",
+        "ar": "قصف مناطق مدنية في وسط مدينة حلب أدى إلى سقوط 12 ضحية وأضرار واسعة في المباني السكنية."
+      },
+      "verified": false,
+      "certainty_level": "confirmed",
+      "casualties": 12,
+      "perpetrator": {
+        "en": "Syrian Government Forces",
+        "ar": "قوات الحكومة السورية"
+      },
+      "perpetrator_affiliation": "assad_regime"
+    }
+  ],
+  "preview": true
+}
+```
+
+Response when saving violations:
+```json
+{
+  "success": true,
+  "summary": {
+    "total": 1,
+    "created": 1,
+    "updated": 0,
+    "skipped": 0
+  },
+  "data": [
+    {
+      "_id": "60d21b4667d0d8992e610c85",
+      "type": "SHELLING",
+      "date": "2023-01-15",
+      "location": {
+        "name": {
+          "en": "Aleppo City Center",
+          "ar": "وسط مدينة حلب"
+        }
+      },
+      "createdAt": "2023-06-23T14:25:22.892Z",
+      "updatedAt": "2023-06-23T14:25:22.892Z"
+    }
+  ]
+}
+```
+
 ### Get a Specific Violation
 
 ```bash

@@ -3,6 +3,9 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { geocodeLocation } = require('../utils/geocoder');
 const logger = require('../config/logger');
+const anthropicService = require('../services/anthropicService');
+const violationParsingPrompt = require('../prompts/violationParsingPrompt');
+const duplicateDetectionPrompt = require('../prompts/duplicateDetectionPrompt');
 
 /**
  * @desc    Get all violations with filtering, sorting, and pagination
@@ -517,6 +520,317 @@ exports.getViolationsTotal = asyncHandler(async (req, res, next) => {
     data: { total }
   });
 });
+
+/**
+ * @desc    Parse a violation report using Claude LLM and store in database
+ * @route   POST /api/violations/parse
+ * @access  Private (Editors and Admins)
+ */
+exports.parseViolationReport = asyncHandler(async (req, res, next) => {
+  const { text, language = 'en', detectDuplicates = true, updateExisting = true, preview = false } = req.body;
+
+  if (!text || text.trim().length < 50) {
+    return next(new ErrorResponse('Report text is too short or missing', 400));
+  }
+
+  // Parse the report using Claude LLM
+  try {
+    logger.info('Parsing violation report using Claude API');
+    const parsedViolations = await anthropicService.parseViolationReport(text, language, violationParsingPrompt);
+    
+    // If parsed result is not an array, wrap it in an array
+    const violationsArray = Array.isArray(parsedViolations) ? parsedViolations : [parsedViolations];
+    
+    // If preview mode is enabled, return the parsed violations without saving
+    if (preview) {
+      return res.status(200).json({
+        success: true,
+        count: violationsArray.length,
+        data: violationsArray,
+        preview: true
+      });
+    }
+
+    // Process each violation for storage
+    const processedViolations = await Promise.all(
+      violationsArray.map(async (violationData) => {
+        let finalViolationData = { ...violationData };
+        let existingViolation = null;
+        let updateAction = false;
+        
+        // Handle duplicate detection if enabled
+        if (detectDuplicates) {
+          // Find potential duplicates based on date, location, and type
+          const potentialDuplicates = await findPotentialDuplicates(violationData);
+          
+          if (potentialDuplicates.length > 0) {
+            // Analyze if any of the potential duplicates are actual duplicates
+            const duplicateAnalysis = await anthropicService.detectDuplicates(
+              violationData, 
+              potentialDuplicates, 
+              duplicateDetectionPrompt
+            );
+            
+            // If duplicate found and we're allowed to update existing records
+            if (duplicateAnalysis.isDuplicate && duplicateAnalysis.confidence > 0.7 && updateExisting) {
+              existingViolation = potentialDuplicates.find(v => 
+                v._id.toString() === duplicateAnalysis.duplicateId || 
+                v._id.toString() === potentialDuplicates[0]._id.toString()
+              );
+              
+              if (existingViolation) {
+                // Handle complementary data merging
+                if (duplicateAnalysis.relationshipType === 'complementary') {
+                  finalViolationData = mergeViolationData(existingViolation, violationData, duplicateAnalysis.mergeStrategy);
+                  updateAction = true;
+                } else if (duplicateAnalysis.relationshipType === 'identical') {
+                  // If identical duplicate, skip adding a new record
+                  return { 
+                    violationData: existingViolation, 
+                    action: 'skipped', 
+                    existingId: existingViolation._id 
+                  };
+                }
+              }
+            }
+          }
+        }
+
+        // Process geocoding if needed
+        if (finalViolationData.location && finalViolationData.location.name) {
+          // Only geocode if coordinates aren't provided or need to be updated
+          const shouldGeocode = !finalViolationData.location.coordinates || 
+                              (finalViolationData.location.coordinates[0] === 0 && 
+                               finalViolationData.location.coordinates[1] === 0);
+
+          if (shouldGeocode) {
+            try {
+              // Use English location name for geocoding
+              const locationName = finalViolationData.location.name.en || '';
+              const adminDivision = finalViolationData.location.administrative_division ? 
+                                    (finalViolationData.location.administrative_division.en || '') : '';
+              
+              const geoData = await geocodeLocation(
+                locationName,
+                adminDivision
+              );
+
+              if (geoData && geoData.length > 0) {
+                finalViolationData.location.coordinates = [
+                  geoData[0].longitude,
+                  geoData[0].latitude
+                ];
+              }
+            } catch (err) {
+              // If geocoding fails, continue with user-provided coordinates or fail gracefully
+              logger.error('Geocoding failed during violation parsing:', err);
+            }
+          }
+        }
+
+        // Add user to violation data
+        finalViolationData.created_by = req.user.id;
+        finalViolationData.updated_by = req.user.id;
+
+        if (updateAction && existingViolation) {
+          return { 
+            violationData: finalViolationData, 
+            action: 'update', 
+            existingId: existingViolation._id 
+          };
+        } else {
+          return { 
+            violationData: finalViolationData, 
+            action: 'create' 
+          };
+        }
+      })
+    );
+
+    // Separate violations by action
+    const toCreate = processedViolations.filter(v => v.action === 'create').map(v => v.violationData);
+    const toUpdate = processedViolations.filter(v => v.action === 'update');
+    const skipped = processedViolations.filter(v => v.action === 'skipped');
+
+    // Perform database operations
+    const createdViolations = toCreate.length > 0 ? await Violation.create(toCreate) : [];
+    
+    const updatedViolations = await Promise.all(
+      toUpdate.map(async ({ violationData, existingId }) => {
+        return await Violation.findByIdAndUpdate(
+          existingId,
+          violationData,
+          { new: true, runValidators: true }
+        );
+      })
+    );
+
+    // Combine results
+    const result = [
+      ...createdViolations, 
+      ...updatedViolations, 
+      ...skipped.map(s => s.violationData)
+    ];
+
+    const summary = {
+      total: result.length,
+      created: createdViolations.length,
+      updated: updatedViolations.length,
+      skipped: skipped.length
+    };
+
+    res.status(201).json({
+      success: true,
+      summary,
+      data: result
+    });
+  } catch (error) {
+    logger.error('Error in violation parsing endpoint:', error);
+    return next(new ErrorResponse(`Error parsing violation report: ${error.message}`, 500));
+  }
+});
+
+/**
+ * Find potential duplicate violations in the database
+ * @param {Object} violationData - The violation data to check for duplicates
+ * @returns {Promise<Array>} - Array of potential duplicate violations
+ */
+const findPotentialDuplicates = async (violationData) => {
+  // Extract date with a 3-day buffer
+  const date = new Date(violationData.date);
+  const startDate = new Date(date);
+  startDate.setDate(date.getDate() - 3);
+  const endDate = new Date(date);
+  endDate.setDate(date.getDate() + 3);
+
+  // Build query for potential duplicates
+  const query = {
+    // Date range match (within 3 days)
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    },
+    // Same violation type
+    type: violationData.type
+  };
+
+  // Add location match if available (name-based)
+  if (violationData.location && violationData.location.name) {
+    if (violationData.location.name.en) {
+      query['location.name.en'] = new RegExp(violationData.location.name.en, 'i');
+    } else if (violationData.location.name.ar) {
+      query['location.name.ar'] = new RegExp(violationData.location.name.ar, 'i');
+    }
+  }
+
+  // Find potential duplicates
+  return Violation.find(query).limit(5);
+};
+
+/**
+ * Merge data from a new violation into an existing one
+ * @param {Object} existing - The existing violation record
+ * @param {Object} newData - The new violation data
+ * @param {Object} mergeStrategy - Strategy for merging specific fields
+ * @returns {Object} - Merged violation data
+ */
+const mergeViolationData = (existing, newData, mergeStrategy = {}) => {
+  // Convert Mongoose document to plain object if needed
+  const existingData = existing.toObject ? existing.toObject() : existing;
+  const result = { ...existingData };
+  
+  const fieldsToMerge = mergeStrategy?.fieldsToMerge || [
+    'description', 'source', 'source_url', 'media_links', 
+    'victims', 'casualties', 'tags'
+  ];
+  
+  // Simple merge for most fields
+  fieldsToMerge.forEach(field => {
+    if (newData[field]) {
+      switch (field) {
+        case 'description':
+          // For localized fields, merge content if longer/more detailed
+          if (newData.description.en && (!result.description.en || newData.description.en.length > result.description.en.length)) {
+            result.description.en = newData.description.en;
+          }
+          if (newData.description.ar && (!result.description.ar || newData.description.ar.length > result.description.ar.length)) {
+            result.description.ar = newData.description.ar;
+          }
+          break;
+          
+        case 'casualties':
+          // Take the highest casualty count
+          if (newData.casualties > result.casualties) {
+            result.casualties = newData.casualties;
+          }
+          break;
+          
+        case 'victims':
+          // Merge victim arrays, avoiding duplicates
+          if (Array.isArray(newData.victims) && newData.victims.length > 0) {
+            // If we have a proper victim merge strategy, we could be more sophisticated
+            // For now, just add new victims that aren't duplicates
+            const existingVictims = result.victims || [];
+            newData.victims.forEach(newVictim => {
+              const isDuplicate = existingVictims.some(existing => 
+                existing.age === newVictim.age && 
+                existing.gender === newVictim.gender &&
+                existing.status === newVictim.status
+              );
+              
+              if (!isDuplicate) {
+                existingVictims.push(newVictim);
+              }
+            });
+            result.victims = existingVictims;
+          }
+          break;
+          
+        case 'tags':
+          // Combine tags, avoiding duplicates
+          if (Array.isArray(newData.tags) && newData.tags.length > 0) {
+            const existingTags = result.tags || [];
+            
+            newData.tags.forEach(newTag => {
+              const isDuplicate = existingTags.some(existing => 
+                existing.en === newTag.en || existing.ar === newTag.ar
+              );
+              
+              if (!isDuplicate) {
+                existingTags.push(newTag);
+              }
+            });
+            
+            result.tags = existingTags;
+          }
+          break;
+          
+        case 'media_links':
+          // Combine media links, avoiding duplicates
+          if (Array.isArray(newData.media_links) && newData.media_links.length > 0) {
+            const existingLinks = result.media_links || [];
+            const newLinks = newData.media_links.filter(link => !existingLinks.includes(link));
+            result.media_links = [...existingLinks, ...newLinks];
+          }
+          break;
+          
+        default:
+          // For other fields, use new data if it exists
+          if (newData[field] && (
+              !result[field] || 
+              (typeof newData[field] === 'string' && newData[field].length > result[field].length)
+          )) {
+            result[field] = newData[field];
+          }
+      }
+    }
+  });
+  
+  // Always update the updater
+  result.updated_by = newData.updated_by || result.updated_by;
+  
+  return result;
+};
 
 /**
  * @desc    Create multiple violations in a batch

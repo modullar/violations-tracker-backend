@@ -10,7 +10,8 @@ const {
   getViolationsByType,
   getViolationsByLocation,
   getViolationsByYear,
-  getViolationsTotal
+  getViolationsTotal,
+  parseViolationReport
 } = require('../controllers/violationsController');
 
 const {
@@ -18,7 +19,8 @@ const {
   violationRules,
   batchViolationsRules,
   idParamRules,
-  violationFilterRules
+  violationFilterRules,
+  violationParsingRules
 } = require('../middleware/validators');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -51,6 +53,15 @@ router.post(
   batchViolationsRules,
   validateRequest,
   createViolationsBatch
+);
+
+router.post(
+  '/parse',
+  protect,
+  authorize('editor', 'admin'),
+  violationParsingRules,
+  validateRequest,
+  parseViolationReport
 );
 
 router.put(

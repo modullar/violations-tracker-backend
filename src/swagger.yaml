@@ -353,6 +353,8 @@ paths:
           in: query
           schema:
             type: string
+            enum: [en, ar]
+            default: en
         - name: perpetrator_affiliation
           in: query
           schema:
@@ -999,6 +1001,111 @@ paths:
                       $ref: '#/components/schemas/Violation'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                
+  /violations/parse:
+    post:
+      tags:
+        - Violations
+      summary: Parse a violation report using Claude LLM
+      description: Parse a text report in English or Arabic into structured violation records using Claude LLM (requires editor or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: The report text to parse
+                  minLength: 50
+                language:
+                  type: string
+                  enum: [en, ar]
+                  default: en
+                  description: Primary language of the report
+                detectDuplicates:
+                  type: boolean
+                  default: true
+                  description: Whether to detect and handle duplicates
+                updateExisting:
+                  type: boolean
+                  default: true
+                  description: Whether to update existing records when duplicates are found
+                preview:
+                  type: boolean
+                  default: false
+                  description: If true, returns parsed violations without saving them
+      responses:
+        '201':
+          description: Violations created or updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of violations processed
+                      created:
+                        type: integer
+                        description: Number of new violations created
+                      updated:
+                        type: integer
+                        description: Number of existing violations updated
+                      skipped:
+                        type: integer
+                        description: Number of violations skipped (identical duplicates)
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Violation'
+        '200':
+          description: Preview of parsed violations (when preview=true)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                    description: Number of violations parsed
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Violation'
+                  preview:
+                    type: boolean
+                    default: true
+        '400':
+          description: Validation error or parsing failure
           content:
             application/json:
               schema:
