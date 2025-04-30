@@ -165,11 +165,11 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(value) {
         if (!value) return true;
-        if (value.en && value.en.length > 200) return false;
-        if (value.ar && value.ar.length > 200) return false;
+        if (value.en && value.en.length > 1500) return false;
+        if (value.ar && value.ar.length > 1500) return false;
         return true;
       },
-      message: 'Source cannot be more than 200 characters in either language'
+      message: 'Source cannot be more than 1500 characters in either language'
     }
   },
   source_url: {

@@ -132,8 +132,8 @@ const violationRules = [
   
   body('source')
     .optional()
-    .isLength({ max: 200 })
-    .withMessage('Source cannot be more than 200 characters'),
+    .isLength({ max: 1500 })
+    .withMessage('Source cannot be more than 1500 characters'),
   
   body('source_url')
     .optional()
@@ -342,8 +342,8 @@ const batchViolationsRules = [
   
   body('*.source')
     .optional()
-    .isLength({ max: 200 })
-    .withMessage('Source cannot be more than 200 characters'),
+    .isLength({ max: 1500 })
+    .withMessage('Source cannot be more than 1500 characters'),
   
   body('*.source_url')
     .optional()
