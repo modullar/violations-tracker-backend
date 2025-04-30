@@ -224,7 +224,7 @@ const violationRules = [
   
   body('perpetrator_affiliation')
     .optional()
-    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'unknown'])
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'])
     .withMessage('Invalid perpetrator affiliation'),
   
   body('media_links')
@@ -434,7 +434,7 @@ const batchViolationsRules = [
   
   body('*.perpetrator_affiliation')
     .optional()
-    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'unknown'])
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'])
     .withMessage('Invalid perpetrator affiliation'),
   
   body('*.media_links')
