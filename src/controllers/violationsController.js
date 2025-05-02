@@ -21,7 +21,8 @@ exports.getViolations = asyncHandler(async (req, res, next) => {
     populate: [
       { path: 'created_by', select: 'name' },
       { path: 'updated_by', select: 'name' }
-    ]
+    ],
+    select: '+perpetrator_affiliation'  // Explicitly include the field
   };
 
   // Execute query with pagination
