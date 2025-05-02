@@ -21,7 +21,8 @@ exports.getViolations = asyncHandler(async (req, res, next) => {
     populate: [
       { path: 'created_by', select: 'name' },
       { path: 'updated_by', select: 'name' }
-    ]
+    ],
+    select: '+perpetrator_affiliation'  // Explicitly include the field
   };
 
   // Execute query with pagination
@@ -113,33 +114,31 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
 
   // Process geocoding if needed
   if (violationData.location && violationData.location.name) {
-    // Only geocode if coordinates aren't provided or need to be updated
-    const shouldGeocode = !violationData.location.coordinates || 
-                        (violationData.location.coordinates[0] === 0 && 
-                        violationData.location.coordinates[1] === 0);
+    try {
+      // Use English location name for geocoding
+      const locationName = violationData.location.name.en || '';
+      const adminDivision = violationData.location.administrative_division ? 
+                           (violationData.location.administrative_division.en || '') : '';
+      
+      const geoData = await geocodeLocation(
+        locationName,
+        adminDivision
+      );
 
-    if (shouldGeocode) {
-      try {
-        // Use English location name for geocoding
-        const locationName = violationData.location.name.en || '';
-        const adminDivision = violationData.location.administrative_division ? 
-                             (violationData.location.administrative_division.en || '') : '';
-        
-        const geoData = await geocodeLocation(
-          locationName,
-          adminDivision
-        );
-
-        if (geoData && geoData.length > 0) {
-          violationData.location.coordinates = [
-            geoData[0].longitude,
-            geoData[0].latitude
-          ];
-        }
-      } catch (err) {
-        // If geocoding fails, continue with user-provided coordinates or fail gracefully
-        logger.error('Geocoding failed:', err);
+      if (geoData && geoData.length > 0) {
+        violationData.location.coordinates = [
+          geoData[0].longitude,
+          geoData[0].latitude
+        ];
+      } else {
+        // If geocoding fails, set default coordinates
+        violationData.location.coordinates = [0, 0];
+        logger.warn(`No geocoding results found for: ${locationName}`);
       }
+    } catch (err) {
+      // If geocoding fails, set default coordinates
+      violationData.location.coordinates = [0, 0];
+      logger.error('Geocoding failed:', err);
     }
   }
 
@@ -395,8 +394,7 @@ const buildFilterQuery = (queryParams) => {
 
   // Filter by perpetrator affiliation
   if (queryParams.perpetrator_affiliation) {
-    const langField = queryParams.lang === 'ar' ? 'perpetrator_affiliation.ar' : 'perpetrator_affiliation.en';
-    query[langField] = new RegExp(queryParams.perpetrator_affiliation, 'i');
+    query.perpetrator_affiliation = queryParams.perpetrator_affiliation;
   }
 
   // Filter by description
@@ -540,39 +538,35 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
     violationsData.map(async (violationData) => {
       // Process geocoding if needed
       if (violationData.location && violationData.location.name) {
-        // Only geocode if coordinates aren't provided or need to be updated
-        const shouldGeocode = !violationData.location.coordinates || 
-                          (violationData.location.coordinates[0] === 0 && 
-                          violationData.location.coordinates[1] === 0);
+        try {
+          // Use English location name for geocoding
+          const locationName = violationData.location.name.en || '';
+          const adminDivision = violationData.location.administrative_division ? 
+                               (violationData.location.administrative_division.en || '') : '';
+          
+          logger.info(`Attempting to geocode location: ${locationName}, ${adminDivision}`);
+          
+          const geoData = await geocodeLocation(
+            locationName,
+            adminDivision
+          );
 
-        if (shouldGeocode) {
-          try {
-            // Use English location name for geocoding
-            const locationName = violationData.location.name.en || '';
-            const adminDivision = violationData.location.administrative_division ? 
-                                 (violationData.location.administrative_division.en || '') : '';
-            
-            logger.info(`Attempting to geocode location: ${locationName}, ${adminDivision}`);
-            
-            const geoData = await geocodeLocation(
-              locationName,
-              adminDivision
-            );
-
-            if (geoData && geoData.length > 0) {
-              violationData.location.coordinates = [
-                geoData[0].longitude,
-                geoData[0].latitude
-              ];
-              logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
-            } else {
-              logger.warn(`No geocoding results found for: ${locationName}`);
-            }
-          } catch (err) {
-            // If geocoding fails, log detailed error
-            logger.error(`Geocoding failed for location "${violationData.location.name.en}": ${err.message}`);
-            logger.error('Full error:', err);
+          if (geoData && geoData.length > 0) {
+            violationData.location.coordinates = [
+              geoData[0].longitude,
+              geoData[0].latitude
+            ];
+            logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
+          } else {
+            // If geocoding fails, set default coordinates
+            violationData.location.coordinates = [0, 0];
+            logger.warn(`No geocoding results found for: ${locationName}`);
           }
+        } catch (err) {
+          // If geocoding fails, set default coordinates
+          violationData.location.coordinates = [0, 0];
+          logger.error(`Geocoding failed for location "${violationData.location.name.en}": ${err.message}`);
+          logger.error('Full error:', err);
         }
       }
 

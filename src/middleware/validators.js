@@ -132,15 +132,27 @@ const violationRules = [
   
   body('source')
     .optional()
-    .isLength({ max: 200 })
-    .withMessage('Source cannot be more than 200 characters'),
+    .isLength({ max: 1500 })
+    .withMessage('Source cannot be more than 1500 characters'),
   
   body('source_url')
     .optional()
+    .isObject()
+    .withMessage('Source URL must be an object with language codes'),
+  
+  body('source_url.en')
+    .optional()
     .isURL()
-    .withMessage('Source URL must be a valid URL')
+    .withMessage('English source URL must be a valid URL')
     .isLength({ max: 500 })
-    .withMessage('Source URL cannot be more than 500 characters'),
+    .withMessage('English source URL cannot be more than 500 characters'),
+  
+  body('source_url.ar')
+    .optional()
+    .isURL()
+    .withMessage('Arabic source URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Arabic source URL cannot be more than 500 characters'),
   
   body('verified')
     .notEmpty()
@@ -212,8 +224,8 @@ const violationRules = [
   
   body('perpetrator_affiliation')
     .optional()
-    .isLength({ max: 100 })
-    .withMessage('Perpetrator affiliation cannot be more than 100 characters'),
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'])
+    .withMessage('Invalid perpetrator affiliation'),
   
   body('media_links')
     .optional()
@@ -330,15 +342,27 @@ const batchViolationsRules = [
   
   body('*.source')
     .optional()
-    .isLength({ max: 200 })
-    .withMessage('Source cannot be more than 200 characters'),
+    .isLength({ max: 1500 })
+    .withMessage('Source cannot be more than 1500 characters'),
   
   body('*.source_url')
     .optional()
+    .isObject()
+    .withMessage('Source URL must be an object with language codes'),
+  
+  body('*.source_url.en')
+    .optional()
     .isURL()
-    .withMessage('Source URL must be a valid URL')
+    .withMessage('English source URL must be a valid URL')
     .isLength({ max: 500 })
-    .withMessage('Source URL cannot be more than 500 characters'),
+    .withMessage('English source URL cannot be more than 500 characters'),
+  
+  body('*.source_url.ar')
+    .optional()
+    .isURL()
+    .withMessage('Arabic source URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Arabic source URL cannot be more than 500 characters'),
   
   body('*.verified')
     .notEmpty()
@@ -410,8 +434,8 @@ const batchViolationsRules = [
   
   body('*.perpetrator_affiliation')
     .optional()
-    .isLength({ max: 100 })
-    .withMessage('Perpetrator affiliation cannot be more than 100 characters'),
+    .isIn(['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'])
+    .withMessage('Invalid perpetrator affiliation'),
   
   body('*.media_links')
     .optional()

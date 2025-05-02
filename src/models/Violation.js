@@ -32,6 +32,18 @@ const LocalizedStringSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+// Schema for optional localized string
+const OptionalLocalizedStringSchema = new mongoose.Schema({
+  en: {
+    type: String,
+    required: false
+  },
+  ar: {
+    type: String,
+    required: false
+  }
+}, { _id: false });
+
 // Schema for victim information
 const VictimSchema = new mongoose.Schema({
   age: {
@@ -51,11 +63,13 @@ const VictimSchema = new mongoose.Schema({
     default: 'unknown'
   },
   group_affiliation: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' }
   },
   sectarian_identity: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' }
   },
   death_date: {
@@ -151,11 +165,11 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(value) {
         if (!value) return true;
-        if (value.en && value.en.length > 200) return false;
-        if (value.ar && value.ar.length > 200) return false;
+        if (value.en && value.en.length > 1500) return false;
+        if (value.ar && value.ar.length > 1500) return false;
         return true;
       },
-      message: 'Source cannot be more than 200 characters in either language'
+      message: 'Source cannot be more than 1500 characters in either language'
     }
   },
   source_url: {
@@ -185,7 +199,8 @@ const ViolationSchema = new mongoose.Schema({
     required: [true, 'Certainty level is required']
   },
   verification_method: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
+    required: false,
     default: { en: '', ar: '' },
     validate: {
       validator: function(value) {
@@ -220,17 +235,10 @@ const ViolationSchema = new mongoose.Schema({
     }
   },
   perpetrator_affiliation: {
-    type: LocalizedStringSchema,
-    default: { en: '', ar: '' },
-    validate: {
-      validator: function(value) {
-        if (!value) return true;
-        if (value.en && value.en.length > 100) return false;
-        if (value.ar && value.ar.length > 100) return false;
-        return true;
-      },
-      message: 'Perpetrator affiliation cannot be more than 100 characters in either language'
-    }
+    type: String,
+    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'],
+    required: [true, 'Perpetrator affiliation is required'],
+    default: 'unknown'
   },
   media_links: {
     type: [String],

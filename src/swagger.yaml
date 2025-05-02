@@ -41,12 +41,11 @@ components:
     Location:
       type: object
       required:
-        - coordinates
         - name
       properties:
         coordinates:
           type: array
-          description: [longitude, latitude]
+          description: Array of [longitude, latitude]. This field is optional and will be automatically set via geocoding based on the location name.
           items:
             type: number
           minItems: 2
@@ -77,8 +76,15 @@ components:
           $ref: '#/components/schemas/LocalizedString'
           description: Group affiliation in English and Arabic
         sectarian_identity:
-          $ref: '#/components/schemas/LocalizedString'
-          description: Sectarian identity in English and Arabic
+          type: object
+          description: Sectarian identity in English and Arabic (both fields optional)
+          properties:
+            en:
+              type: string
+              description: English text (optional)
+            ar:
+              type: string
+              description: Arabic text (optional)
         death_date:
           type: string
           format: date
@@ -135,8 +141,15 @@ components:
           type: string
           enum: [confirmed, probable, possible]
         verification_method:
-          $ref: '#/components/schemas/LocalizedString'
-          description: Method used for verification in English and Arabic
+          type: object
+          description: Method used for verification in English and Arabic (both fields optional)
+          properties:
+            en:
+              type: string
+              description: English text (optional)
+            ar:
+              type: string
+              description: Arabic text (optional)
         casualties:
           type: integer
           minimum: 0
@@ -146,10 +159,21 @@ components:
             $ref: '#/components/schemas/Victim'
         perpetrator:
           $ref: '#/components/schemas/LocalizedString'
-          description: Perpetrator information in English and Arabic
+          description: Entity that committed the violation
         perpetrator_affiliation:
-          $ref: '#/components/schemas/LocalizedString'
-          description: Perpetrator affiliation in English and Arabic
+          type: string
+          enum: [assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, unknown]
+          description: Type of perpetrator affiliation
+        perpetrator_affiliation_type:
+          type: string
+          enum:
+            - GOVERNMENT
+            - REBEL_GROUP
+            - TERRORIST_ORGANIZATION
+            - FOREIGN_MILITARY
+            - UNKNOWN
+            - OTHER
+          description: Type of perpetrator affiliation
         media_links:
           type: array
           items:

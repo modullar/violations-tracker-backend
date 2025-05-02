@@ -1,0 +1,33 @@
+[
+  {
+    "scope": "https://maps.googleapis.com:443",
+    "method": "GET",
+    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Al-Waer%2C+Homs+Governorate%2C+Syria",
+    "body": "",
+    "status": 200,
+    "response": [
+      "1f8b08000000000002ffed565d4fa340147df7579079d9976e536b0b74df8c31daee6eacedaeab31864ce10a930c73c930ad364d137f813fd25fb240d9503e56d09a3e390fc0c0b933e7dc7be784d581a669444238e72a24da372d9edfc69768acd27b0ca18e13a142cb463f400122436fc66df6988f4ce3390ad712d487388cfca15f40925609157a28553d4c2d0328ec5fc522450b60ae3743e9213ae5c56244809c2966534e8a5fef722fd6ad37a93c473f7c797aaed7f97fe0db94728c3430b5dcbbca661277d6471d9f09162a49155b804525508bc302b8d5ddbb64ed0c172005465ca099fc9a888f4ac5e15e53315d4a46ebf54f6f76566ce35c28b96b6f67b3bbad85c83d4a9f2a058e951a5de63f2d2d3d9e2dad2496b8803ec4ac722af24923b388b953165a4e6dd41bca031aaaaaa494e07104a709f6a8d7367a8631e89b95d9e1c24d507a5b8f40867e5804ad2b0a8873e53dc0fbb874cd8e690eeab8f47be6a04ce5b56e4c1c4e31140d92b945e76860f43a7a59e31617bddfedf4f5467b5b71df26fd713c1e4f2eae873f8f7f9d16da922c183c0451393fab5ee4d2a4ead96c9b230938b5c1624e92fc136f38fa41af66978fee68f8f87b02c674e9772e475fafecdc11ad7099bcbfbcf68350692cff2c25a1b9b111122aaae61bd7b8f84e0ed67f0164f427b759090000"
+    ],
+    "rawHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "cache-control": "no-cache, must-revalidate",
+      "connection": "close",
+      "content-encoding": "gzip",
+      "content-security-policy-report-only": "script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/msaifdggmnwc:228:0",
+      "content-type": "application/json; charset=UTF-8",
+      "cross-origin-opener-policy-report-only": "same-origin; report-to=msaifdggmnwc:228:0",
+      "date": "Mon, 28 Apr 2025 14:30:13 GMT",
+      "expires": "Fri, 01 Jan 1990 00:00:00 GMT",
+      "pragma": "no-cache",
+      "report-to": "{\"group\":\"msaifdggmnwc:228:0\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/scaffolding/msaifdggmnwc:228:0\"}],}",
+      "server": "mafe",
+      "server-timing": "gfet4t7; dur=66",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Language",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "responseIsBinary": false
+  }
+]

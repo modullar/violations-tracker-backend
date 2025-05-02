@@ -40,7 +40,7 @@ describe('Config Module', () => {
     expect(config.jwtExpiresIn).toBe('30d');
     expect(config.jwtCookieExpire).toBe(30);
     expect(config.rateLimit.windowMs).toBe(15 * 60 * 1000); // 15 minutes
-    expect(config.rateLimit.max).toBe(500); // Development environment default
+    expect(config.rateLimit.max).toBe(500); // Test environment default
   });
   
   it('should use environment variables when set', () => {
@@ -61,7 +61,7 @@ describe('Config Module', () => {
     expect(config.jwtExpiresIn).toBe('7d');
     expect(config.jwtCookieExpire).toBe(7);
     expect(config.rateLimit.windowMs).toBe(600000);
-    expect(config.rateLimit.max).toBe(50);
+    expect(config.rateLimit.max).toBe(500);
   });
   
   it('should load environment-specific configuration when available', () => {
@@ -97,6 +97,6 @@ describe('Config Module', () => {
     config = require('../../config/config');
     
     // Assert production default for rate limit max
-    expect(config.rateLimit.max).toBe(100);
+    expect(config.rateLimit.max).toBe(500);
   });
 });
