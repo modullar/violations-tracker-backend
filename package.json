@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "NODE_ENV=production node src/server.js",
+    "start:test": "NODE_ENV=test node src/server.js",
     "dev": "NODE_ENV=development nodemon src/server.js",
     "staging": "NODE_ENV=staging node src/server.js",
     "test": "NODE_ENV=test jest --detectOpenHandles --forceExit",

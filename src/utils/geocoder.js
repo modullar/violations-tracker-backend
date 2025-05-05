@@ -228,6 +228,27 @@ const tryGeocode = async (query) => {
 };
 
 /**
+ * Check if coordinates are within Syria's approximate bounds
+ * @param {number} latitude 
+ * @param {number} longitude 
+ * @returns {boolean}
+ */
+const isWithinSyria = (latitude, longitude) => {
+  // Syria's approximate bounds
+  const SYRIA_BOUNDS = {
+    north: 37.319831,
+    south: 32.310939,
+    east: 42.385029,
+    west: 35.727222
+  };
+  
+  return latitude >= SYRIA_BOUNDS.south && 
+         latitude <= SYRIA_BOUNDS.north && 
+         longitude >= SYRIA_BOUNDS.west && 
+         longitude <= SYRIA_BOUNDS.east;
+};
+
+/**
  * Geocode a location based on place name and administrative division
  * @param {string} placeName - Name of the place
  * @param {string} adminDivision - Administrative division (optional)
@@ -238,13 +259,13 @@ const geocodeLocation = async (placeName, adminDivision = '') => {
   if (process.env.NODE_ENV === 'test') {
     // Special case for invalid test location
     if (placeName.includes('xyznon-existentlocation12345completelyfake')) {
-      logger.info(`Test mode: geocodeLocation returning empty results for invalid test location`);
+      logger.info('Test mode: geocodeLocation returning empty results for invalid test location');
       return [];
     }
     
     // Special case for Bustan al-Qasr test if not resolved by fixtures
     if (placeName === 'Bustan al-Qasr') {
-      logger.info(`Test mode: geocodeLocation returning mock results for Bustan al-Qasr`);
+      logger.info('Test mode: geocodeLocation returning mock results for Bustan al-Qasr');
       return [{
         latitude: 36.186764,
         longitude: 37.1441285,
@@ -264,21 +285,29 @@ const geocodeLocation = async (placeName, adminDivision = '') => {
     const strategies = [
       // 1. Full query with all details
       `${cleanedPlaceName}${adminDivision ? ', ' + adminDivision : ''}, Syria`,
-      // 2. Just the place name and Syria
+      // 2. Just the place name and administrative division
+      adminDivision ? `${cleanedPlaceName}, ${adminDivision}` : null,
+      // 3. Just the place name and Syria
       `${cleanedPlaceName}, Syria`,
-      // 3. Just the administrative division and Syria
+      // 4. Just the administrative division and Syria
       adminDivision ? `${adminDivision}, Syria` : null,
-      // 4. Just the city name (extracted from adminDivision if it contains a city)
+      // 5. Just the city name (extracted from adminDivision if it contains a city)
       adminDivision ? adminDivision.split(',').map(s => s.trim()).find(s => s.includes('city')) : null
     ].filter(Boolean); // Remove null values
 
     logger.info(`Attempting to geocode: ${placeName} (original) with strategies: ${strategies.join(', ')}`);
 
-    // Try each strategy until one works
+    // Try each strategy until one works and returns coordinates within Syria
     for (const query of strategies) {
       const results = await tryGeocode(query);
-      if (results) {
-        return results;
+      if (results && results.length > 0) {
+        // Validate that coordinates are within Syria's bounds
+        const [longitude, latitude] = [results[0].longitude, results[0].latitude];
+        if (isWithinSyria(latitude, longitude)) {
+          logger.info(`Found valid coordinates within Syria: [${longitude}, ${latitude}]`);
+          return results;
+        }
+        logger.warn(`Found coordinates [${longitude}, ${latitude}] but they are outside Syria's bounds`);
       }
     }
 
@@ -287,23 +316,20 @@ const geocodeLocation = async (placeName, adminDivision = '') => {
     if (cityMatch) {
       const cityName = cityMatch[1].trim();
       const results = await tryGeocode(`${cityName}, Syria`);
-      if (results) {
-        return results;
+      if (results && results.length > 0) {
+        const [longitude, latitude] = [results[0].longitude, results[0].latitude];
+        if (isWithinSyria(latitude, longitude)) {
+          logger.info(`Found valid coordinates within Syria using city name: [${longitude}, ${latitude}]`);
+          return results;
+        }
       }
     }
-    
-    // Final attempt: try just the placeName without Syria (might help with international recognition)
-    const lastChanceResults = await tryGeocode(cleanedPlaceName);
-    if (lastChanceResults) {
-      return lastChanceResults;
-    }
 
-    logger.warn(`No geocoding results found for any strategy: ${placeName}`);
-    return [];
+    // If all attempts fail, throw an error
+    throw new Error(`Could not find valid coordinates within Syria for location: ${placeName}`);
   } catch (error) {
     logger.error(`Geocoding error for "${placeName}, ${adminDivision}": ${error.message}`);
-    logger.error('Full error:', error);
-    throw new Error(`Failed to geocode location: ${error.message}`);
+    throw error;
   }
 };
 
