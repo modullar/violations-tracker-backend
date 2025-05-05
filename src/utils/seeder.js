@@ -560,7 +560,7 @@ const violations = [
       en: 'Unknown',
       ar: 'مجهول'
     },
-    perpetrator_affiliation: 'unknown',
+    perpetrator_affiliation: 'assad_regime',
     media_links: [
       'https://example.com/evidence/explosion_4.jpg'
     ],
@@ -611,7 +611,7 @@ const violations = [
       en: 'Opposition armed group',
       ar: 'فصيل معارض مسلح'
     },
-    perpetrator_affiliation: 'opposition',
+    perpetrator_affiliation: 'post_8th_december_government',
     tags: [
       { en: 'ambush', ar: 'كمين' },
       { en: 'combatant', ar: 'مقاتل' }
@@ -802,7 +802,7 @@ const violations = [
       en: 'Rebel sniper',
       ar: 'قناص معارض'
     },
-    perpetrator_affiliation: 'opposition',
+    perpetrator_affiliation: 'israel',
     tags: [
       { en: 'shooting', ar: 'إطلاق نار' },
       { en: 'civilian', ar: 'مدني' }

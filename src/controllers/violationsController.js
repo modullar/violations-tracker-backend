@@ -118,7 +118,7 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
       // Use English location name for geocoding
       const locationName = violationData.location.name.en || '';
       const adminDivision = violationData.location.administrative_division ? 
-                           (violationData.location.administrative_division.en || '') : '';
+        (violationData.location.administrative_division.en || '') : '';
       
       const geoData = await geocodeLocation(
         locationName,
@@ -131,15 +131,25 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
           geoData[0].latitude
         ];
       } else {
-        // If geocoding fails, set default coordinates
-        violationData.location.coordinates = [0, 0];
-        logger.warn(`No geocoding results found for: ${locationName}`);
+        return next(
+          new ErrorResponse(
+            `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}. Please verify the location name.`,
+            400
+          )
+        );
       }
     } catch (err) {
-      // If geocoding fails, set default coordinates
-      violationData.location.coordinates = [0, 0];
-      logger.error('Geocoding failed:', err);
+      return next(
+        new ErrorResponse(
+          `Geocoding failed: ${err.message}. Please verify the location name.`,
+          400
+        )
+      );
     }
+  } else {
+    return next(
+      new ErrorResponse('Location name is required.', 400)
+    );
   }
 
   // Add user to violation data
@@ -183,14 +193,12 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
         violation.location.administrative_division.ar !== violationData.location.administrative_division.ar));
 
     // Only geocode if the location changed and new coordinates aren't provided
-    if (locationChanged && (!violationData.location.coordinates || 
-        (violationData.location.coordinates[0] === 0 && 
-         violationData.location.coordinates[1] === 0))) {
+    if (locationChanged) {
       try {
         // Use English name for geocoding
         const locationName = violationData.location.name.en || '';
         const adminDivision = violationData.location.administrative_division ? 
-                             (violationData.location.administrative_division.en || '') : '';
+          (violationData.location.administrative_division.en || '') : '';
         
         const geoData = await geocodeLocation(
           locationName,
@@ -203,13 +211,20 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
             geoData[0].latitude
           ];
         } else {
-          // If geocoding returns no results, keep original coordinates
-          violationData.location.coordinates = violation.location.coordinates || [0, 0];
+          return next(
+            new ErrorResponse(
+              `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}. Please verify the location name.`,
+              400
+            )
+          );
         }
       } catch (err) {
-        // If geocoding fails, keep original coordinates or default to [0, 0]
-        violationData.location.coordinates = violation.location.coordinates || [0, 0];
-        logger.error('Geocoding failed:', err);
+        return next(
+          new ErrorResponse(
+            `Geocoding failed: ${err.message}. Please verify the location name.`,
+            400
+          )
+        );
       }
     }
   }
@@ -534,15 +549,14 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
   }
 
   // Process each violation
+  const errors = [];
   const processedViolations = await Promise.all(
-    violationsData.map(async (violationData) => {
-      // Process geocoding if needed
+    violationsData.map(async (violationData, index) => {
       if (violationData.location && violationData.location.name) {
         try {
-          // Use English location name for geocoding
           const locationName = violationData.location.name.en || '';
           const adminDivision = violationData.location.administrative_division ? 
-                               (violationData.location.administrative_division.en || '') : '';
+            (violationData.location.administrative_division.en || '') : '';
           
           logger.info(`Attempting to geocode location: ${locationName}, ${adminDivision}`);
           
@@ -558,16 +572,25 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
             ];
             logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
           } else {
-            // If geocoding fails, set default coordinates
-            violationData.location.coordinates = [0, 0];
-            logger.warn(`No geocoding results found for: ${locationName}`);
+            errors.push({
+              index,
+              error: `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}`
+            });
+            return null;
           }
         } catch (err) {
-          // If geocoding fails, set default coordinates
-          violationData.location.coordinates = [0, 0];
-          logger.error(`Geocoding failed for location "${violationData.location.name.en}": ${err.message}`);
-          logger.error('Full error:', err);
+          errors.push({
+            index,
+            error: `Geocoding failed for location "${violationData.location.name.en}": ${err.message}`
+          });
+          return null;
         }
+      } else {
+        errors.push({
+          index,
+          error: 'Location name is required'
+        });
+        return null;
       }
 
       // Add user to violation data
@@ -578,12 +601,20 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
     })
   );
 
-  // Create all violations in a single operation
-  const violations = await Violation.create(processedViolations);
+  // Filter out failed violations
+  const validViolations = processedViolations.filter(v => v !== null);
+
+  if (validViolations.length === 0) {
+    return next(new ErrorResponse('All violations failed validation', 400, { errors }));
+  }
+
+  // Create all valid violations in a single operation
+  const violations = await Violation.create(validViolations);
 
   res.status(201).json({
     success: true,
     count: violations.length,
-    data: violations
+    data: violations,
+    errors: errors.length > 0 ? errors : undefined
   });
 });
