@@ -79,6 +79,52 @@ describe('Violation Model', () => {
     expect(savedViolation.location.coordinates).toEqual(validViolation.location.coordinates);
   });
 
+  it('should create a violation with international_coalition perpetrator', async () => {
+    const violationWithInternationalCoalition = {
+      type: 'AIRSTRIKE',
+      date: '2023-06-15',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
+      },
+      description: {
+        en: 'Test violation description',
+        ar: 'وصف انتهاك الاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
+      verified: true,
+      certainty_level: 'confirmed',
+      perpetrator: {
+        en: 'International Coalition',
+        ar: 'التحالف الدولي'
+      },
+      perpetrator_affiliation: 'international_coalition',
+      casualties: 3
+    };
+
+    const violation = new Violation(violationWithInternationalCoalition);
+    const savedViolation = await violation.save();
+
+    expect(savedViolation._id).toBeDefined();
+    expect(savedViolation.type).toBe(violationWithInternationalCoalition.type);
+    expect(savedViolation.perpetrator_affiliation).toBe('international_coalition');
+    expect(savedViolation.description.en).toBe(violationWithInternationalCoalition.description.en);
+  });
+
   it('should fail validation with invalid data', async () => {
     const invalidViolation = {
       type: 'INVALID_TYPE',

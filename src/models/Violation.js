@@ -178,7 +178,7 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(value) {
         if (!value) return true;
-        const validateUrl = (url) => !url || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url);
+        const validateUrl = (url) => !url || /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url);
         if (value.en && !validateUrl(value.en)) return false;
         if (value.ar && !validateUrl(value.ar)) return false;
         if (value.en && value.en.length > 500) return false;
@@ -236,7 +236,7 @@ const ViolationSchema = new mongoose.Schema({
   },
   perpetrator_affiliation: {
     type: String,
-    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'unknown'],
+    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'international_coalition', 'unknown'],
     required: [true, 'Perpetrator affiliation is required'],
     default: 'unknown'
   },
@@ -245,7 +245,7 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(v) {
         if (!v) return true;
-        return v.every(url => /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(url));
+        return v.every(url => /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url));
       },
       message: 'One or more media links are invalid URLs'
     }

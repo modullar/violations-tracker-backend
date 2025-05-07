@@ -162,7 +162,7 @@ components:
           description: Entity that committed the violation
         perpetrator_affiliation:
           type: string
-          enum: [assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, unknown]
+          enum: [assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, international_coalition, unknown]
           description: Type of perpetrator affiliation
         perpetrator_affiliation_type:
           type: string
