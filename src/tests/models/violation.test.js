@@ -67,7 +67,10 @@ describe('Violation Model', () => {
         ar: 'مرتكب الاختبار'
       },
       perpetrator_affiliation: 'assad_regime',
-      casualties: 5
+      casualties: 5,
+      kidnapped_count: 2,
+      injured_count: 10,
+      displaced_count: 20
     };
 
     const violation = new Violation(validViolation);
@@ -206,6 +209,9 @@ describe('Violation Model', () => {
         en: 'Test Perpetrator',
         ar: 'مرتكب الاختبار'
       },
+      kidnapped_count: 3,
+      injured_count: 7,
+      displaced_count: 25,
       perpetrator_affiliation: 'assad_regime'
     });
 

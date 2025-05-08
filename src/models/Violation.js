@@ -217,6 +217,21 @@ const ViolationSchema = new mongoose.Schema({
     min: [0, 'Casualties cannot be negative'],
     default: 0
   },
+  kidnapped_count: {
+    type: Number,
+    min: [0, 'Kidnapped count cannot be negative'],
+    default: 0
+  },
+  injured_count: {
+    type: Number,
+    min: [0, 'Injured count cannot be negative'],
+    default: 0
+  },
+  displaced_count: {
+    type: Number,
+    min: [0, 'Displaced count cannot be negative'],
+    default: 0
+  },
   victims: {
     type: [VictimSchema],
     default: []
