@@ -17,6 +17,7 @@ const ViolationTypes = {
   EXPLOSION: 'EXPLOSION',
   AMBUSH: 'AMBUSH',
   KIDNAPPING: 'KIDNAPPING',
+  LANDMINE: 'LANDMINE',
   OTHER: 'OTHER'
 };
 

@@ -115,6 +115,7 @@ components:
             - HOME_INVASION
             - EXPLOSION
             - AMBUSH
+            - LANDMINE
             - OTHER
         date:
           type: string
@@ -323,6 +324,7 @@ paths:
               - HOME_INVASION
               - EXPLOSION
               - AMBUSH
+              - LANDMINE
               - OTHER
         - name: startDate
           in: query
