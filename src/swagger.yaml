@@ -115,6 +115,7 @@ components:
             - HOME_INVASION
             - EXPLOSION
             - AMBUSH
+            - LANDMINE
             - OTHER
         date:
           type: string
@@ -153,6 +154,18 @@ components:
         casualties:
           type: integer
           minimum: 0
+        kidnapped_count:
+          type: integer
+          minimum: 0
+          description: Number of people kidnapped in the incident
+        injured_count:
+          type: integer
+          minimum: 0
+          description: Number of people injured in the incident
+        displaced_count:
+          type: integer
+          minimum: 0 
+          description: Number of people displaced in the incident
         victims:
           type: array
           items:
@@ -311,6 +324,7 @@ paths:
               - HOME_INVASION
               - EXPLOSION
               - AMBUSH
+              - LANDMINE
               - OTHER
         - name: startDate
           in: query

@@ -336,6 +336,36 @@ exports.getViolationStats = asyncHandler(async (req, res, next) => {
     }
   ]);
 
+  // Get total kidnapped
+  const kidnapped = await Violation.aggregate([
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$kidnapped_count' }
+      }
+    }
+  ]);
+
+  // Get total injured
+  const injured = await Violation.aggregate([
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$injured_count' }
+      }
+    }
+  ]);
+
+  // Get total displaced
+  const displaced = await Violation.aggregate([
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$displaced_count' }
+      }
+    }
+  ]);
+
   // Total violations
   const totalViolations = await Violation.countDocuments();
 
@@ -344,6 +374,9 @@ exports.getViolationStats = asyncHandler(async (req, res, next) => {
     data: {
       totalViolations,
       totalCasualties: casualties.length > 0 ? casualties[0].total : 0,
+      totalKidnapped: kidnapped.length > 0 ? kidnapped[0].total : 0,
+      totalInjured: injured.length > 0 ? injured[0].total : 0,
+      totalDisplaced: displaced.length > 0 ? displaced[0].total : 0,
       byType: typeStats,
       byLocation: locationStats,
       byYear: timeStats

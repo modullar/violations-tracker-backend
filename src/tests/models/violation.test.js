@@ -67,7 +67,10 @@ describe('Violation Model', () => {
         ar: 'مرتكب الاختبار'
       },
       perpetrator_affiliation: 'assad_regime',
-      casualties: 5
+      casualties: 5,
+      kidnapped_count: 2,
+      injured_count: 10,
+      displaced_count: 20
     };
 
     const violation = new Violation(validViolation);
@@ -123,6 +126,57 @@ describe('Violation Model', () => {
     expect(savedViolation.type).toBe(violationWithInternationalCoalition.type);
     expect(savedViolation.perpetrator_affiliation).toBe('international_coalition');
     expect(savedViolation.description.en).toBe(violationWithInternationalCoalition.description.en);
+  });
+
+  it('should create a violation with landmine type', async () => {
+    const landmineViolation = {
+      type: 'LANDMINE',
+      date: '2023-06-15',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
+      },
+      description: {
+        en: 'Test landmine violation description',
+        ar: 'وصف انتهاك لغم أرضي'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: {
+        en: 'Test verification method',
+        ar: 'طريقة التحقق'
+      },
+      perpetrator: {
+        en: 'Test Perpetrator',
+        ar: 'مرتكب الاختبار'
+      },
+      perpetrator_affiliation: 'assad_regime',
+      casualties: 2,
+      injured_count: 3
+    };
+
+    const violation = new Violation(landmineViolation);
+    const savedViolation = await violation.save();
+
+    expect(savedViolation._id).toBeDefined();
+    expect(savedViolation.type).toBe('LANDMINE');
+    expect(savedViolation.description.en).toBe(landmineViolation.description.en);
+    expect(savedViolation.location.coordinates).toEqual(landmineViolation.location.coordinates);
   });
 
   it('should fail validation with invalid data', async () => {
@@ -206,6 +260,9 @@ describe('Violation Model', () => {
         en: 'Test Perpetrator',
         ar: 'مرتكب الاختبار'
       },
+      kidnapped_count: 3,
+      injured_count: 7,
+      displaced_count: 25,
       perpetrator_affiliation: 'assad_regime'
     });
 
