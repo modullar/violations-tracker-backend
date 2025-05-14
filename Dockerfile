@@ -7,8 +7,11 @@ WORKDIR /usr/src/app
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 COPY package*.json ./
 
-# Install dependencies
+# Install production dependencies
 RUN npm ci --only=production
+
+# Install only migrate-mongo for database migrations
+RUN npm install migrate-mongo
 
 # Bundle app source
 COPY . .
@@ -19,5 +22,13 @@ RUN mkdir -p logs
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Start the application
-CMD ["node", "src/server.js"]
+# Create a script to run migrations and start the app
+RUN echo '#!/bin/sh\n\
+echo "Running database migrations..."\n\
+npx migrate-mongo up\n\
+echo "Starting application..."\n\
+node src/server.js' > /usr/src/app/start.sh && \
+chmod +x /usr/src/app/start.sh
+
+# Start the application with migrations
+CMD ["/usr/src/app/start.sh"]
