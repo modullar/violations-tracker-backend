@@ -56,7 +56,7 @@ const violationRules = [
     .isIn([
       'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
       'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
-      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'OTHER'
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'LANDMINE', 'OTHER'
     ])
     .withMessage('Invalid violation type'),
   
@@ -266,7 +266,7 @@ const batchViolationsRules = [
     .isIn([
       'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
       'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
-      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'OTHER'
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'LANDMINE', 'OTHER'
     ])
     .withMessage('Invalid violation type'),
   
@@ -477,7 +477,7 @@ const violationFilterRules = [
     .isIn([
       'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
       'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
-      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'OTHER'
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'LANDMINE', 'OTHER'
     ])
     .withMessage('Invalid violation type'),
   
