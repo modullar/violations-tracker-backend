@@ -23,12 +23,12 @@ RUN mkdir -p logs
 EXPOSE 5000
 
 # Create a script to run migrations and start the app
-RUN echo '#!/bin/sh\n\
-echo "Running database migrations..."\n\
-npx migrate-mongo up\n\
-echo "Starting application..."\n\
-node src/server.js' > /usr/src/app/start.sh && \
-chmod +x /usr/src/app/start.sh
+RUN echo '#!/bin/sh' > /usr/src/app/start.sh && \
+    echo 'echo "Running database migrations..."' >> /usr/src/app/start.sh && \
+    echo 'npx migrate-mongo up' >> /usr/src/app/start.sh && \
+    echo 'echo "Starting application..."' >> /usr/src/app/start.sh && \
+    echo 'node src/server.js' >> /usr/src/app/start.sh && \
+    chmod +x /usr/src/app/start.sh
 
 # Start the application with migrations
 CMD ["/usr/src/app/start.sh"]
