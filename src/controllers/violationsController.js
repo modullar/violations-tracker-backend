@@ -115,15 +115,30 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
   // Process geocoding if needed
   if (violationData.location && violationData.location.name) {
     try {
-      // Use English location name for geocoding
-      const locationName = violationData.location.name.en || '';
-      const adminDivision = violationData.location.administrative_division ? 
+      // Try both Arabic and English location names
+      const locationNameAr = violationData.location.name.ar || '';
+      const locationNameEn = violationData.location.name.en || '';
+      const adminDivisionAr = violationData.location.administrative_division ? 
+        (violationData.location.administrative_division.ar || '') : '';
+      const adminDivisionEn = violationData.location.administrative_division ? 
         (violationData.location.administrative_division.en || '') : '';
       
-      const geoData = await geocodeLocation(
-        locationName,
-        adminDivision
-      );
+      // Try Arabic first
+      let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
+      
+      // Try English
+      let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
+      
+      // Use the best result based on quality score
+      let geoData;
+      if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
+        // If we have both results, pick the one with higher quality
+        geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
+        logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} result with quality ${geoData[0].quality || 0}`);
+      } else {
+        // Otherwise use whichever one succeeded
+        geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
+      }
 
       if (geoData && geoData.length > 0) {
         violationData.location.coordinates = [
@@ -133,7 +148,7 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
       } else {
         return next(
           new ErrorResponse(
-            `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}. Please verify the location name.`,
+            `Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names. Please verify the location names.`,
             400
           )
         );
@@ -141,7 +156,7 @@ exports.createViolation = asyncHandler(async (req, res, next) => {
     } catch (err) {
       return next(
         new ErrorResponse(
-          `Geocoding failed: ${err.message}. Please verify the location name.`,
+          `Geocoding failed: ${err.message}. Please verify the location names.`,
           400
         )
       );
@@ -179,53 +194,63 @@ exports.updateViolation = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const violationData = { ...req.body };
+  const violationData = req.body;
 
-  // Process geocoding if the location was updated
-  if (violationData.location && violationData.location.name) {
-    const locationChanged = 
-      // Check if English or Arabic location names have changed
-      (violation.location.name.en !== violationData.location.name.en || 
-       violation.location.name.ar !== violationData.location.name.ar) ||
-      // Check if administrative division has changed
-      (violation.location.administrative_division && violationData.location.administrative_division &&
-       (violation.location.administrative_division.en !== violationData.location.administrative_division.en ||
-        violation.location.administrative_division.ar !== violationData.location.administrative_division.ar));
+  // Check if location has changed - using a deeper comparison for the nested objects
+  const locationChanged = violationData.location && (
+    // Convert to string for deep comparison of the objects
+    JSON.stringify(violationData.location.name) !== JSON.stringify(violation.location.name) ||
+    JSON.stringify(violationData.location.administrative_division) !== JSON.stringify(violation.location.administrative_division)
+  );
 
-    // Only geocode if the location changed and new coordinates aren't provided
-    if (locationChanged) {
-      try {
-        // Use English name for geocoding
-        const locationName = violationData.location.name.en || '';
-        const adminDivision = violationData.location.administrative_division ? 
-          (violationData.location.administrative_division.en || '') : '';
-        
-        const geoData = await geocodeLocation(
-          locationName,
-          adminDivision
-        );
+  // Only geocode if the location changed
+  if (locationChanged) {
+    try {
+      // Try both Arabic and English location names
+      const locationNameAr = violationData.location.name.ar || '';
+      const locationNameEn = violationData.location.name.en || '';
+      const adminDivisionAr = violationData.location.administrative_division ? 
+        (violationData.location.administrative_division.ar || '') : '';
+      const adminDivisionEn = violationData.location.administrative_division ? 
+        (violationData.location.administrative_division.en || '') : '';
+      
+      // Try Arabic first
+      let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
+      
+      // Try English
+      let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
+      
+      // Use the best result based on quality score
+      let geoData;
+      if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
+        // If we have both results, pick the one with higher quality
+        geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
+        logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} result with quality ${geoData[0].quality || 0}`);
+      } else {
+        // Otherwise use whichever one succeeded
+        geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
+      }
 
-        if (geoData && geoData.length > 0) {
-          violationData.location.coordinates = [
-            geoData[0].longitude,
-            geoData[0].latitude
-          ];
-        } else {
-          return next(
-            new ErrorResponse(
-              `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}. Please verify the location name.`,
-              400
-            )
-          );
-        }
-      } catch (err) {
+      if (geoData && geoData.length > 0) {
+        violationData.location.coordinates = [
+          geoData[0].longitude,
+          geoData[0].latitude
+        ];
+      } else {
         return next(
           new ErrorResponse(
-            `Geocoding failed: ${err.message}. Please verify the location name.`,
+            `Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names. Please verify the location names.`,
             400
           )
         );
       }
+    } catch (err) {
+      return next(
+        new ErrorResponse(
+          `Geocoding failed: ${err.message}. Please verify the location names.`,
+          400
+        )
+      );
     }
   }
 
@@ -587,16 +612,32 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
     violationsData.map(async (violationData, index) => {
       if (violationData.location && violationData.location.name) {
         try {
-          const locationName = violationData.location.name.en || '';
-          const adminDivision = violationData.location.administrative_division ? 
+          // Try both Arabic and English location names
+          const locationNameAr = violationData.location.name.ar || '';
+          const locationNameEn = violationData.location.name.en || '';
+          const adminDivisionAr = violationData.location.administrative_division ? 
+            (violationData.location.administrative_division.ar || '') : '';
+          const adminDivisionEn = violationData.location.administrative_division ? 
             (violationData.location.administrative_division.en || '') : '';
           
-          logger.info(`Attempting to geocode location: ${locationName}, ${adminDivision}`);
+          logger.info(`Attempting to geocode location: ${locationNameAr || locationNameEn}`);
           
-          const geoData = await geocodeLocation(
-            locationName,
-            adminDivision
-          );
+          // Try Arabic first
+          let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
+          
+          // Try English
+          let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
+          
+          // Use the best result based on quality score
+          let geoData;
+          if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
+            // If we have both results, pick the one with higher quality
+            geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
+            logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} result with quality ${geoData[0].quality || 0}`);
+          } else {
+            // Otherwise use whichever one succeeded
+            geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
+          }
 
           if (geoData && geoData.length > 0) {
             violationData.location.coordinates = [
@@ -607,14 +648,14 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
           } else {
             errors.push({
               index,
-              error: `Could not find valid coordinates for location: ${locationName}${adminDivision ? `, ${adminDivision}` : ''}`
+              error: `Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names.`
             });
             return null;
           }
         } catch (err) {
           errors.push({
             index,
-            error: `Geocoding failed for location "${violationData.location.name.en}": ${err.message}`
+            error: `Geocoding failed for location: ${err.message}`
           });
           return null;
         }
