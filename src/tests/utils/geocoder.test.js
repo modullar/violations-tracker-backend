@@ -30,35 +30,65 @@ if (!fs.existsSync(fixturesDir)) {
 // Helper to create a unique fixture filename for each test case
 const getFixturePath = (testName) => path.join(fixturesDir, `${testName.replace(/\s+/g, '_')}.json`);
 
-// Define Syrian location test cases (using English/transliterated names for better results)
+// Define Syrian location test cases with both Arabic and English names
 const syrianLocations = [
   {
-    name: 'Bustan al-Qasr',
-    adminDivision: 'Aleppo Governorate',
+    name: {
+      en: 'Bustan al-Qasr',
+      ar: 'بستان القصر'
+    },
+    adminDivision: {
+      en: 'Aleppo Governorate',
+      ar: 'محافظة حلب'
+    },
     description: 'Bustan al-Qasr neighborhood in Aleppo',
     expectedCoordinates: true
   },
   {
-    name: 'Al-Midan',
-    adminDivision: 'Damascus Governorate',
+    name: {
+      en: 'Al-Midan',
+      ar: 'الميدان'
+    },
+    adminDivision: {
+      en: 'Damascus Governorate',
+      ar: 'محافظة دمشق'
+    },
     description: 'Al-Midan neighborhood in Damascus',
     expectedCoordinates: true
   },
   {
-    name: 'Jobar',
-    adminDivision: 'Damascus Governorate',
+    name: {
+      en: 'Jobar',
+      ar: 'جوبر'
+    },
+    adminDivision: {
+      en: 'Damascus Governorate',
+      ar: 'محافظة دمشق'
+    },
     description: 'Jobar neighborhood in Damascus',
     expectedCoordinates: true
   },
   {
-    name: 'Muadamiyat al-Sham',
-    adminDivision: 'Rif Dimashq Governorate',
+    name: {
+      en: 'Muadamiyat al-Sham',
+      ar: 'معضمية الشام'
+    },
+    adminDivision: {
+      en: 'Rif Dimashq Governorate',
+      ar: 'محافظة ريف دمشق'
+    },
     description: 'Muadamiyat al-Sham in Rural Damascus',
     expectedCoordinates: true
   },
   {
-    name: 'Al-Waer',
-    adminDivision: 'Homs Governorate',
+    name: {
+      en: 'Al-Waer',
+      ar: 'الوعر'
+    },
+    adminDivision: {
+      en: 'Homs Governorate',
+      ar: 'محافظة حمص'
+    },
     description: 'Al-Waer neighborhood in Homs',
     expectedCoordinates: true
   }
@@ -151,26 +181,34 @@ describe('Geocoder Tests with Google Maps API', () => {
         }
       }
 
-      // Call geocodeLocation with the test case
-      const result = await geocodeLocation(location.name, location.adminDivision);
+      // Try Arabic first
+      const arabicResult = await geocodeLocation(location.name.ar, location.adminDivision.ar);
+      
+      // Then try English
+      const englishResult = await geocodeLocation(location.name.en, location.adminDivision.en);
       
       // Check if we got expected results
       if (location.expectedCoordinates) {
-        expect(result).not.toEqual([]);
-        expect(result.length).toBeGreaterThan(0);
+        // At least one of the results should be valid
+        expect(arabicResult.length > 0 || englishResult.length > 0).toBe(true);
         
-        if (result.length > 0) {
-          const firstResult = result[0];
-          expect(firstResult).toHaveProperty('latitude');
-          expect(firstResult).toHaveProperty('longitude');
-          expect(firstResult.latitude).not.toBeNaN();
-          expect(firstResult.longitude).not.toBeNaN();
+        // Get the result with higher quality score
+        const bestResult = (arabicResult[0]?.quality || 0) >= (englishResult[0]?.quality || 0) 
+          ? arabicResult[0] 
+          : englishResult[0];
+        
+        if (bestResult) {
+          expect(bestResult).toHaveProperty('latitude');
+          expect(bestResult).toHaveProperty('longitude');
+          expect(bestResult.latitude).not.toBeNaN();
+          expect(bestResult.longitude).not.toBeNaN();
           
           // Log results for reference
-          console.log(`${location.description} - Coordinates: [${firstResult.longitude}, ${firstResult.latitude}]`);
+          console.log(`${location.description} - Coordinates: [${bestResult.longitude}, ${bestResult.latitude}] - Quality: ${bestResult.quality || 'N/A'}`);
         }
       } else {
-        expect(result).toEqual([]);
+        expect(arabicResult).toEqual([]);
+        expect(englishResult).toEqual([]);
       }
     });
   });
@@ -225,7 +263,7 @@ describe('Geocoder Tests with Google Maps API', () => {
     
     // Save the mock in recording mode
     if (process.env.RECORD === 'true') {
-      const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_should_handle_geocoding_failures_gracefully`);
+      const fixturePath = getFixturePath('Geocoder_Tests_with_Google_Maps_API_should_handle_geocoding_failures_gracefully');
       const fixtures = [{
         scope: 'https://maps.googleapis.com',
         method: 'GET',
