@@ -18,10 +18,14 @@ require('dotenv').config();
 // Connect to database
 connectDB();
 
+// Initialize queue service
+require('./services/queueService');
+
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const violationRoutes = require('./routes/violationRoutes');
 const userRoutes = require('./routes/userRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
@@ -40,10 +44,14 @@ app.use(rateLimiter);
 const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+// Import auth middleware for Bull Board
+const { protect, authorize } = require('./middleware/auth');
+
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/violations', violationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -54,6 +62,34 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Add Bull Board UI for job monitoring
+const { createBullBoard } = require('@bull-board/api');
+const { BullAdapter } = require('@bull-board/api/bullAdapter');
+const { ExpressAdapter } = require('@bull-board/express');
+
+// Import the queue
+const { reportParsingQueue } = require('./services/queueService');
+
+// Setup Bull Board
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/admin/queues');
+
+createBullBoard({
+  queues: [new BullAdapter(reportParsingQueue)],
+  serverAdapter
+});
+
+// Mount Bull Board UI
+// For development, allow public access - CHANGE THIS FOR PRODUCTION!
+if (process.env.NODE_ENV === 'production') {
+  // In production, protect with authentication
+  app.use('/admin/queues', protect, authorize('admin'), serverAdapter.getRouter());
+} else {
+  // In development, allow public access
+  app.use('/admin/queues', serverAdapter.getRouter());
+  console.log('⚠️ WARNING: Queue dashboard accessible without authentication in development mode');
+}
 
 // Error handling middleware
 app.use(errorHandler);

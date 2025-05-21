@@ -8,6 +8,7 @@ This document provides examples of how to use the Syria Violations Tracker API.
 - [Working with Violations](#working-with-violations)
 - [Geospatial Queries](#geospatial-queries)
 - [Filtering and Pagination](#filtering-and-pagination)
+- [Report Parsing with Claude AI](#report-parsing-with-claude-ai)
 - [Error Handling](#error-handling)
 - [Language Support](#language-support)
 
@@ -283,6 +284,131 @@ Common HTTP status codes:
 - 403: Forbidden (insufficient permissions)
 - 404: Not Found (resource doesn't exist)
 - 500: Server Error (unexpected error)
+
+## Report Parsing with Claude AI
+
+The Report Parsing feature allows you to automatically extract structured violation data from human rights reports using Claude AI.
+
+### Submit a Report for Parsing (Requires Editor or Admin Role)
+
+```bash
+curl -X POST http://localhost:5000/api/reports/parse \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "reportText": "On May 15, 2023, an airstrike hit a residential building in eastern Aleppo, killing 5 civilians and injuring 12 others. The Syrian Observatory for Human Rights reported that the attack was carried out at approximately 3:30 PM local time, targeting the Al-Firdous neighborhood. Residents reported seeing military aircraft in the area shortly before the bombing. Local rescue teams spent hours removing bodies from the rubble. Among the dead were two children and an elderly woman. The following day, on May 16, artillery shelling was reported in the rural areas south of Idlib, resulting in damage to agricultural land but no casualties.",
+    "sourceURL": {
+      "name": "Syrian Observatory for Human Rights",
+      "url": "https://example.com/sohr/report/2023/05/16",
+      "reportDate": "2023-05-16"
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "jobId": "614c5387b45d8e001f3e4a12",
+    "estimatedProcessingTime": "2 minutes",
+    "submittedAt": "2023-05-17T14:23:45.123Z"
+  }
+}
+```
+
+### Check Job Status
+
+```bash
+curl -X GET http://localhost:5000/api/reports/jobs/614c5387b45d8e001f3e4a12 \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+Response (while processing):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "614c5387b45d8e001f3e4a12",
+    "status": "processing",
+    "progress": 40,
+    "submittedBy": "John Doe",
+    "submittedAt": "2023-05-17T14:23:45.123Z",
+    "estimatedProcessingTime": "2 minutes",
+    "source": {
+      "name": "Syrian Observatory for Human Rights",
+      "url": "https://example.com/sohr/report/2023/05/16",
+      "reportDate": "2023-05-16"
+    }
+  }
+}
+```
+
+Response (when completed):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "614c5387b45d8e001f3e4a12",
+    "status": "completed",
+    "progress": 100,
+    "submittedBy": "John Doe",
+    "submittedAt": "2023-05-17T14:23:45.123Z",
+    "estimatedProcessingTime": "2 minutes",
+    "source": {
+      "name": "Syrian Observatory for Human Rights",
+      "url": "https://example.com/sohr/report/2023/05/16",
+      "reportDate": "2023-05-16"
+    },
+    "results": {
+      "parsedViolationsCount": 2,
+      "createdViolationsCount": 2,
+      "violations": [
+        "614c5387b45d8e001f3e4a13",
+        "614c5387b45d8e001f3e4a14"
+      ],
+      "failedViolations": []
+    }
+  }
+}
+```
+
+### List All Jobs (Admin Only)
+
+```bash
+curl -X GET http://localhost:5000/api/reports/jobs \
+  -H "Authorization: Bearer ADMIN_TOKEN_HERE"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "count": 2,
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "totalPages": 1,
+    "totalJobs": 2
+  },
+  "data": [
+    {
+      "id": "614c5387b45d8e001f3e4a12",
+      "status": "completed",
+      "progress": 100,
+      "submittedBy": "John Doe",
+      "submittedAt": "2023-05-17T14:23:45.123Z"
+    },
+    {
+      "id": "614c5387b45d8e001f3e4a11",
+      "status": "failed",
+      "progress": 40,
+      "submittedBy": "Jane Smith",
+      "submittedAt": "2023-05-16T10:15:30.421Z"
+    }
+  ]
+}
+```
 
 ## Statistics
 
