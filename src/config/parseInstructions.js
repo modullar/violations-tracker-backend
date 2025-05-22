@@ -130,6 +130,8 @@ const USER_PROMPT = `Please parse the following human rights report and extract 
 5. Use full sentences for descriptions, not bullet points
 6. Do not include coordinates unless explicitly provided in the report
 7. Flag any potentially duplicate violations based on date, location, and type matching
+8. If the report is in Arabic, translate the report to English before parsing
+9. If the report is in English, use the English version of the report for parsing and fill the arabic fields with the proper translation
 
 
 
