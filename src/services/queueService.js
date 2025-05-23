@@ -27,7 +27,7 @@ const reportParsingQueue = new Queue('report-parsing-queue', {
 reportParsingQueue.process(async (job, done) => {
   try {
     // Make sure no unhandled promise rejections occur
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on('unhandledRejection', (reason) => {
       logger.error(`Unhandled Rejection in job processing: ${reason}`, { jobId: job.data.jobId, error: reason });
     });
     
@@ -253,7 +253,18 @@ const addJob = async (jobId) => {
   });
 };
 
+// Cleanup function to close Redis connections
+const cleanup = async () => {
+  try {
+    await reportParsingQueue.close();
+    logger.info('Queue service cleanup completed');
+  } catch (error) {
+    logger.error('Error during queue service cleanup:', error);
+  }
+};
+
 module.exports = {
   addJob,
-  reportParsingQueue
+  reportParsingQueue,
+  cleanup
 };

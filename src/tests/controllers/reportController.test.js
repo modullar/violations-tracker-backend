@@ -24,7 +24,7 @@ describe('Report Controller Tests', () => {
       params: {},
       query: {},
       user: {
-        id: mongoose.Types.ObjectId(),
+        id: new mongoose.Types.ObjectId(),
         role: 'admin'
       }
     };
@@ -48,7 +48,7 @@ describe('Report Controller Tests', () => {
     it('should create a new report parsing job and return job details', async () => {
       // Mock ReportParsingJob.create
       const mockJob = {
-        _id: mongoose.Types.ObjectId(),
+        _id: new mongoose.Types.ObjectId(),
         createdAt: new Date(),
         reportText: req.body.reportText,
         sourceURL: req.body.sourceURL,
@@ -108,7 +108,7 @@ describe('Report Controller Tests', () => {
 
   describe('getJobStatus', () => {
     it('should return job details for a valid job ID', async () => {
-      const jobId = mongoose.Types.ObjectId();
+      const jobId = new mongoose.Types.ObjectId();
       req.params.jobId = jobId;
 
       const mockJob = {
@@ -127,7 +127,7 @@ describe('Report Controller Tests', () => {
         results: {
           parsedViolationsCount: 5,
           createdViolationsCount: 3,
-          violations: [mongoose.Types.ObjectId(), mongoose.Types.ObjectId(), mongoose.Types.ObjectId()],
+          violations: [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()],
           failedViolations: []
         }
       };
@@ -151,7 +151,7 @@ describe('Report Controller Tests', () => {
     });
 
     it('should return 404 if job is not found', async () => {
-      req.params.jobId = mongoose.Types.ObjectId();
+      req.params.jobId = new mongoose.Types.ObjectId();
 
       ReportParsingJob.findById = jest.fn().mockReturnValue({
         populate: jest.fn().mockResolvedValue(null)
@@ -166,15 +166,15 @@ describe('Report Controller Tests', () => {
     });
 
     it('should return 403 if user is not authorized to view the job', async () => {
-      const jobId = mongoose.Types.ObjectId();
+      const jobId = new mongoose.Types.ObjectId();
       req.params.jobId = jobId;
       req.user.role = 'editor';
-      req.user.id = mongoose.Types.ObjectId();
+      req.user.id = new mongoose.Types.ObjectId();
 
       const mockJob = {
         _id: jobId,
         submittedBy: {
-          _id: mongoose.Types.ObjectId(), // Different from req.user.id
+          _id: new mongoose.Types.ObjectId(), // Different from req.user.id
           name: 'Different User'
         }
       };
@@ -198,14 +198,14 @@ describe('Report Controller Tests', () => {
 
       const mockJobs = [
         {
-          _id: mongoose.Types.ObjectId(),
+          _id: new mongoose.Types.ObjectId(),
           status: 'completed',
           progress: 100,
           submittedBy: { name: 'User 1' },
           createdAt: new Date()
         },
         {
-          _id: mongoose.Types.ObjectId(),
+          _id: new mongoose.Types.ObjectId(),
           status: 'processing',
           progress: 50,
           submittedBy: { name: 'User 2' },
