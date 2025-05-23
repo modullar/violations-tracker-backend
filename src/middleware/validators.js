@@ -250,7 +250,22 @@ const violationRules = [
   body('related_violations')
     .optional()
     .isArray()
-    .withMessage('Related violations must be an array')
+    .withMessage('Related violations must be an array'),
+  
+  body('kidnapped_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Kidnapped count must be a non-negative integer'),
+  
+  body('detained_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Detained count must be a non-negative integer'),
+  
+  body('injured_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Injured count must be a non-negative integer'),
 ];
 
 // Batch violations validation
@@ -460,7 +475,22 @@ const batchViolationsRules = [
   body('*.related_violations')
     .optional()
     .isArray()
-    .withMessage('Related violations must be an array')
+    .withMessage('Related violations must be an array'),
+  
+  body('*.kidnapped_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Kidnapped count must be a non-negative integer'),
+  
+  body('*.detained_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Detained count must be a non-negative integer'),
+  
+  body('*.injured_count')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Injured count must be a non-negative integer'),
 ];
 
 // Validation for ID parameter

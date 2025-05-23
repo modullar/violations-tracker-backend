@@ -167,7 +167,10 @@ describe('ClaudeParser Service Tests', () => {
           },
           description: { en: 'Valid description', ar: '' },
           verified: false,
-          certainty_level: 'probable'
+          certainty_level: 'probable',
+          casualties: 2,
+          detained_count: 1,
+          injured_count: 3
         },
         {
           // Missing type
@@ -178,7 +181,8 @@ describe('ClaudeParser Service Tests', () => {
           },
           description: { en: 'Missing type', ar: '' },
           verified: false,
-          certainty_level: 'confirmed'
+          certainty_level: 'confirmed',
+          detained_count: 2
         },
         {
           // Missing location name
@@ -189,7 +193,8 @@ describe('ClaudeParser Service Tests', () => {
           },
           description: { en: 'Missing location name', ar: '' },
           verified: false,
-          certainty_level: 'possible'
+          certainty_level: 'possible',
+          detained_count: 1
         }
       ];
 

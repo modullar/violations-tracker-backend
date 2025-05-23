@@ -69,6 +69,7 @@ describe('Violation Model', () => {
       perpetrator_affiliation: 'assad_regime',
       casualties: 5,
       kidnapped_count: 2,
+      detained_count: 3,
       injured_count: 10,
       displaced_count: 20
     };
@@ -80,6 +81,7 @@ describe('Violation Model', () => {
     expect(savedViolation.type).toBe(validViolation.type);
     expect(savedViolation.description.en).toBe(validViolation.description.en);
     expect(savedViolation.location.coordinates).toEqual(validViolation.location.coordinates);
+    expect(savedViolation.detained_count).toBe(validViolation.detained_count);
   });
 
   it('should create a violation with international_coalition perpetrator', async () => {
@@ -261,6 +263,7 @@ describe('Violation Model', () => {
         ar: 'مرتكب الاختبار'
       },
       kidnapped_count: 3,
+      detained_count: 2,
       injured_count: 7,
       displaced_count: 25,
       perpetrator_affiliation: 'assad_regime'

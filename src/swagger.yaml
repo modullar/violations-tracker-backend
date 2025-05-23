@@ -235,6 +235,7 @@ components:
             - HOME_INVASION
             - EXPLOSION
             - AMBUSH
+            - KIDNAPPING
             - LANDMINE
             - OTHER
         date:
@@ -278,13 +279,17 @@ components:
           type: integer
           minimum: 0
           description: Number of people kidnapped in the incident
+        detained_count:
+          type: integer
+          minimum: 0
+          description: Number of people detained in the incident
         injured_count:
           type: integer
           minimum: 0
           description: Number of people injured in the incident
         displaced_count:
           type: integer
-          minimum: 0 
+          minimum: 0
           description: Number of people displaced in the incident
         victims:
           type: array
