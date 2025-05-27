@@ -317,7 +317,9 @@ describe('Violations API', () => {
         verified: true,
         certainty_level: 'confirmed',
         perpetrator: 'New Perpetrator',
-        casualties: 3
+        casualties: 3,
+        detained_count: 2,
+        injured_count: 5
       };
       
       const res = await request(app)
@@ -505,6 +507,8 @@ describe('Violations API', () => {
           certainty_level: 'confirmed',
           perpetrator: 'Batch Perpetrator 1',
           casualties: 3,
+          detained_count: 1,
+          injured_count: 4,
           source_url: {
             en: 'https://example.com/batch1/en',
             ar: 'https://example.com/batch1/ar'
@@ -524,6 +528,8 @@ describe('Violations API', () => {
           certainty_level: 'probable',
           perpetrator: 'Batch Perpetrator 2',
           casualties: 5,
+          detained_count: 3,
+          injured_count: 7,
           source_url: {
             en: 'https://example.com/batch2/en',
             ar: 'https://example.com/batch2/ar'

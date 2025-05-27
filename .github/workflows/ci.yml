@@ -46,7 +46,7 @@ jobs:
           NODE_ENV: test
           MONGO_URI: mongodb://localhost:27017/violations-tracker-test
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_key' }}
-          HERE_API_KEY: ${{ secrets.HERE_API_KEY }}  # Use GitHub secrets for API key
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}  # Use GitHub secrets for API key
 
   build:
     name: Build
@@ -74,7 +74,7 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.production
           echo "JWT_EXPIRES_IN=30d" >> .env.production
           echo "JWT_COOKIE_EXPIRE=30" >> .env.production
-          echo "HERE_API_KEY=${{ secrets.HERE_API_KEY }}" >> .env.production
+          echo "CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}" >> .env.production
 
       - name: Build application
         run: npm run build

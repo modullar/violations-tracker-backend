@@ -18,6 +18,8 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - **Error handling middleware** for consistent responses
 - **Logging** for API requests and errors
 - **Security features** including rate limiting, CORS, and input sanitization
+- **Claude AI integration** for automated parsing of human rights reports
+- **Background job processing** with Bull and Redis for handling long-running tasks
 
 ## API Endpoints
 
@@ -30,6 +32,7 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - `DELETE /api/violations/:id` - Delete a violation (admin only)
 - `GET /api/violations/radius/:latitude/:longitude/:radius` - Get violations within radius
 - `GET /api/violations/stats` - Get violation statistics
+- `POST /api/violations/batch` - Create multiple violations in batch (requires auth)
 
 ### Authentication
 
@@ -46,13 +49,21 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - `PUT /api/users/:id` - Update a user
 - `DELETE /api/users/:id` - Delete a user
 
+### Report Parsing (New)
+
+- `POST /api/reports/parse` - Submit a report for parsing (editor or admin)
+- `GET /api/reports/jobs/:jobId` - Get status of a specific parsing job
+- `GET /api/reports/jobs` - Get all parsing jobs (admin only)
+
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
 - MongoDB
+- Redis (for background job processing)
 - API key from HERE for geocoding (Optional but recommended for accurate location data)
+- Claude API key (Required for report parsing feature)
 
 ### Installation
 
@@ -82,12 +93,27 @@ PORT=5000
 MONGO_URI=mongodb://localhost:27017/violations-tracker
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=30d
+
+# Geocoding services
 HERE_API_KEY=your_here_api_key_here
 # Alternative geocoding options
 # GOOGLE_API_KEY=your_google_api_key_here
 # MAPQUEST_API_KEY=your_mapquest_api_key_here
+
+# Rate limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
+
+# Claude API for report parsing
+CLAUDE_API_KEY=your_claude_api_key_here
+CLAUDE_API_ENDPOINT=https://api.anthropic.com/v1/messages
+CLAUDE_MODEL=claude-3-5-sonnet-20240620
+CLAUDE_MAX_TOKENS=4096
+
+# Redis for queue processing
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 ```
 
 4. Import sample data (optional)
@@ -199,7 +225,39 @@ npm start
 
 This project is licensed under the ISC License.
 
+## Report Parsing with Claude AI
+
+The system includes a feature to automatically parse human rights reports into structured violation data:
+
+1. **Submit a report**: Send report text to `/api/reports/parse` with optional source information
+2. **Background processing**: Report is processed asynchronously using Claude AI
+3. **Check status**: Monitor job progress via `/api/reports/jobs/:jobId`
+4. **Results**: Upon completion, structured violations are created in the database
+
+### Job Monitoring Dashboard
+
+Administrators can monitor background job processing through a UI dashboard:
+
+- Access the dashboard at `/admin/queues`
+- View job statuses, progress, and results
+- Manage failed jobs and retry processing if needed
+- See real-time queue statistics
+
+Example request:
+```json
+POST /api/reports/parse
+{
+  "reportText": "On May 15, 2023, an airstrike hit a residential building in eastern Aleppo...",
+  "sourceURL": {
+    "name": "Syrian Network for Human Rights",
+    "url": "https://example.com/report",
+    "reportDate": "2023-05-16"
+  }
+}
+```
+
 ## Acknowledgements
 
 - Based on the work of human rights documentation organizations in Syria
 - Uses HERE Geocoding API for location services
+- Uses Anthropic's Claude AI for natural language processing

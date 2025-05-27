@@ -17,6 +17,8 @@ tags:
     description: Operations for user authentication
   - name: Users
     description: Operations for user management (admin only)
+  - name: Reports
+    description: Operations for processing and parsing human rights reports
 
 components:
   securitySchemes:
@@ -26,6 +28,124 @@ components:
       bearerFormat: JWT
 
   schemas:
+    ReportParseRequest:
+      type: object
+      required:
+        - reportText
+      properties:
+        reportText:
+          type: string
+          description: The text of the human rights report to parse
+          minLength: 50
+        sourceURL:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Name of the source
+            url:
+              type: string
+              format: uri
+              description: URL of the source document
+            reportDate:
+              type: string
+              description: Date when the report was published
+    
+    ReportParseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            jobId:
+              type: string
+              description: ID of the parsing job
+            estimatedProcessingTime:
+              type: string
+              description: Estimated time to complete the parsing job
+            submittedAt:
+              type: string
+              format: date-time
+              description: When the job was submitted
+    
+    JobStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, validation, creating_violations, completed, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        submittedBy:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        estimatedProcessingTime:
+          type: string
+        source:
+          type: object
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+            reportDate:
+              type: string
+        error:
+          type: string
+        results:
+          type: object
+          properties:
+            parsedViolationsCount:
+              type: integer
+            createdViolationsCount:
+              type: integer
+            violations:
+              type: array
+              items:
+                type: string
+            failedViolations:
+              type: array
+              items:
+                type: object
+    
+    JobStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/JobStatus'
+    
+    JobListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            totalPages:
+              type: integer
+            totalJobs:
+              type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobStatus'
     LocalizedString:
       type: object
       required:
@@ -115,6 +235,7 @@ components:
             - HOME_INVASION
             - EXPLOSION
             - AMBUSH
+            - KIDNAPPING
             - LANDMINE
             - OTHER
         date:
@@ -158,13 +279,17 @@ components:
           type: integer
           minimum: 0
           description: Number of people kidnapped in the incident
+        detained_count:
+          type: integer
+          minimum: 0
+          description: Number of people detained in the incident
         injured_count:
           type: integer
           minimum: 0
           description: Number of people injured in the incident
         displaced_count:
           type: integer
-          minimum: 0 
+          minimum: 0
           description: Number of people displaced in the incident
         victims:
           type: array
@@ -1016,6 +1141,163 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /reports/parse:
+    post:
+      tags:
+        - Reports
+      summary: Submit a report for parsing
+      description: Submit a human rights report for automated parsing with Claude AI (requires editor or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportParseRequest'
+            example:
+              reportText: "On May 15, 2023, an airstrike hit a residential building in eastern Aleppo, killing 5 civilians and injuring 12 others. The Syrian Observatory for Human Rights reported that the attack was carried out at approximately 3:30 PM local time, targeting the Al-Firdous neighborhood. Residents reported seeing military aircraft in the area shortly before the bombing. Among the dead were two children and an elderly woman. The following day, on May 16, artillery shelling was reported in the rural areas south of Idlib, causing damage to agricultural land but no reported casualties."
+              sourceURL:
+                name: "Syrian Observatory for Human Rights"
+                url: "https://example.com/report-12345"
+                reportDate: "2023-05-16"
+      responses:
+        '200':
+          description: Report submitted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportParseResponse'
+              example:
+                success: true
+                data:
+                  jobId: "614c5387b45d8e001f3e4a12"
+                  estimatedProcessingTime: "2 minutes"
+                  submittedAt: "2023-05-17T14:23:45.123Z"
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/jobs/{jobId}:
+    get:
+      tags:
+        - Reports
+      summary: Get status of a parsing job
+      description: Get the status and results of a report parsing job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+              example:
+                success: true
+                data:
+                  id: "614c5387b45d8e001f3e4a12"
+                  status: "completed"
+                  progress: 100
+                  submittedBy: "John Doe"
+                  submittedAt: "2023-05-17T14:23:45.123Z"
+                  estimatedProcessingTime: "2 minutes"
+                  source:
+                    name: "Syrian Observatory for Human Rights"
+                    url: "https://example.com/report-12345"
+                    reportDate: "2023-05-16"
+                  results:
+                    parsedViolationsCount: 2
+                    createdViolationsCount: 2
+                    violations: ["614c5387b45d8e001f3e4a13", "614c5387b45d8e001f3e4a14"]
+                    failedViolations: []
+        '401':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/jobs:
+    get:
+      tags:
+        - Reports
+      summary: Get all parsing jobs
+      description: Get a list of all report parsing jobs (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [queued, processing, validation, creating_violations, completed, failed]
+      responses:
+        '200':
+          description: Jobs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobListResponse'
         '401':
           description: Not authorized
           content:

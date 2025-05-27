@@ -176,8 +176,14 @@ describe('Validators Middleware', () => {
     it('should validate victim information', () => {
       const victimsRule = violationRules.find(rule => rule.field === 'victims');
       const casualtiesRule = violationRules.find(rule => rule.field === 'casualties');
+      const kidnappedRule = violationRules.find(rule => rule.field === 'kidnapped_count');
+      const detainedRule = violationRules.find(rule => rule.field === 'detained_count');
+      const injuredRule = violationRules.find(rule => rule.field === 'injured_count');
       expect(victimsRule).toBeDefined();
       expect(casualtiesRule).toBeDefined();
+      expect(kidnappedRule).toBeDefined();
+      expect(detainedRule).toBeDefined();
+      expect(injuredRule).toBeDefined();
     });
 
     it('should validate additional fields', () => {
