@@ -12,6 +12,9 @@ dotenv.config({ path: '.env.test' });
 // Import config after loading env vars
 const config = require('../../config/config');
 
+// Import fixture sanitizer
+const fixtureSanitizer = require('./fixtureSanitizer');
+
 // Make sure we have a Google API key for the tests
 console.log('GOOGLE_API_KEY available:', !!config.googleApiKey);
 if (!config.googleApiKey) {
@@ -29,6 +32,31 @@ if (!fs.existsSync(fixturesDir)) {
 
 // Helper to create a unique fixture filename for each test case
 const getFixturePath = (testName) => path.join(fixturesDir, `${testName.replace(/\s+/g, '_')}.json`);
+
+// Helper function to load and restore fixtures
+const loadFixture = (fixturePath) => {
+  if (fs.existsSync(fixturePath)) {
+    console.log(`Using fixture data from: ${fixturePath}`);
+    const fixtureContent = fs.readFileSync(fixturePath, 'utf8');
+    
+    // 🔓 RESTORE API KEYS AT RUNTIME
+    const fixtures = fixtureSanitizer.restoreFixture(fixtureContent, {
+      GOOGLE_API_KEY: config.googleApiKey || 'test-api-key'
+    });
+    
+    if (Array.isArray(fixtures)) {
+      fixtures.forEach(fixture => {
+        nock(fixture.scope)
+          .persist()
+          .intercept(fixture.path, fixture.method, fixture.body)
+          .reply(fixture.status, fixture.response, fixture.headers);
+      });
+    }
+    
+    return true;
+  }
+  return false;
+};
 
 // Define Syrian location test cases with both Arabic and English names
 const syrianLocations = [
@@ -142,6 +170,10 @@ describe('Geocoder Tests with Google Maps API', () => {
       
       console.log(`Recording ${fixtures.length} API interactions to fixture: ${fixturePath}`);
       fs.writeFileSync(fixturePath, JSON.stringify(fixtures, null, 2));
+      
+      // 🔒 SANITIZE THE FIXTURE IMMEDIATELY AFTER RECORDING
+      fixtureSanitizer.sanitizeFixture(fixturePath);
+      
       nock.recorder.clear();
     }
     
@@ -167,16 +199,7 @@ describe('Geocoder Tests with Google Maps API', () => {
         // Try to load Google Maps specific fixtures
         const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
 
-        if (fs.existsSync(fixturePath)) {
-          console.log(`Using fixture data from: ${fixturePath}`);
-          const fixtures = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-          fixtures.forEach(fixture => {
-            nock(fixture.scope)
-              .persist()
-              .intercept(fixture.path, fixture.method, fixture.body)
-              .reply(fixture.status, fixture.response, fixture.headers);
-          });
-        } else {
+        if (!loadFixture(fixturePath)) {
           console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
         }
       }
@@ -220,16 +243,7 @@ describe('Geocoder Tests with Google Maps API', () => {
       const testName = 'should get accurate coordinates for Aleppo city center';
       const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
       
-      if (fs.existsSync(fixturePath)) {
-        console.log(`Using fixture data from: ${fixturePath}`);
-        const fixtures = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-        fixtures.forEach(fixture => {
-          nock(fixture.scope)
-            .persist()
-            .intercept(fixture.path, fixture.method, fixture.body)
-            .reply(fixture.status, fixture.response, fixture.headers);
-        });
-      } else {
+      if (!loadFixture(fixturePath)) {
         console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
       }
     }
@@ -274,6 +288,10 @@ describe('Geocoder Tests with Google Maps API', () => {
         response: { results: [], status: 'ZERO_RESULTS' }
       }];
       fs.writeFileSync(fixturePath, JSON.stringify(fixtures, null, 2));
+      
+      // 🔒 SANITIZE THE FIXTURE IMMEDIATELY AFTER RECORDING
+      fixtureSanitizer.sanitizeFixture(fixturePath);
+      
       console.log(`Saving mock fixture for invalid location test to: ${fixturePath}`);
     }
     
