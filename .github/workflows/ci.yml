@@ -77,6 +77,7 @@ jobs:
           echo "JWT_COOKIE_EXPIRE=30" >> .env.production
           echo "CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}" >> .env.production
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env.production
+          echo "CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}" >> .env.production
 
       - name: Build application
         run: npm run build
