@@ -1,0 +1,11 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Sanitize any fixtures that might contain API keys
+echo "🔍 Checking for API keys in test fixtures..."
+node -e "require('./src/tests/utils/fixtureSanitizer').sanitizeDirectory('./src/tests/fixtures')"
+
+# Check if any files were modified and add them
+git add src/tests/fixtures/*.json 2>/dev/null || true
+
+echo "✅ Pre-commit hook completed"

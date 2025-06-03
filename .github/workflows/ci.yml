@@ -40,13 +40,14 @@ jobs:
       - name: Lint code
         run: npm run lint || true  # Don't fail the build on lint errors for now
         
-      - name: Run tests
+      - name: Run tests with sanitized fixtures
         run: npm run test:coverage
         env:
           NODE_ENV: test
           MONGO_URI: mongodb://localhost:27017/violations-tracker-test
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_key' }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}  # Use GitHub secrets for API key
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # Optional for geocoding tests
 
   build:
     name: Build
@@ -74,6 +75,8 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.production
           echo "JWT_EXPIRES_IN=30d" >> .env.production
           echo "JWT_COOKIE_EXPIRE=30" >> .env.production
+          echo "CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}" >> .env.production
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env.production
           echo "CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}" >> .env.production
 
       - name: Build application

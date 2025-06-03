@@ -2,7 +2,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -33,7 +33,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Aleppo%20Governorate%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Aleppo%20Governorate%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -65,7 +65,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=Aleppo%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -96,7 +96,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=Aleppo%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -128,7 +128,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo+Governorate%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=Aleppo+Governorate%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -159,7 +159,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=Aleppo%20Governorate%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=Aleppo%20Governorate%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -191,7 +191,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=Aleppo",
     "body": "",
     "status": 200,
     "response": [
@@ -222,7 +222,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=Aleppo&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=Aleppo&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {

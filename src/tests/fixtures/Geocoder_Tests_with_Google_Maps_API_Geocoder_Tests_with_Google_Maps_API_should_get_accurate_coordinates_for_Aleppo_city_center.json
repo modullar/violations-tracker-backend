@@ -2,7 +2,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=Aleppo%2C+Aleppo+Governorate%2C+Syria",
     "body": "",
     "status": 200,
     "response": [

@@ -2,7 +2,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=xyznon-existentlocation12345completelyfake%2C+definitelynotarealplace%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=xyznon-existentlocation12345completelyfake%2C+definitelynotarealplace%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -33,7 +33,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake%2C%20definitelynotarealplace%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake%2C%20definitelynotarealplace%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -65,7 +65,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=xyznon-existentlocation12345completelyfake%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=xyznon-existentlocation12345completelyfake%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -96,7 +96,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -128,7 +128,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=definitelynotarealplace%2C+Syria",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=definitelynotarealplace%2C+Syria",
     "body": "",
     "status": 200,
     "response": [
@@ -159,7 +159,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=definitelynotarealplace%2C%20Syria&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=definitelynotarealplace%2C%20Syria&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
@@ -191,7 +191,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?sensor=false&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k&address=xyznon-existentlocation12345completelyfake",
+    "path": "/maps/api/geocode/json?sensor=false&key={{GOOGLE_API_KEY}}&address=xyznon-existentlocation12345completelyfake",
     "body": "",
     "status": 200,
     "response": [
@@ -222,7 +222,7 @@
   {
     "scope": "https://maps.googleapis.com:443",
     "method": "GET",
-    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake&key=AIzaSyBcMCRwoiLUncOS95c4VUp0OJy37-fDx5k",
+    "path": "/maps/api/geocode/json?address=xyznon-existentlocation12345completelyfake&key={{GOOGLE_API_KEY}}",
     "body": "",
     "status": 200,
     "response": {
