@@ -3,6 +3,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { geocodeLocation } = require('../utils/geocoder');
 const logger = require('../config/logger');
+const { createSingleViolation, createBatchViolations } = require('../commands/violations/create');
 
 /**
  * @desc    Get all violations with filtering, sorting, and pagination
@@ -110,74 +111,16 @@ exports.getViolation = asyncHandler(async (req, res, next) => {
  * @access  Private (Editors and Admins)
  */
 exports.createViolation = asyncHandler(async (req, res, next) => {
-  const violationData = req.body;
-
-  // Process geocoding if needed
-  if (violationData.location && violationData.location.name) {
-    try {
-      // Try both Arabic and English location names
-      const locationNameAr = violationData.location.name.ar || '';
-      const locationNameEn = violationData.location.name.en || '';
-      const adminDivisionAr = violationData.location.administrative_division ? 
-        (violationData.location.administrative_division.ar || '') : '';
-      const adminDivisionEn = violationData.location.administrative_division ? 
-        (violationData.location.administrative_division.en || '') : '';
-      
-      // Try Arabic first
-      let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
-      
-      // Try English
-      let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
-      
-      // Use the best result based on quality score
-      let geoData;
-      if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
-        // If we have both results, pick the one with higher quality
-        geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
-        logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} result with quality ${geoData[0].quality || 0}`);
-      } else {
-        // Otherwise use whichever one succeeded
-        geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
-      }
-
-      if (geoData && geoData.length > 0) {
-        violationData.location.coordinates = [
-          geoData[0].longitude,
-          geoData[0].latitude
-        ];
-      } else {
-        return next(
-          new ErrorResponse(
-            `Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names. Please verify the location names.`,
-            400
-          )
-        );
-      }
-    } catch (err) {
-      return next(
-        new ErrorResponse(
-          `Geocoding failed: ${err.message}. Please verify the location names.`,
-          400
-        )
-      );
-    }
-  } else {
-    return next(
-      new ErrorResponse('Location name is required.', 400)
-    );
+  try {
+    const violation = await createSingleViolation(req.body, req.user.id);
+    
+    res.status(201).json({
+      success: true,
+      data: violation
+    });
+  } catch (error) {
+    return next(new ErrorResponse(error.message, 400));
   }
-
-  // Add user to violation data
-  violationData.created_by = req.user.id;
-  violationData.updated_by = req.user.id;
-
-  // Create the violation
-  const violation = await Violation.create(violationData);
-
-  res.status(201).json({
-    success: true,
-    data: violation
-  });
 });
 
 /**
@@ -596,99 +539,19 @@ exports.getViolationsTotal = asyncHandler(async (req, res, next) => {
  * @access  Private (Editors and Admins)
  */
 exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
-  const violationsData = req.body;
-  
-  if (!Array.isArray(violationsData)) {
-    return next(new ErrorResponse('Request body must be an array of violations', 400));
+  try {
+    const result = await createBatchViolations(req.body, req.user.id);
+    
+    res.status(201).json({
+      success: true,
+      count: result.violations.length,
+      data: result.violations,
+      errors: result.errors
+    });
+  } catch (error) {
+    if (error instanceof ErrorResponse) {
+      return next(error);
+    }
+    return next(new ErrorResponse(error.message, 400));
   }
-
-  if (violationsData.length === 0) {
-    return next(new ErrorResponse('At least one violation must be provided', 400));
-  }
-
-  // Process each violation
-  const errors = [];
-  const processedViolations = await Promise.all(
-    violationsData.map(async (violationData, index) => {
-      if (violationData.location && violationData.location.name) {
-        try {
-          // Try both Arabic and English location names
-          const locationNameAr = violationData.location.name.ar || '';
-          const locationNameEn = violationData.location.name.en || '';
-          const adminDivisionAr = violationData.location.administrative_division ? 
-            (violationData.location.administrative_division.ar || '') : '';
-          const adminDivisionEn = violationData.location.administrative_division ? 
-            (violationData.location.administrative_division.en || '') : '';
-          
-          logger.info(`Attempting to geocode location: ${locationNameAr || locationNameEn}`);
-          
-          // Try Arabic first
-          let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
-          
-          // Try English
-          let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
-          
-          // Use the best result based on quality score
-          let geoData;
-          if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
-            // If we have both results, pick the one with higher quality
-            geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
-            logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} result with quality ${geoData[0].quality || 0}`);
-          } else {
-            // Otherwise use whichever one succeeded
-            geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
-          }
-
-          if (geoData && geoData.length > 0) {
-            violationData.location.coordinates = [
-              geoData[0].longitude,
-              geoData[0].latitude
-            ];
-            logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
-          } else {
-            errors.push({
-              index,
-              error: `Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names.`
-            });
-            return null;
-          }
-        } catch (err) {
-          errors.push({
-            index,
-            error: `Geocoding failed for location: ${err.message}`
-          });
-          return null;
-        }
-      } else {
-        errors.push({
-          index,
-          error: 'Location name is required'
-        });
-        return null;
-      }
-
-      // Add user to violation data
-      violationData.created_by = req.user.id;
-      violationData.updated_by = req.user.id;
-
-      return violationData;
-    })
-  );
-
-  // Filter out failed violations
-  const validViolations = processedViolations.filter(v => v !== null);
-
-  if (validViolations.length === 0) {
-    return next(new ErrorResponse('All violations failed validation', 400, { errors }));
-  }
-
-  // Create all valid violations in a single operation
-  const violations = await Violation.create(validViolations);
-
-  res.status(201).json({
-    success: true,
-    count: violations.length,
-    data: violations,
-    errors: errors.length > 0 ? errors : undefined
-  });
 });
