@@ -221,9 +221,23 @@ For production deployment:
 npm start
 ```
 
+## Contributing
+
+We welcome contributions to the Syria Violations Tracker Backend! This is an open source project dedicated to documenting human rights violations and supporting accountability efforts.
+
+If you'd like to contribute, please contact us at **info@syrianotion.live** for guidance on how to get involved. Whether you're interested in:
+
+- Reporting bugs or suggesting features
+- Contributing code improvements
+- Helping with documentation
+- Providing translations
+- Sharing expertise in human rights documentation
+
+We'd love to hear from you and discuss how you can contribute to this important project.
+
 ## License
 
-This project is licensed under the ISC License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Report Parsing with Claude AI
 
