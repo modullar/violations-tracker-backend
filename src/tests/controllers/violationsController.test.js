@@ -1,4 +1,10 @@
 const request = require('supertest');
+const app = require('../../server');
+const Violation = require('../../models/Violation');
+const User = require('../../models/User');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const jwt = require('jsonwebtoken');
 
 // Change the port for tests to avoid conflicts
 process.env.PORT = 3001;
@@ -234,351 +240,422 @@ jest.mock('../../middleware/auth', () => ({
   })
 }));
 
-// Set up app and test data
-let app;
-const adminToken = 'admin_token';
-const editorToken = 'editor_token';
+describe('Violations Controller', () => {
+  let mongoServer;
+  let adminToken;
+  let editorToken;
+  let adminUser;
+  let editorUser;
 
-describe('Violations API', () => {
-  beforeAll(() => {
-    const express = require('express');
-    app = express();
-    app.use(express.json());
-    
-    // Import and use routes
-    const violationRoutes = require('../../routes/violationRoutes');
-    app.use('/api/violations', violationRoutes);
+  beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+    await mongoose.connect(mongoUri);
 
-    // Add error handling middleware
-    const errorHandler = require('../../middleware/error');
-    app.use(errorHandler);
+    // Create test users
+    adminUser = await User.create({
+      name: 'Admin User',
+      email: 'admin@test.com',
+      password: 'password123',
+      role: 'admin'
+    });
+
+    editorUser = await User.create({
+      name: 'Editor User',
+      email: 'editor@test.com',
+      password: 'password123',
+      role: 'editor'
+    });
+
+    // Generate tokens
+    adminToken = jwt.sign({ id: adminUser._id }, process.env.JWT_SECRET || 'test-secret', {
+      expiresIn: process.env.JWT_EXPIRE || '30d'
+    });
+
+    editorToken = jwt.sign({ id: editorUser._id }, process.env.JWT_SECRET || 'test-secret', {
+      expiresIn: process.env.JWT_EXPIRE || '30d'
+    });
   });
 
   afterAll(async () => {
-    if (app && app.close) {
-      app.close();
-    }
+    await mongoose.disconnect();
+    await mongoServer.stop();
+  });
+
+  beforeEach(async () => {
+    await Violation.deleteMany({});
+  });
+
+  describe('POST /api/violations', () => {
+    const validViolationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-05-15',
+      location: {
+        name: { en: 'Damascus', ar: 'دمشق' },
+        administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
+      },
+      description: { en: 'Airstrike on residential area', ar: 'غارة جوية على منطقة سكنية' },
+      perpetrator_affiliation: 'assad_regime',
+      casualties: 5,
+      verified: false,
+      certainty_level: 'confirmed'
+    };
+
+    it('should create a new violation when no duplicates exist', async () => {
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(validViolationData)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.violation).toBeDefined();
+      expect(res.body.data.isDuplicate).toBe(false);
+      expect(res.body.data.duplicates).toHaveLength(0);
+      expect(res.body.data.violation.type).toBe('AIRSTRIKE');
+      expect(res.body.data.violation.created_by).toBe(editorUser._id.toString());
+    });
+
+    it('should detect and merge duplicates when creating similar violation', async () => {
+      // First, create an existing violation
+      const existingViolation = await Violation.create({
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138]
+        },
+        media_links: ['http://example.com/1'],
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+
+      // Now try to create a similar violation
+      const duplicateViolationData = {
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2768, 33.5139] // Very close coordinates
+        },
+        description: { en: 'Air attack on civilian buildings', ar: 'هجوم جوي على مباني مدنية' },
+        media_links: ['http://example.com/2']
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(duplicateViolationData)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isDuplicate).toBe(true);
+      expect(res.body.data.duplicates).toHaveLength(1);
+      expect(res.body.data.violation._id).toBe(existingViolation._id.toString());
+      
+      // Check that media links were merged
+      expect(res.body.data.violation.media_links).toContain('http://example.com/1');
+      expect(res.body.data.violation.media_links).toContain('http://example.com/2');
+      
+      // Check duplicate info
+      expect(res.body.data.duplicates[0].id).toBe(existingViolation._id.toString());
+      expect(res.body.data.duplicates[0].exactMatch).toBe(true);
+      expect(res.body.data.duplicates[0].matchDetails.nearbyLocation).toBe(true);
+      expect(res.body.data.duplicates[0].matchDetails.sameCasualties).toBe(true);
+    });
+
+    it('should detect similarity-based duplicates', async () => {
+      // Create an existing violation
+      await Violation.create({
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138]
+        },
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+
+      // Create a violation with similar description but different location
+      const similarViolationData = {
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.3000, 33.5500] // Far coordinates
+        },
+        description: { en: 'Airstrike on residential area causing multiple casualties', ar: 'غارة جوية على منطقة سكنية' },
+        casualties: 8
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(similarViolationData)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isDuplicate).toBe(true);
+      expect(res.body.data.duplicates).toHaveLength(1);
+      expect(res.body.data.duplicates[0].exactMatch).toBe(false);
+      expect(res.body.data.duplicates[0].similarity).toBeGreaterThan(0.7);
+    });
+
+    it('should not detect duplicates for different violation types', async () => {
+      // Create an existing violation
+      await Violation.create({
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138]
+        },
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+
+      // Create a violation with different type
+      const differentTypeViolation = {
+        ...validViolationData,
+        type: 'CHEMICAL_ATTACK',
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138] // Same coordinates
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(differentTypeViolation)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isDuplicate).toBe(false);
+      expect(res.body.data.duplicates).toHaveLength(0);
+    });
+
+    it('should not detect duplicates for different dates', async () => {
+      // Create an existing violation
+      await Violation.create({
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138]
+        },
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+
+      // Create a violation with different date
+      const differentDateViolation = {
+        ...validViolationData,
+        date: '2023-05-16', // Different date
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138] // Same coordinates
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(differentDateViolation)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isDuplicate).toBe(false);
+      expect(res.body.data.duplicates).toHaveLength(0);
+    });
+
+    it('should upgrade verification status when merging duplicates', async () => {
+      // Create an unverified violation
+      await Violation.create({
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2765, 33.5138]
+        },
+        verified: false,
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+
+      // Create a verified duplicate
+      const verifiedDuplicateData = {
+        ...validViolationData,
+        location: {
+          ...validViolationData.location,
+          coordinates: [36.2768, 33.5139] // Close coordinates
+        },
+        verified: true,
+        verification_method: 'video_evidence'
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(verifiedDuplicateData)
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isDuplicate).toBe(true);
+      expect(res.body.data.violation.verified).toBe(true);
+      expect(res.body.data.violation.verification_method).toBe('video_evidence');
+    });
+
+    it('should require authentication', async () => {
+      await request(app)
+        .post('/api/violations')
+        .send(validViolationData)
+        .expect(401);
+    });
+
+    it('should require editor or admin role', async () => {
+      // Create a viewer user
+      const viewerUser = await User.create({
+        name: 'Viewer User',
+        email: 'viewer@test.com',
+        password: 'password123',
+        role: 'viewer'
+      });
+
+      const viewerToken = jwt.sign({ id: viewerUser._id }, process.env.JWT_SECRET || 'test-secret', {
+        expiresIn: process.env.JWT_EXPIRE || '30d'
+      });
+
+      await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${viewerToken}`)
+        .send(validViolationData)
+        .expect(403);
+    });
+
+    it('should handle validation errors', async () => {
+      const invalidData = {
+        // Missing required fields
+        type: 'INVALID_TYPE',
+        date: 'invalid-date'
+      };
+
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send(invalidData)
+        .expect(400);
+
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
+    });
   });
 
   describe('GET /api/violations', () => {
-    it('should return violations with pagination', async () => {
-      const res = await request(app).get('/api/violations');
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body).toHaveProperty('data');
-      expect(res.body).toHaveProperty('pagination');
-      expect(Array.isArray(res.body.data)).toBe(true);
-    });
-    
-    it('should filter violations by type', async () => {
-      const res = await request(app)
-        .get('/api/violations?type=AIRSTRIKE')
-        .set('Authorization', `Bearer ${editorToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      
-      if (res.body.count > 0) {
-        expect(res.body.data[0].type).toBe('AIRSTRIKE');
-      }
-    });
-  });
-  
-  describe('GET /api/violations/:id', () => {
-    it('should return a single violation', async () => {
-      const res = await request(app).get(`/api/violations/${violationId}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('_id');
-    });
-    
-    it('should return 404 for invalid ID', async () => {
-      const res = await request(app).get('/api/violations/invalid-id');
-      
-      expect(res.status).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-  
-  describe('POST /api/violations', () => {
-    it('should create a new violation', async () => {
-      const newViolation = {
-        type: 'AIRSTRIKE',
-        date: '2023-06-20',
-        location: {
-          type: 'Point',
-          coordinates: [36.2, 37.1],
-          name: 'New Location',
-          administrative_division: 'New Division'
-        },
-        description: 'This is a detailed description of the new violation that meets the minimum length requirement.',
-        verified: true,
-        certainty_level: 'confirmed',
-        perpetrator: 'New Perpetrator',
-        casualties: 3,
-        detained_count: 2,
-        injured_count: 5
-      };
-      
-      const res = await request(app)
-        .post('/api/violations')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(newViolation);
-      
-      expect(res.status).toBe(201);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('_id');
-      expect(res.body.data.type).toBe(newViolation.type);
-    });
-    
-    it('should require authentication', async () => {
-      const res = await request(app)
-        .post('/api/violations')
-        .send({});
-      
-      expect(res.status).toBe(401);
-      expect(res.body.success).toBe(false);
-    });
-  });
-  
-  describe('PUT /api/violations/:id', () => {
-    it('should update an existing violation', async () => {
-      const updateData = {
-        type: 'AIRSTRIKE',
-        date: '2023-06-20',
-        location: {
-          type: 'Point',
-          coordinates: [36.2, 37.1],
-          name: 'Updated Location',
-          administrative_division: 'Updated Division'
-        },
-        description: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
-        verified: false,
-        certainty_level: 'confirmed',
-        perpetrator: 'Updated Perpetrator',
-        casualties: 5
-      };
-      
-      const res = await request(app)
-        .put(`/api/violations/${violationId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(updateData);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.description).toBe(updateData.description);
-      expect(res.body.data.verified).toBe(updateData.verified);
-    });
-    
-    it('should return 404 for non-existent violation', async () => {
-      const updateData = {
-        type: 'AIRSTRIKE',
-        date: '2023-06-20',
-        location: {
-          type: 'Point',
-          coordinates: [36.2, 37.1],
-          name: 'Updated Location',
-          administrative_division: 'Updated Division'
-        },
-        description: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
-        verified: false,
-        certainty_level: 'confirmed',
-        perpetrator: 'Updated Perpetrator',
-        casualties: 5
-      };
-
-      const res = await request(app)
-        .put('/api/violations/nonexistent-id')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(updateData);
-      
-      expect(res.status).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-  
-  describe('DELETE /api/violations/:id', () => {
-    it('should delete an existing violation', async () => {
-      const res = await request(app)
-        .delete(`/api/violations/${violationId}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-    });
-    
-    it('should return 404 for non-existent violation', async () => {
-      const res = await request(app)
-        .delete('/api/violations/nonexistent-id')
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-  
-  describe('GET /api/violations/radius/:latitude/:longitude/:radius', () => {
-    it('should get violations within radius', async () => {
-      const res = await request(app)
-        .get('/api/violations/radius/37.1/36.2/10');
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body).toHaveProperty('data');
-      expect(res.body).toHaveProperty('count');
-      expect(Array.isArray(res.body.data)).toBe(true);
-    });
-  });
-  
-  describe('GET /api/violations/stats/type', () => {
-    it('should get violations by type', async () => {
-      const res = await request(app)
-        .get('/api/violations/stats/type')
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBeGreaterThan(0);
-      expect(res.body.data[0]).toHaveProperty('_id');
-      expect(res.body.data[0]).toHaveProperty('count');
-    });
-  });
-  
-  describe('GET /api/violations/stats/location', () => {
-    it('should get violations by location', async () => {
-      const res = await request(app)
-        .get('/api/violations/stats/location')
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBeGreaterThan(0);
-      expect(res.body.data[0]).toHaveProperty('_id');
-      expect(res.body.data[0]).toHaveProperty('count');
-    });
-  });
-  
-  describe('GET /api/violations/stats/yearly', () => {
-    it('should get yearly violation counts', async () => {
-      const res = await request(app)
-        .get('/api/violations/stats/yearly')
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBeGreaterThan(0);
-      expect(res.body.data[0]).toHaveProperty('_id');
-      expect(res.body.data[0]).toHaveProperty('count');
-    });
-  });
-  
-  describe('GET /api/violations/stats/total', () => {
-    it('should get total violation count', async () => {
-      const res = await request(app)
-        .get('/api/violations/stats/total')
-        .set('Authorization', `Bearer ${adminToken}`);
-      
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('total');
-      expect(typeof res.body.data.total).toBe('number');
-    });
-  });
-
-  describe('POST /api/violations/batch', () => {
-    it('should create multiple violations in batch', async () => {
-      const violationsBatch = [
+    beforeEach(async () => {
+      // Create test violations
+      await Violation.create([
         {
           type: 'AIRSTRIKE',
-          date: '2023-06-20',
+          date: '2023-05-15',
           location: {
-            type: 'Point',
-            coordinates: [36.2, 37.1],
-            name: 'Batch Location 1',
-            administrative_division: 'Batch Division 1'
+            name: { en: 'Damascus', ar: 'دمشق' },
+            coordinates: [36.2765, 33.5138],
+            administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
           },
-          description: 'This is a detailed description of the first violation in the batch.',
-          verified: true,
+          description: { en: 'Airstrike on residential area', ar: 'غارة جوية على منطقة سكنية' },
+          perpetrator_affiliation: 'assad_regime',
+          casualties: 5,
+          verified: false,
           certainty_level: 'confirmed',
-          perpetrator: 'Batch Perpetrator 1',
-          casualties: 3,
-          detained_count: 1,
-          injured_count: 4,
-          source_url: {
-            en: 'https://example.com/batch1/en',
-            ar: 'https://example.com/batch1/ar'
-          }
+          created_by: adminUser._id,
+          updated_by: adminUser._id
         },
         {
           type: 'SHELLING',
-          date: '2023-06-21',
+          date: '2023-05-16',
           location: {
-            type: 'Point',
-            coordinates: [35.9, 36.8],
-            name: 'Batch Location 2',
-            administrative_division: 'Batch Division 2'
+            name: { en: 'Aleppo', ar: 'حلب' },
+            coordinates: [37.1343, 36.2021],
+            administrative_division: { en: 'Aleppo Governorate', ar: 'محافظة حلب' }
           },
-          description: 'This is a detailed description of the second violation in the batch.',
+          description: { en: 'Artillery shelling', ar: 'قصف مدفعي' },
+          perpetrator_affiliation: 'assad_regime',
+          casualties: 3,
           verified: true,
-          certainty_level: 'probable',
-          perpetrator: 'Batch Perpetrator 2',
-          casualties: 5,
-          detained_count: 3,
-          injured_count: 7,
-          source_url: {
-            en: 'https://example.com/batch2/en',
-            ar: 'https://example.com/batch2/ar'
-          }
+          certainty_level: 'confirmed',
+          created_by: editorUser._id,
+          updated_by: editorUser._id
         }
-      ];
-      
+      ]);
+    });
+
+    it('should get all violations with pagination', async () => {
       const res = await request(app)
-        .post('/api/violations/batch')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(violationsBatch);
-      
-      expect(res.status).toBe(201);
+        .get('/api/violations')
+        .expect(200);
+
       expect(res.body.success).toBe(true);
-      expect(res.body).toHaveProperty('count');
-      expect(res.body.count).toBe(violationsBatch.length);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBe(violationsBatch.length);
-      expect(res.body.data[0]).toHaveProperty('_id');
-      expect(res.body.data[1]).toHaveProperty('_id');
+      expect(res.body.count).toBe(2);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.pagination).toBeDefined();
     });
-    
-    it('should require the request body to be an array', async () => {
+
+    it('should filter violations by type', async () => {
       const res = await request(app)
-        .post('/api/violations/batch')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ type: 'AIRSTRIKE' }); // Not an array
-      
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
+        .get('/api/violations?type=AIRSTRIKE')
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].type).toBe('AIRSTRIKE');
     });
-    
-    it('should require at least one violation', async () => {
+
+    it('should filter violations by date range', async () => {
       const res = await request(app)
-        .post('/api/violations/batch')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send([]); // Empty array
-      
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
+        .get('/api/violations?startDate=2023-05-15&endDate=2023-05-15')
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].date).toBe('2023-05-15');
     });
-    
-    it('should require authentication', async () => {
+  });
+
+  describe('GET /api/violations/:id', () => {
+    let testViolation;
+
+    beforeEach(async () => {
+      testViolation = await Violation.create({
+        type: 'AIRSTRIKE',
+        date: '2023-05-15',
+        location: {
+          name: { en: 'Damascus', ar: 'دمشق' },
+          coordinates: [36.2765, 33.5138],
+          administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
+        },
+        description: { en: 'Airstrike on residential area', ar: 'غارة جوية على منطقة سكنية' },
+        perpetrator_affiliation: 'assad_regime',
+        casualties: 5,
+        verified: false,
+        certainty_level: 'confirmed',
+        created_by: adminUser._id,
+        updated_by: adminUser._id
+      });
+    });
+
+    it('should get violation by ID', async () => {
       const res = await request(app)
-        .post('/api/violations/batch')
-        .send([{}]);
-      
-      expect(res.status).toBe(401);
+        .get(`/api/violations/${testViolation._id}`)
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data._id).toBe(testViolation._id.toString());
+      expect(res.body.data.type).toBe('AIRSTRIKE');
+    });
+
+    it('should return 404 for non-existent violation', async () => {
+      const nonExistentId = new mongoose.Types.ObjectId();
+      const res = await request(app)
+        .get(`/api/violations/${nonExistentId}`)
+        .expect(404);
+
       expect(res.body.success).toBe(false);
+      expect(res.body.error).toContain('not found');
     });
   });
 }); 

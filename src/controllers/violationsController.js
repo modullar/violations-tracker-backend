@@ -86,11 +86,15 @@ exports.getViolation = asyncHandler(async (req, res, next) => {
  */
 exports.createViolation = asyncHandler(async (req, res, next) => {
   try {
-    const violation = await createSingleViolation(req.body, req.user.id);
+    const result = await createSingleViolation(req.body, req.user.id);
     
     res.status(201).json({
       success: true,
-      data: violation
+      data: {
+        violation: result.violation,
+        isDuplicate: result.isDuplicate,
+        duplicates: result.duplicates
+      }
     });
   } catch (error) {
     return next(new ErrorResponse(error.message, 400));

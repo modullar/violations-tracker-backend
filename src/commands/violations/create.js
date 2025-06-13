@@ -2,6 +2,7 @@ const Violation = require('../../models/Violation');
 const { geocodeLocation } = require('../../utils/geocoder');
 const logger = require('../../config/logger');
 const ErrorResponse = require('../../utils/errorResponse');
+const DuplicateDetectionService = require('../../services/duplicateDetection');
 
 /**
  * Geocode a location based on Arabic and English names
@@ -55,7 +56,7 @@ const geocodeLocationData = async (location) => {
  * Create a single violation
  * @param {Object} violationData - Violation data
  * @param {String} userId - User ID creating the violation
- * @returns {Promise<Object>} - Created violation
+ * @returns {Promise<Object>} - Created violation or merged duplicate with duplicate info
  */
 const createSingleViolation = async (violationData, userId) => {
   // Geocode location if provided
@@ -68,8 +69,26 @@ const createSingleViolation = async (violationData, userId) => {
   violationData.created_by = userId;
   violationData.updated_by = userId;
 
-  // Create and return the violation
-  return await Violation.create(violationData);
+  // Check for duplicates
+  const duplicateResult = await DuplicateDetectionService.processViolationWithDuplicateCheck(violationData);
+  
+  if (duplicateResult.isDuplicate) {
+    // Duplicate found and merged
+    logger.info(`Violation merged with existing duplicate. Updated violation ID: ${duplicateResult.violation._id}`);
+    return {
+      violation: duplicateResult.violation,
+      isDuplicate: true,
+      duplicates: duplicateResult.duplicates
+    };
+  }
+
+  // No duplicates found, create new violation
+  const newViolation = await Violation.create(violationData);
+  return {
+    violation: newViolation,
+    isDuplicate: false,
+    duplicates: []
+  };
 };
 
 /**
