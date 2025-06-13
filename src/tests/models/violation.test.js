@@ -457,4 +457,80 @@ describe('Verification Method Validation', () => {
     const violation = new Violation(violationData);
     await expect(violation.validate()).resolves.not.toThrow();
   });
+});
+
+describe('Reported Date Validation', () => {
+  it('should accept a reported date within 24 hours in the future', async () => {
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + 12 * 60 * 60 * 1000); // 12 hours in the future
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      reported_date: futureDate.toISOString().split('T')[0],
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).resolves.not.toThrow();
+  });
+
+  it('should reject a reported date more than 24 hours in the future', async () => {
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + 25 * 60 * 60 * 1000); // 25 hours in the future
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      reported_date: futureDate.toISOString().split('T')[0],
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).rejects.toThrow('Reported date cannot be more than 24 hours in the future');
+  });
+
+  it('should accept a reported date in the past', async () => {
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours in the past
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      reported_date: pastDate.toISOString().split('T')[0],
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).resolves.not.toThrow();
+  });
 }); 

@@ -141,9 +141,14 @@ const ViolationSchema = new mongoose.Schema({
     type: Date,
     validate: {
       validator: function(value) {
-        return !value || value <= new Date();
+        if (!value) return true;
+        const now = new Date();
+        const reportedDate = new Date(value);
+        // Allow for a 24-hour buffer to account for timezone differences
+        const buffer = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        return reportedDate <= new Date(now.getTime() + buffer);
       },
-      message: 'Reported date cannot be in the future'
+      message: 'Reported date cannot be more than 24 hours in the future'
     }
   },
   location: {
