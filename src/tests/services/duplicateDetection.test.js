@@ -5,11 +5,15 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 
 describe('DuplicateDetectionService', () => {
   let mongoServer;
+  let testUserId;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     await mongoose.connect(mongoUri);
+    
+    // Create a test user ID
+    testUserId = new mongoose.Types.ObjectId();
   });
 
   afterAll(async () => {
@@ -169,7 +173,7 @@ describe('DuplicateDetectionService', () => {
           coordinates: [36.3000, 33.5500], // Far coordinates
           administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
         },
-        description: { en: 'Airstrike on residential area with multiple casualties', ar: 'غارة جوية على منطقة سكنية مع ضحايا متعددة' },
+        description: { en: 'Airstrike on residential area with casualties', ar: 'غارة جوية على منطقة سكنية مع ضحايا' },
         perpetrator: { en: 'Assad Forces', ar: 'قوات الأسد' },
         perpetrator_affiliation: 'assad_regime',
         source: { en: 'Social media', ar: 'وسائل التواصل الاجتماعي' },
@@ -257,7 +261,7 @@ describe('DuplicateDetectionService', () => {
       const newViolation = {
         media_links: ['http://example.com/2', 'http://example.com/3'], // One duplicate, one new
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -282,7 +286,7 @@ describe('DuplicateDetectionService', () => {
           { _id: 'victim3', name: { en: 'Bob Johnson', ar: 'بوب جونسون' } } // New
         ],
         casualties: 3,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -307,7 +311,7 @@ describe('DuplicateDetectionService', () => {
           { en: 'hospital', ar: 'مستشفى' } // New
         ],
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -319,20 +323,21 @@ describe('DuplicateDetectionService', () => {
 
     it('should merge source information correctly', () => {
       const existing = {
-        source: 'Source A',
+        source: { en: 'Source A', ar: 'مصدر أ' },
         source_urls: ['http://source-a.com'],
         casualties: 5
       };
 
       const newViolation = {
-        source: 'Source B',
+        source: { en: 'Source B', ar: 'مصدر ب' },
         source_urls: ['http://source-b.com', 'http://source-c.com'],
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
-      expect(merged.source).toBe('Source A, Source B');
+      expect(merged.source.en).toBe('Source A, Source B');
+      expect(merged.source.ar).toBe('مصدر أ, مصدر ب');
       expect(merged.source_urls).toHaveLength(3);
       expect(merged.source_urls).toContain('http://source-a.com');
       expect(merged.source_urls).toContain('http://source-b.com');
@@ -349,7 +354,7 @@ describe('DuplicateDetectionService', () => {
         verified: true,
         verification_method: 'video_evidence',
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -367,7 +372,7 @@ describe('DuplicateDetectionService', () => {
       const newViolation = {
         verified: false,
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -388,7 +393,7 @@ describe('DuplicateDetectionService', () => {
         kidnapped_count: 1, // Lower
         detained_count: 5, // Higher
         injured_count: 8, // Lower
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -410,7 +415,7 @@ describe('DuplicateDetectionService', () => {
           ar: 'وصف أطول وأكثر تفصيلاً للحادثة' 
         },
         casualties: 7,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
@@ -427,11 +432,11 @@ describe('DuplicateDetectionService', () => {
 
       const newViolation = {
         casualties: 7,
-        created_by: 'newuser'
+        created_by: testUserId
       };
 
       const merged = DuplicateDetectionService.mergeViolationData(existing, newViolation);
-      expect(merged.updated_by).toBe('newuser');
+      expect(merged.updated_by).toBe(testUserId);
       expect(merged.updated_at).toBeInstanceOf(Date);
       expect(merged.updated_at.getTime()).toBeGreaterThan(new Date('2023-01-01').getTime());
     });
@@ -476,7 +481,7 @@ describe('DuplicateDetectionService', () => {
         source_url: { en: 'http://example.com/source2', ar: 'http://example.com/source2-ar' },
         casualties: 5,
         media_links: ['http://example.com/2'],
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const result = await DuplicateDetectionService.processViolationWithDuplicateCheck(newViolation);
@@ -503,7 +508,7 @@ describe('DuplicateDetectionService', () => {
         source: { en: 'Medical report', ar: 'تقرير طبي' },
         source_url: { en: 'http://example.com/source3', ar: 'http://example.com/source3-ar' },
         casualties: 3,
-        created_by: 'user123'
+        created_by: testUserId
       };
 
       const result = await DuplicateDetectionService.processViolationWithDuplicateCheck(newViolation);
