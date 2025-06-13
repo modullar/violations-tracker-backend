@@ -24,7 +24,7 @@
     "migrate:up": "migrate-mongo up",
     "migrate:down": "migrate-mongo down",
     "migrate:create": "migrate-mongo create",
-    "prepare": "husky"
+    "postinstall": "[ \"$NODE_ENV\" != \"production\" ] && husky || echo \"Skipping husky installation in production\""
   },
   "keywords": [
     "syria",
