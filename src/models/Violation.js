@@ -189,6 +189,17 @@ const ViolationSchema = new mongoose.Schema({
       message: 'One or more source URLs are invalid or exceed 500 characters'
     }
   },
+  source_urls: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: function(v) {
+        if (!v) return true;
+        return v.every(url => /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url));
+      },
+      message: 'One or more source URLs are invalid'
+    }
+  },
   verified: {
     type: Boolean,
     required: [true, 'Verification status is required'],

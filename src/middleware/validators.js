@@ -50,6 +50,11 @@ const userLoginRules = [
 
 // Violation creation/update validation rules
 const violationRules = [
+  body('action')
+    .optional()
+    .isIn(['create', 'merge'])
+    .withMessage('Action must be either "create" or "merge"'),
+  
   body('type')
     .notEmpty()
     .withMessage('Violation type is required')
@@ -153,6 +158,16 @@ const violationRules = [
     .withMessage('Arabic source URL must be a valid URL')
     .isLength({ max: 500 })
     .withMessage('Arabic source URL cannot be more than 500 characters'),
+  
+  body('source_urls')
+    .optional()
+    .isArray()
+    .withMessage('Source URLs must be an array'),
+  
+  body('source_urls.*')
+    .optional()
+    .isURL()
+    .withMessage('Source URLs must be valid URLs'),
   
   body('verified')
     .notEmpty()
@@ -270,12 +285,94 @@ const violationRules = [
 
 // Batch violations validation
 const batchViolationsRules = [
-  body()
+  body('action')
+    .optional()
+    .isIn(['create', 'merge'])
+    .withMessage('Action must be either "create" or "merge"'),
+    
+  body('violations')
+    .optional()
     .isArray()
-    .withMessage('Request body must be an array of violations')
+    .withMessage('Violations must be an array when action is specified')
+    .custom((value, { req }) => {
+      // If violations array is present, it should not be empty
+      if (value && value.length === 0) {
+        throw new Error('At least one violation must be provided');
+      }
+      return true;
+    }),
+    
+  body()
+    .custom((value) => {
+      // If action is specified, violations array should be present
+      if (value.action && !value.violations) {
+        throw new Error('When action is specified, violations array is required');
+      }
+      // If no action specified, body should be an array (backward compatibility)
+      if (!value.action && !Array.isArray(value)) {
+        throw new Error('Request body must be an array of violations');
+      }
+      // If body is array (old format), it should not be empty
+      if (Array.isArray(value) && value.length === 0) {
+        throw new Error('At least one violation must be provided');
+      }
+      return true;
+    }),
+  
+  body('violations.*.type')
+    .if(body('violations').exists())
     .notEmpty()
-    .withMessage('At least one violation must be provided'),
+    .withMessage('Violation type is required')
+    .isIn([
+      'AIRSTRIKE', 'CHEMICAL_ATTACK', 'DETENTION', 'DISPLACEMENT', 
+      'EXECUTION', 'SHELLING', 'SIEGE', 'TORTURE', 'MURDER', 
+      'SHOOTING', 'HOME_INVASION', 'EXPLOSION', 'AMBUSH', 'KIDNAPPING', 'LANDMINE', 'OTHER'
+    ])
+    .withMessage('Invalid violation type'),
+  
+  body('violations.*.date')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Incident date is required')
+    .isISO8601()
+    .withMessage('Date must be a valid ISO date (YYYY-MM-DD)')
+    .custom(value => {
+      if (new Date(value) > new Date()) {
+        throw new Error('Incident date cannot be in the future');
+      }
+      return true;
+    }),
+  
+  body('violations.*.location')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Location is required')
+    .isObject()
+    .withMessage('Location must be an object'),
+  
+  body('violations.*.description')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Description is required')
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Description must be between 10 and 2000 characters'),
+  
+  body('violations.*.verified')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Verification status is required')
+    .isBoolean()
+    .withMessage('Verified must be a boolean value'),
+  
+  body('violations.*.certainty_level')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Certainty level is required')
+    .isIn(['confirmed', 'probable', 'possible'])
+    .withMessage('Certainty level must be one of: confirmed, probable, possible'),
+  
   body('*.type')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Violation type is required')
     .isIn([
@@ -286,6 +383,7 @@ const batchViolationsRules = [
     .withMessage('Invalid violation type'),
   
   body('*.date')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Incident date is required')
     .isISO8601()
@@ -309,6 +407,7 @@ const batchViolationsRules = [
     }),
   
   body('*.location')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Location is required')
     .isObject()
@@ -339,10 +438,18 @@ const batchViolationsRules = [
     }),
   
   body('*.location.name')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Location name is required')
+    .isObject()
+    .withMessage('Location name must be an object with language codes'),
+  
+  body('*.location.name.en')
+    .if(body('violations').not().exists())
+    .notEmpty()
+    .withMessage('English location name is required')
     .isLength({ min: 2, max: 100 })
-    .withMessage('Location name must be between 2 and 100 characters'),
+    .withMessage('English location name must be between 2 and 100 characters'),
   
   body('*.location.administrative_division')
     .optional()
@@ -350,6 +457,7 @@ const batchViolationsRules = [
     .withMessage('Administrative division cannot be more than 100 characters'),
   
   body('*.description')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Description is required')
     .isLength({ min: 10, max: 2000 })
@@ -379,13 +487,25 @@ const batchViolationsRules = [
     .isLength({ max: 500 })
     .withMessage('Arabic source URL cannot be more than 500 characters'),
   
+  body('*.source_urls')
+    .optional()
+    .isArray()
+    .withMessage('Source URLs must be an array'),
+  
+  body('*.source_urls.*')
+    .optional()
+    .isURL()
+    .withMessage('Source URLs must be valid URLs'),
+  
   body('*.verified')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Verification status is required')
     .isBoolean()
     .withMessage('Verified must be a boolean value'),
   
   body('*.certainty_level')
+    .if(body('violations').not().exists())
     .notEmpty()
     .withMessage('Certainty level is required')
     .isIn(['confirmed', 'probable', 'possible'])
@@ -491,6 +611,26 @@ const batchViolationsRules = [
     .optional()
     .isInt({ min: 0 })
     .withMessage('Injured count must be a non-negative integer'),
+  
+  body('violations.*.location.name')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('Location name is required')
+    .isObject()
+    .withMessage('Location name must be an object with language codes'),
+  
+  body('violations.*.location.name.en')
+    .if(body('violations').exists())
+    .notEmpty()
+    .withMessage('English location name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('English location name must be between 2 and 100 characters'),
+  
+  body('violations.*.location.administrative_division')
+    .if(body('violations').exists())
+    .optional()
+    .isLength({ max: 100 })
+    .withMessage('Administrative division cannot be more than 100 characters'),
 ];
 
 // Validation for ID parameter
