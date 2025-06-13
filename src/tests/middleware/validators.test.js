@@ -199,6 +199,90 @@ describe('Validators Middleware', () => {
       expect(tagsRule).toBeDefined();
       expect(relatedViolationsRule).toBeDefined();
     });
+
+    describe('Reported Date Validation', () => {
+      it('should validate reported date format', () => {
+        const reportedDateRule = violationRules.find(rule => rule.field === 'reported_date');
+        expect(reportedDateRule).toBeDefined();
+      });
+
+      it('should allow reported date within 24 hours in the future', async () => {
+        const futureDate = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 hours in the future
+        
+        // Create a mock request with the future date
+        const req = {
+          body: {
+            reported_date: futureDate.toISOString().split('T')[0]
+          }
+        };
+        
+        // Mock validation result
+        validationResult.mockReturnValue({
+          isEmpty: () => true,
+          array: () => []
+        });
+
+        // Call validateRequest
+        const res = {};
+        const next = jest.fn();
+        await validateRequest(req, res, next);
+        
+        expect(next).toHaveBeenCalledWith();
+      });
+
+      it('should reject reported date more than 24 hours in the future', async () => {
+        const futureDate = new Date(Date.now() + 25 * 60 * 60 * 1000); // 25 hours in the future
+        
+        // Create a mock request with the future date
+        const req = {
+          body: {
+            reported_date: futureDate.toISOString().split('T')[0]
+          }
+        };
+        
+        // Mock validation result with error
+        validationResult.mockReturnValue({
+          isEmpty: () => false,
+          array: () => [{
+            msg: 'Reported date cannot be more than 24 hours in the future'
+          }]
+        });
+
+        // Call validateRequest
+        const res = {};
+        const next = jest.fn();
+        await validateRequest(req, res, next);
+        
+        expect(next).toHaveBeenCalledWith(
+          expect.any(ErrorResponse)
+        );
+        expect(next.mock.calls[0][0].message).toBe('Reported date cannot be more than 24 hours in the future');
+      });
+
+      it('should allow reported date in the past', async () => {
+        const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours in the past
+        
+        // Create a mock request with the past date
+        const req = {
+          body: {
+            reported_date: pastDate.toISOString().split('T')[0]
+          }
+        };
+        
+        // Mock validation result
+        validationResult.mockReturnValue({
+          isEmpty: () => true,
+          array: () => []
+        });
+
+        // Call validateRequest
+        const res = {};
+        const next = jest.fn();
+        await validateRequest(req, res, next);
+        
+        expect(next).toHaveBeenCalledWith();
+      });
+    });
   });
 
   describe('ID Parameter Rules', () => {

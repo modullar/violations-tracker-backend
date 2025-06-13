@@ -77,8 +77,12 @@ const violationRules = [
     .isISO8601()
     .withMessage('Reported date must be a valid ISO date (YYYY-MM-DD)')
     .custom(value => {
-      if (new Date(value) > new Date()) {
-        throw new Error('Reported date cannot be in the future');
+      const now = new Date();
+      const reportedDate = new Date(value);
+      // Allow for a 24-hour buffer to account for timezone differences
+      const buffer = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      if (reportedDate > new Date(now.getTime() + buffer)) {
+        throw new Error('Reported date cannot be more than 24 hours in the future');
       }
       return true;
     }),
@@ -302,8 +306,12 @@ const batchViolationsRules = [
     .isISO8601()
     .withMessage('Reported date must be a valid ISO date (YYYY-MM-DD)')
     .custom(value => {
-      if (new Date(value) > new Date()) {
-        throw new Error('Reported date cannot be in the future');
+      const now = new Date();
+      const reportedDate = new Date(value);
+      // Allow for a 24-hour buffer to account for timezone differences
+      const buffer = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      if (reportedDate > new Date(now.getTime() + buffer)) {
+        throw new Error('Reported date cannot be more than 24 hours in the future');
       }
       return true;
     }),
