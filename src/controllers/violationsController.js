@@ -86,11 +86,23 @@ exports.getViolation = asyncHandler(async (req, res, next) => {
  */
 exports.createViolation = asyncHandler(async (req, res, next) => {
   try {
-    const violation = await createSingleViolation(req.body, req.user.id);
+    const { action = 'create', ...violationData } = req.body;
     
-    res.status(201).json({
+    const result = await createSingleViolation(violationData, req.user.id, action);
+    
+    const statusCode = result.action === 'merged' ? 200 : 201;
+    const message = result.action === 'merged' 
+      ? 'Violation merged with existing duplicate' 
+      : 'Violation created successfully';
+    
+    res.status(statusCode).json({
       success: true,
-      data: violation
+      message,
+      data: {
+        violation: result.violation,
+        duplicates: result.duplicates,
+        action: result.action
+      }
     });
   } catch (error) {
     return next(new ErrorResponse(error.message, 400));
@@ -216,12 +228,31 @@ exports.getViolationsTotal = asyncHandler(async (req, res, next) => {
  */
 exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
   try {
-    const result = await createBatchViolations(req.body, req.user.id);
+    const { action = 'create', violations: violationsData } = req.body;
+    
+    // If action is provided at the root level, use it; otherwise check if it's in the array
+    const actualViolationsData = violationsData || req.body;
+    const actualAction = action || 'create';
+    
+    const result = await createBatchViolations(actualViolationsData, req.user.id, actualAction);
+    
+    // Count merged vs created
+    const mergedCount = result.results ? result.results.filter(r => r.action === 'merged').length : 0;
+    const createdCount = result.results ? result.results.filter(r => r.action === 'created').length : 0;
     
     res.status(201).json({
       success: true,
+      message: `Batch processing completed: ${createdCount} created, ${mergedCount} merged`,
       count: result.violations.length,
-      data: result.violations,
+      data: {
+        violations: result.violations,
+        results: result.results,
+        summary: {
+          total: result.violations.length,
+          created: createdCount,
+          merged: mergedCount
+        }
+      },
       errors: result.errors
     });
   } catch (error) {
