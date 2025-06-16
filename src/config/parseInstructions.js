@@ -147,7 +147,7 @@ When parsing perpetrator information, carefully categorize the perpetrator accor
 4. "sdf" - Syrian Democratic Forces and affiliated groups
 5. "israel" - Israeli forces
 6. "russia" - Russian military forces
-7. "iran" - Iranian military forces or proxies
+7. "iran_shia_militias" - Iranian military forces or proxies
 8. "turkey" - Turkish military forces
 9. "usa" - United States forces
 10. "various_armed_groups" - Unaffiliated armed groups, gangs, or bandits

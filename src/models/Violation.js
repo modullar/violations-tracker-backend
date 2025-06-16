@@ -251,7 +251,7 @@ const ViolationSchema = new mongoose.Schema({
     default: []
   },
   perpetrator: {
-    type: LocalizedStringSchema,
+    type: OptionalLocalizedStringSchema,
     default: { en: '', ar: '' },
     validate: {
       validator: function(value) {
@@ -512,7 +512,7 @@ ViolationSchema.statics.sanitizeData = function(violationData) {
       // Convert plain string to localized object
       sanitized[field] = { en: sanitized[field], ar: '' };
     } else if (!sanitized[field]) {
-      if (field === 'description' || field === 'perpetrator') {
+      if (field === 'description') {
         // Required fields get minimal structure
         sanitized[field] = { en: '', ar: '' };
       } else {

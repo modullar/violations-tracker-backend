@@ -210,7 +210,6 @@ describe('Violation Model', () => {
       fail('Validation should have failed');
     } catch (error) {
       // Check for required field errors
-      expect(error.errors['perpetrator.en']).toBeDefined();
       expect(error.errors['perpetrator_affiliation']).toBeDefined();
       expect(error.errors['source.en']).toBeDefined();
       expect(error.errors['location.administrative_division.en']).toBeDefined();
