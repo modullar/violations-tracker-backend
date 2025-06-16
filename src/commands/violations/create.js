@@ -52,12 +52,12 @@ const geocodeLocationData = async (location) => {
 };
 
 /**
- * Create a single violation
+ * Process a single violation data (geocode and add user info)
  * @param {Object} violationData - Violation data
  * @param {String} userId - User ID creating the violation
- * @returns {Promise<Object>} - Created violation
+ * @returns {Promise<Object>} - Processed violation data
  */
-const createSingleViolation = async (violationData, userId) => {
+const processViolationData = async (violationData, userId) => {
   // Geocode location if provided
   if (violationData.location && violationData.location.name) {
     const coordinates = await geocodeLocationData(violationData.location);
@@ -68,8 +68,18 @@ const createSingleViolation = async (violationData, userId) => {
   violationData.created_by = userId;
   violationData.updated_by = userId;
 
-  // Create and return the violation
-  return await Violation.create(violationData);
+  return violationData;
+};
+
+/**
+ * Create a single violation
+ * @param {Object} violationData - Violation data
+ * @param {String} userId - User ID creating the violation
+ * @returns {Promise<Object>} - Created violation
+ */
+const createSingleViolation = async (violationData, userId) => {
+  const processedData = await processViolationData(violationData, userId);
+  return await Violation.create(processedData);
 };
 
 /**
@@ -91,14 +101,8 @@ const createBatchViolations = async (violationsData, userId) => {
   const processedViolations = await Promise.all(
     violationsData.map(async (violationData, index) => {
       try {
-        if (violationData.location && violationData.location.name) {
-          logger.info(`Attempting to geocode location: ${violationData.location.name.ar || violationData.location.name.en}`);
-          
-          const coordinates = await geocodeLocationData(violationData.location);
-          violationData.location.coordinates = coordinates;
-          
-          logger.info(`Successfully geocoded to coordinates: [${coordinates[0]}, ${coordinates[1]}]`);
-        } else {
+        // Validate location name before attempting to process
+        if (!violationData.location || !violationData.location.name) {
           errors.push({
             index,
             error: 'Location name is required'
@@ -106,11 +110,9 @@ const createBatchViolations = async (violationsData, userId) => {
           return null;
         }
 
-        // Add user information
-        violationData.created_by = userId;
-        violationData.updated_by = userId;
-
-        return violationData;
+        // Process the violation data (geocode and add user info)
+        const processedData = await processViolationData(violationData, userId);
+        return processedData;
       } catch (err) {
         errors.push({
           index,

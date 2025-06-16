@@ -144,9 +144,12 @@ const ViolationSchema = new mongoose.Schema({
         if (!value) return true;
         const now = new Date();
         const reportedDate = new Date(value);
+        // Set time to end of day for date-only strings
+        reportedDate.setHours(23, 59, 59, 999);
         // Allow for a 24-hour buffer to account for timezone differences
         const buffer = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        return reportedDate <= new Date(now.getTime() + buffer);
+        const maxAllowedDate = new Date(now.getTime() + buffer);
+        return reportedDate <= maxAllowedDate;
       },
       message: 'Reported date cannot be more than 24 hours in the future'
     }
