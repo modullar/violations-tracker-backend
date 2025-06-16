@@ -52,12 +52,12 @@ const geocodeLocationData = async (location) => {
 };
 
 /**
- * Create a single violation
+ * Process a single violation data (geocode and add user info)
  * @param {Object} violationData - Violation data
  * @param {String} userId - User ID creating the violation
- * @returns {Promise<Object>} - Created violation
+ * @returns {Promise<Object>} - Processed violation data
  */
-const createSingleViolation = async (violationData, userId) => {
+const processViolationData = async (violationData, userId) => {
   // Geocode location if provided
   if (violationData.location && violationData.location.name) {
     const coordinates = await geocodeLocationData(violationData.location);
@@ -68,8 +68,26 @@ const createSingleViolation = async (violationData, userId) => {
   violationData.created_by = userId;
   violationData.updated_by = userId;
 
-  // Create and return the violation
-  return await Violation.create(violationData);
+  return violationData;
+};
+
+/**
+ * Create a single violation
+ * @param {Object} violationData - Violation data
+ * @param {String} userId - User ID creating the violation
+ * @returns {Promise<Object>} - Created violation
+ */
+const createSingleViolation = async (violationData, userId) => {
+  // 1. Validate and sanitize data using model validation
+  const sanitizedData = await Violation.validateForCreation(violationData, { 
+    requiresGeocoding: true 
+  });
+
+  // 2. Process data (geocode and add user info)
+  const processedData = await processViolationData(sanitizedData, userId);
+  
+  // 3. Create violation (schema validation happens here as final safety net)
+  return await Violation.create(processedData);
 };
 
 /**
@@ -87,53 +105,46 @@ const createBatchViolations = async (violationsData, userId) => {
     throw new ErrorResponse('At least one violation must be provided', 400);
   }
 
-  const errors = [];
+  // 1. Validate all violations using model validation
+  const { valid, invalid } = await Violation.validateBatch(violationsData, { 
+    requiresGeocoding: true 
+  });
+
+  if (valid.length === 0) {
+    throw new ErrorResponse('All violations failed validation', 400, { errors: invalid });
+  }
+
+  // 2. Process valid violations
   const processedViolations = await Promise.all(
-    violationsData.map(async (violationData, index) => {
+    valid.map(async (data) => {
+      const { _batchIndex, ...violationData } = data;
       try {
-        if (violationData.location && violationData.location.name) {
-          logger.info(`Attempting to geocode location: ${violationData.location.name.ar || violationData.location.name.en}`);
-          
-          const coordinates = await geocodeLocationData(violationData.location);
-          violationData.location.coordinates = coordinates;
-          
-          logger.info(`Successfully geocoded to coordinates: [${coordinates[0]}, ${coordinates[1]}]`);
-        } else {
-          errors.push({
-            index,
-            error: 'Location name is required'
-          });
-          return null;
-        }
-
-        // Add user information
-        violationData.created_by = userId;
-        violationData.updated_by = userId;
-
-        return violationData;
+        return await processViolationData(violationData, userId);
       } catch (err) {
-        errors.push({
-          index,
-          error: err.message
+        // Add to invalid list if processing fails
+        invalid.push({
+          index: _batchIndex,
+          violation: violationData,
+          errors: [err.message]
         });
         return null;
       }
     })
   );
 
-  // Filter out failed violations
-  const validViolations = processedViolations.filter(v => v !== null);
+  // Filter out failed processing
+  const validProcessedViolations = processedViolations.filter(v => v !== null);
 
-  if (validViolations.length === 0) {
-    throw new ErrorResponse('All violations failed validation', 400, { errors });
+  if (validProcessedViolations.length === 0) {
+    throw new ErrorResponse('All violations failed processing', 400, { errors: invalid });
   }
 
-  // Create all valid violations in a single operation
-  const violations = await Violation.create(validViolations);
+  // 3. Create violations (batch insert)
+  const violations = await Violation.create(validProcessedViolations);
 
   return {
     violations,
-    errors: errors.length > 0 ? errors : undefined
+    errors: invalid.length > 0 ? invalid : undefined
   };
 };
 

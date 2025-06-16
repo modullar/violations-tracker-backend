@@ -152,7 +152,60 @@ jest.mock('../../models/Violation', () => {
       }
       return Promise.resolve([]);
     }),
-    countDocuments: jest.fn().mockResolvedValue(3)
+    countDocuments: jest.fn().mockResolvedValue(3),
+    validateForCreation: jest.fn().mockImplementation(async (violationData) => {
+      // Simple mock validation that just returns sanitized data
+      const sanitized = JSON.parse(JSON.stringify(violationData));
+      
+      // Add basic sanitization similar to our real method
+      if (sanitized.date && typeof sanitized.date === 'string') {
+        sanitized.date = new Date(sanitized.date);
+      }
+      
+      // Add required defaults
+      if (!sanitized.perpetrator_affiliation) {
+        sanitized.perpetrator_affiliation = 'unknown';
+      }
+      
+      // Add empty localized strings for missing fields
+      ['source', 'source_url', 'verification_method', 'perpetrator'].forEach(field => {
+        if (!sanitized[field]) {
+          sanitized[field] = { en: '', ar: '' };
+        }
+      });
+      
+      return Promise.resolve(sanitized);
+    }),
+    validateBatch: jest.fn().mockImplementation(async (violationsData) => {
+      // Mock batch validation
+      const results = { valid: [], invalid: [] };
+      
+      for (let i = 0; i < violationsData.length; i++) {
+        try {
+          // Simple validation - just check if type exists
+          if (!violationsData[i].type) {
+            results.invalid.push({
+              index: i,
+              violation: violationsData[i],
+              errors: ['Violation type is required']
+            });
+          } else {
+            results.valid.push({ ...violationsData[i], _batchIndex: i });
+          }
+        } catch (error) {
+          results.invalid.push({
+            index: i,
+            violation: violationsData[i],
+            errors: [error.message]
+          });
+        }
+      }
+      
+      return Promise.resolve(results);
+    }),
+    sanitizeData: jest.fn().mockImplementation((data) => {
+      return JSON.parse(JSON.stringify(data));
+    })
   };
 });
 
@@ -310,13 +363,28 @@ describe('Violations API', () => {
         location: {
           type: 'Point',
           coordinates: [36.2, 37.1],
-          name: 'New Location',
-          administrative_division: 'New Division'
+          name: { en: 'New Location', ar: 'موقع جديد' },
+          administrative_division: { en: 'New Division', ar: 'قسم جديد' }
         },
-        description: 'This is a detailed description of the new violation that meets the minimum length requirement.',
+        description: {
+          en: 'This is a detailed description of the new violation that meets the minimum length requirement.',
+          ar: 'هذا وصف مفصل للانتهاك الجديد'
+        },
+        source: {
+          en: 'Test Source',
+          ar: 'مصدر الاختبار'
+        },
         verified: true,
         certainty_level: 'confirmed',
-        perpetrator: 'New Perpetrator',
+        verification_method: {
+          en: 'Video evidence and witness testimony',
+          ar: 'أدلة فيديو وشهادة شهود'
+        },
+        perpetrator: {
+          en: 'New Perpetrator',
+          ar: 'مرتكب جديد'
+        },
+        perpetrator_affiliation: 'assad_regime',
         casualties: 3,
         detained_count: 2,
         injured_count: 5
@@ -351,13 +419,24 @@ describe('Violations API', () => {
         location: {
           type: 'Point',
           coordinates: [36.2, 37.1],
-          name: 'Updated Location',
-          administrative_division: 'Updated Division'
+          name: { en: 'Updated Location', ar: 'موقع محدث' },
+          administrative_division: { en: 'Updated Division', ar: 'قسم محدث' }
         },
-        description: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
+        description: {
+          en: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
+          ar: 'هذا وصف مفصل للانتهاك المحدث'
+        },
+        source: {
+          en: 'Updated Source',
+          ar: 'مصدر محدث'
+        },
         verified: false,
         certainty_level: 'confirmed',
-        perpetrator: 'Updated Perpetrator',
+        perpetrator: {
+          en: 'Updated Perpetrator',
+          ar: 'مرتكب محدث'
+        },
+        perpetrator_affiliation: 'unknown',
         casualties: 5
       };
       
@@ -368,7 +447,7 @@ describe('Violations API', () => {
       
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.description).toBe(updateData.description);
+      expect(res.body.data.description).toStrictEqual(updateData.description);
       expect(res.body.data.verified).toBe(updateData.verified);
     });
     
@@ -379,13 +458,24 @@ describe('Violations API', () => {
         location: {
           type: 'Point',
           coordinates: [36.2, 37.1],
-          name: 'Updated Location',
-          administrative_division: 'Updated Division'
+          name: { en: 'Updated Location', ar: 'موقع محدث' },
+          administrative_division: { en: 'Updated Division', ar: 'قسم محدث' }
         },
-        description: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
+        description: {
+          en: 'This is a detailed description of the updated violation that meets the minimum length requirement.',
+          ar: 'هذا وصف مفصل للانتهاك المحدث'
+        },
+        source: {
+          en: 'Updated Source',
+          ar: 'مصدر محدث'
+        },
         verified: false,
         certainty_level: 'confirmed',
-        perpetrator: 'Updated Perpetrator',
+        perpetrator: {
+          en: 'Updated Perpetrator',
+          ar: 'مرتكب محدث'
+        },
+        perpetrator_affiliation: 'unknown',
         casualties: 5
       };
 
@@ -499,13 +589,28 @@ describe('Violations API', () => {
           location: {
             type: 'Point',
             coordinates: [36.2, 37.1],
-            name: 'Batch Location 1',
-            administrative_division: 'Batch Division 1'
+            name: { en: 'Batch Location 1', ar: 'موقع دفعة 1' },
+            administrative_division: { en: 'Batch Division 1', ar: 'قسم دفعة 1' }
           },
-          description: 'This is a detailed description of the first violation in the batch.',
+          description: {
+            en: 'This is a detailed description of the first violation in the batch.',
+            ar: 'هذا وصف مفصل للانتهاك الأول في الدفعة'
+          },
+          source: {
+            en: 'Batch Source 1',
+            ar: 'مصدر دفعة 1'
+          },
           verified: true,
           certainty_level: 'confirmed',
-          perpetrator: 'Batch Perpetrator 1',
+          verification_method: {
+            en: 'Video evidence and witness testimony',
+            ar: 'أدلة فيديو وشهادة شهود'
+          },
+          perpetrator: {
+            en: 'Batch Perpetrator 1',
+            ar: 'مرتكب دفعة 1'
+          },
+          perpetrator_affiliation: 'assad_regime',
           casualties: 3,
           detained_count: 1,
           injured_count: 4,
@@ -520,13 +625,28 @@ describe('Violations API', () => {
           location: {
             type: 'Point',
             coordinates: [35.9, 36.8],
-            name: 'Batch Location 2',
-            administrative_division: 'Batch Division 2'
+            name: { en: 'Batch Location 2', ar: 'موقع دفعة 2' },
+            administrative_division: { en: 'Batch Division 2', ar: 'قسم دفعة 2' }
           },
-          description: 'This is a detailed description of the second violation in the batch.',
+          description: {
+            en: 'This is a detailed description of the second violation in the batch.',
+            ar: 'هذا وصف مفصل للانتهاك الثاني في الدفعة'
+          },
+          source: {
+            en: 'Batch Source 2',
+            ar: 'مصدر دفعة 2'
+          },
           verified: true,
           certainty_level: 'probable',
-          perpetrator: 'Batch Perpetrator 2',
+          verification_method: {
+            en: 'Satellite imagery and local reports',
+            ar: 'صور الأقمار الصناعية والتقارير المحلية'
+          },
+          perpetrator: {
+            en: 'Batch Perpetrator 2',
+            ar: 'مرتكب دفعة 2'
+          },
+          perpetrator_affiliation: 'russia',
           casualties: 5,
           detained_count: 3,
           injured_count: 7,

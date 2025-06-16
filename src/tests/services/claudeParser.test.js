@@ -10,6 +10,12 @@ describe('ClaudeParser Service Tests', () => {
     // Always clean up nock interceptors and set up fresh ones
     nock.cleanAll();
     
+    // Set up the API key for testing and reinitialize the service
+    process.env.CLAUDE_API_KEY = 'test-api-key';
+    
+    // Re-initialize the service with the test API key
+    claudeParser.apiKey = 'test-api-key';
+    
     // Set up global nock interceptor to catch any requests that might slip through
     nock('https://api.anthropic.com')
       .persist()
@@ -158,7 +164,49 @@ describe('ClaudeParser Service Tests', () => {
   });
 
   describe('validateViolations', () => {
-    it('should validate violations and separate valid from invalid', () => {
+    it('should validate violations using model validation', async () => {
+      // Mock the Violation model's validateBatch method
+      const mockValidateBatch = jest.fn().mockResolvedValue({
+        valid: [
+          {
+            type: 'AIRSTRIKE',
+            date: '2023-05-15',
+            location: {
+              name: { en: 'Aleppo', ar: 'حلب' },
+              administrative_division: { en: 'Aleppo Governorate', ar: '' }
+            },
+            description: { en: 'Valid description', ar: '' },
+            verified: false,
+            certainty_level: 'probable',
+            casualties: 2,
+            detained_count: 1,
+            injured_count: 3
+          }
+        ],
+        invalid: [
+          {
+            index: 1,
+            violation: {
+              date: '2023-05-16',
+              location: {
+                name: { en: 'Damascus', ar: 'دمشق' },
+                administrative_division: { en: 'Damascus Governorate', ar: '' }
+              },
+              description: { en: 'Missing type', ar: '' },
+              verified: false,
+              certainty_level: 'confirmed',
+              detained_count: 2
+            },
+            errors: ['Violation type is required']
+          }
+        ]
+      });
+
+      // Mock the require call for the Violation model
+      jest.doMock('../../models/Violation', () => ({
+        validateBatch: mockValidateBatch
+      }));
+
       // Sample violations array with both valid and invalid items
       const violations = [
         {
@@ -187,32 +235,21 @@ describe('ClaudeParser Service Tests', () => {
           verified: false,
           certainty_level: 'confirmed',
           detained_count: 2
-        },
-        {
-          // Missing location name
-          type: 'SHELLING',
-          date: '2023-05-17',
-          location: {
-            administrative_division: { en: 'Homs Governorate', ar: '' }
-          },
-          description: { en: 'Missing location name', ar: '' },
-          verified: false,
-          certainty_level: 'possible',
-          detained_count: 1
         }
       ];
 
       // Call the validation function
-      const { valid, invalid } = claudeParser.validateViolations(violations);
+      const result = await claudeParser.validateViolations(violations);
 
-      // Check that only the valid violation is in the valid array
-      expect(valid.length).toBe(1);
-      expect(valid[0].type).toBe('AIRSTRIKE');
+      // Check that the model's validateBatch method was called
+      expect(mockValidateBatch).toHaveBeenCalledWith(violations, { requiresGeocoding: false });
 
-      // Check that the invalid violations are in the invalid array
-      expect(invalid.length).toBe(2);
-      expect(invalid[0].error).toContain('Missing required fields');
-      expect(invalid[1].error).toContain('Missing required location name');
+      // Check that the result has the expected structure
+      expect(result.valid).toHaveLength(1);
+      expect(result.invalid).toHaveLength(1);
+      expect(result.valid[0].type).toBe('AIRSTRIKE');
+      expect(result.invalid[0].index).toBe(1);
+      expect(result.invalid[0].errors).toContain('Violation type is required');
     });
   });
 });

@@ -138,6 +138,7 @@ const USER_PROMPT = `Please parse the following human rights report and extract 
 # PERPETRATOR AFFILIATION REFERENCE GUIDE
 
 When parsing perpetrator information, carefully categorize the perpetrator according to the following reference groups. Use the specified affiliation category tags in your output JSON.
+For found Mass graves, use "assad_regime" as the perpetrator_affiliation, unless the report explicitly states otherwise.
 
 ## PERPETRATOR AFFILIATION CATEGORIES
 
@@ -147,7 +148,7 @@ When parsing perpetrator information, carefully categorize the perpetrator accor
 4. "sdf" - Syrian Democratic Forces and affiliated groups
 5. "israel" - Israeli forces
 6. "russia" - Russian military forces
-7. "iran" - Iranian military forces or proxies
+7. "iran_shia_militias" - Iranian military forces or proxies
 8. "turkey" - Turkish military forces
 9. "usa" - United States forces
 10. "various_armed_groups" - Unaffiliated armed groups, gangs, or bandits

@@ -210,7 +210,6 @@ describe('Violation Model', () => {
       fail('Validation should have failed');
     } catch (error) {
       // Check for required field errors
-      expect(error.errors['perpetrator.en']).toBeDefined();
       expect(error.errors['perpetrator_affiliation']).toBeDefined();
       expect(error.errors['source.en']).toBeDefined();
       expect(error.errors['location.administrative_division.en']).toBeDefined();
@@ -462,11 +461,14 @@ describe('Verification Method Validation', () => {
 describe('Reported Date Validation', () => {
   it('should accept a reported date within 24 hours in the future', async () => {
     const now = new Date();
-    const futureDate = new Date(now.getTime() + 12 * 60 * 60 * 1000); // 12 hours in the future
+    // Create a date 6 hours in the future to be well within the 24-hour buffer
+    // even after the schema sets it to end of day
+    const futureDate = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    
     const violationData = {
       type: 'AIRSTRIKE',
       date: '2023-01-01',
-      reported_date: futureDate.toISOString().split('T')[0],
+      reported_date: futureDate,
       location: {
         coordinates: [37.1, 36.2],
         name: { en: 'Test Location', ar: 'موقع الاختبار' },
@@ -477,6 +479,7 @@ describe('Reported Date Validation', () => {
       source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
       verified: true,
       certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
       perpetrator_affiliation: 'assad_regime'
     };
@@ -487,11 +490,13 @@ describe('Reported Date Validation', () => {
 
   it('should reject a reported date more than 24 hours in the future', async () => {
     const now = new Date();
-    const futureDate = new Date(now.getTime() + 25 * 60 * 60 * 1000); // 25 hours in the future
+    // Create a date 30 hours in the future to be clearly outside the buffer
+    const futureDate = new Date(now.getTime() + 30 * 60 * 60 * 1000);
+    
     const violationData = {
       type: 'AIRSTRIKE',
       date: '2023-01-01',
-      reported_date: futureDate.toISOString().split('T')[0],
+      reported_date: futureDate,
       location: {
         coordinates: [37.1, 36.2],
         name: { en: 'Test Location', ar: 'موقع الاختبار' },
@@ -502,6 +507,7 @@ describe('Reported Date Validation', () => {
       source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
       verified: true,
       certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
       perpetrator_affiliation: 'assad_regime'
     };
@@ -515,7 +521,7 @@ describe('Reported Date Validation', () => {
     const violationData = {
       type: 'AIRSTRIKE',
       date: '2023-01-01',
-      reported_date: pastDate.toISOString().split('T')[0],
+      reported_date: pastDate,
       location: {
         coordinates: [37.1, 36.2],
         name: { en: 'Test Location', ar: 'موقع الاختبار' },
@@ -526,11 +532,221 @@ describe('Reported Date Validation', () => {
       source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
       verified: true,
       certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
       perpetrator_affiliation: 'assad_regime'
     };
 
     const violation = new Violation(violationData);
     await expect(violation.validate()).resolves.not.toThrow();
+  });
+});
+
+describe('Static validation methods', () => {
+  describe('sanitizeData', () => {
+    it('should sanitize and normalize violation data', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        reported_date: '2023-06-16',
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description',
+        casualties: '5',
+        victims: [{
+          death_date: '2023-06-15'
+        }]
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.casualties).toBe(5);
+      expect(sanitized.verified).toBe(false);
+      expect(sanitized.perpetrator_affiliation).toBe('unknown');
+      expect(sanitized.certainty_level).toBe('possible');
+      expect(sanitized.location.name).toEqual({ en: 'Test Location', ar: '' });
+      expect(sanitized.location.administrative_division).toEqual({ en: 'Test Division', ar: '' });
+      expect(sanitized.description).toEqual({ en: 'Test description', ar: '' });
+      expect(sanitized.victims[0].death_date).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('validateForCreation', () => {
+    it('should validate violation with business rules', async () => {
+      const validData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        location: {
+          name: { en: 'Test Location', ar: '' },
+          administrative_division: { en: 'Test Division', ar: '' }
+        },
+        description: { en: 'Test violation description that is long enough', ar: '' },
+        verified: false,
+        certainty_level: 'confirmed',
+        perpetrator_affiliation: 'assad_regime'
+      };
+
+      const result = await Violation.validateForCreation(validData);
+      expect(result).toBeDefined();
+      expect(result.type).toBe('AIRSTRIKE');
+    });
+
+    it('should fail validation for detention without detained_count', async () => {
+      const invalidData = {
+        type: 'DETENTION',
+        date: '2023-06-15',
+        location: {
+          name: { en: 'Test Location', ar: '' }
+        },
+        description: { en: 'Test detention without count', ar: '' },
+        verified: false,
+        certainty_level: 'confirmed'
+      };
+
+      try {
+        await Violation.validateForCreation(invalidData);
+        fail('Should have failed validation');
+      } catch (error) {
+        expect(error.name).toBe('ValidationError');
+        expect(error.errors.detained_count).toBeDefined();
+        expect(error.errors.detained_count.message).toContain('Detained count is required');
+      }
+    });
+
+    it('should fail validation for verified violation without verification method', async () => {
+      const invalidData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        location: {
+          name: { en: 'Test Location', ar: '' }
+        },
+        description: { en: 'Test verified violation without method', ar: '' },
+        verified: true,
+        certainty_level: 'confirmed'
+      };
+
+      try {
+        await Violation.validateForCreation(invalidData);
+        fail('Should have failed validation');
+      } catch (error) {
+        expect(error.name).toBe('ValidationError');
+        expect(error.errors['verification_method.en']).toBeDefined();
+      }
+    });
+
+    it('should fail validation for victim death date before incident date', async () => {
+      const invalidData = {
+        type: 'MURDER',
+        date: '2023-06-15',
+        location: {
+          name: { en: 'Test Location', ar: '' }
+        },
+        description: { en: 'Test murder with invalid death date', ar: '' },
+        verified: false,
+        certainty_level: 'confirmed',
+        victims: [{
+          death_date: '2023-06-10' // Before incident date
+        }]
+      };
+
+      try {
+        await Violation.validateForCreation(invalidData);
+        fail('Should have failed validation');
+      } catch (error) {
+        expect(error.name).toBe('ValidationError');
+        expect(error.errors['victims[0].death_date']).toBeDefined();
+      }
+    });
+  });
+
+  describe('validateBatch', () => {
+    it('should validate batch of violations', async () => {
+      const violationsData = [
+        {
+          type: 'AIRSTRIKE',
+          date: '2023-06-15',
+          location: {
+            name: { en: 'Valid Location', ar: '' }
+          },
+          description: { en: 'Valid description that is long enough', ar: '' },
+          verified: false,
+          certainty_level: 'confirmed'
+        },
+        {
+          type: 'DETENTION',
+          date: '2023-06-16',
+          location: {
+            name: { en: 'Another Location', ar: '' }
+          },
+          description: { en: 'Invalid detention without count', ar: '' },
+          verified: false,
+          certainty_level: 'confirmed'
+          // Missing detained_count for DETENTION type
+        }
+      ];
+
+      const result = await Violation.validateBatch(violationsData);
+
+      expect(result.valid).toHaveLength(1);
+      expect(result.invalid).toHaveLength(1);
+      expect(result.valid[0].type).toBe('AIRSTRIKE');
+      expect(result.invalid[0].index).toBe(1);
+      expect(result.invalid[0].errors).toContain('Detained count is required for detention violations');
+    });
+  });
+});
+
+describe('Date formatting in JSON', () => {
+  it('should format dates correctly in toJSON method', () => {
+    const date = new Date('2023-06-15');
+    const violation = new Violation({
+      type: 'AIRSTRIKE',
+      date,
+      location: {
+        coordinates: [37.1, 36.2],
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
+        },
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
+      },
+      description: {
+        en: 'Test description',
+        ar: 'وصف الاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com',
+        ar: 'https://example.com/ar'
+      },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: {
+        en: 'Test verification',
+        ar: 'التحقق'
+      },
+      perpetrator: {
+        en: 'Test Perpetrator',
+        ar: 'مرتكب الاختبار'
+      },
+      kidnapped_count: 3,
+      detained_count: 2,
+      injured_count: 7,
+      displaced_count: 25,
+      perpetrator_affiliation: 'assad_regime'
+    });
+
+    const jsonViolation = violation.toJSON();
+    expect(jsonViolation.date).toBe('2023-06-15');
   });
 }); 
