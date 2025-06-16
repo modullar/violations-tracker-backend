@@ -138,6 +138,7 @@ const USER_PROMPT = `Please parse the following human rights report and extract 
 # PERPETRATOR AFFILIATION REFERENCE GUIDE
 
 When parsing perpetrator information, carefully categorize the perpetrator according to the following reference groups. Use the specified affiliation category tags in your output JSON.
+For found Mass graves, use "assad_regime" as the perpetrator_affiliation, unless the report explicitly states otherwise.
 
 ## PERPETRATOR AFFILIATION CATEGORIES
 
