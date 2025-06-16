@@ -1,6 +1,5 @@
 const axios = require('axios');
 const logger = require('../config/logger');
-const config = require('../config/config');
 const parseInstructions = require('../config/parseInstructions');
 
 /**
@@ -134,58 +133,9 @@ class ClaudeParserService {
    * @returns {Object} - Object containing valid and invalid violations
    */
   validateViolations(violations) {
-    // This is a placeholder for schema validation logic
-    // In a real implementation, this would validate against the Violation schema
-    
-    const valid = [];
-    const invalid = [];
-
-    for (const violation of violations) {
-      // Perform basic validation here
-      // In a production system, this would do more comprehensive validation
-      
-      if (!violation.type || !violation.date || !violation.location || !violation.description) {
-        invalid.push({
-          violation,
-          error: 'Missing required fields (type, date, location, or description)'
-        });
-        continue;
-      }
-
-      // Ensure required nested fields exist
-      if (!violation.location.name || !violation.location.name.en) {
-        invalid.push({
-          violation,
-          error: 'Missing required location name'
-        });
-        continue;
-      }
-
-      if (!violation.description.en) {
-        invalid.push({
-          violation,
-          error: 'Missing required description'
-        });
-        continue;
-      }
-      
-      // Ensure perpetrator information is present
-      if (!violation.perpetrator) {
-        violation.perpetrator = { en: 'Unknown', ar: '' };
-      } else if (!violation.perpetrator.en) {
-        violation.perpetrator.en = 'Unknown';
-      }
-      
-      // Ensure perpetrator_affiliation has a value
-      if (!violation.perpetrator_affiliation) {
-        violation.perpetrator_affiliation = 'unknown';
-      }
-
-      // If we reach here, the violation passed basic validation
-      valid.push(violation);
-    }
-
-    return { valid, invalid };
+    // Use the model's batch validation method
+    const Violation = require('../models/Violation');
+    return Violation.validateBatch(violations, { requiresGeocoding: false });
   }
 }
 

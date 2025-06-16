@@ -147,7 +147,7 @@ describe('Violation Create Command', () => {
           }
         },
         description: {
-          en: 'Test violation description',
+          en: 'Test violation description that is long enough to meet requirements',
           ar: 'وصف انتهاك الاختبار'
         },
         source: {
@@ -160,6 +160,10 @@ describe('Violation Create Command', () => {
         },
         verified: true,
         certainty_level: 'confirmed',
+        verification_method: {
+          en: 'Video evidence and witness testimony',
+          ar: 'أدلة فيديو وشهادة شهود'
+        },
         perpetrator: {
           en: 'Test Perpetrator',
           ar: 'مرتكب الاختبار'
@@ -181,23 +185,32 @@ describe('Violation Create Command', () => {
       const result = await createSingleViolation(violationData, mockUserId);
 
       expect(result).toEqual(mockCreatedViolation);
-      expect(Violation.create).toHaveBeenCalledWith({
-        ...violationData,
-        location: {
-          ...violationData.location,
-          coordinates: [37.1342603, 36.2021047]
-        },
-        created_by: mockUserId,
-        updated_by: mockUserId
-      });
+      expect(Violation.create).toHaveBeenCalled();
+      
+      // Verify the data passed to create has been processed
+      const createCallArgs = Violation.create.mock.calls[0][0];
+      expect(createCallArgs.date).toBeInstanceOf(Date);
+      expect(createCallArgs.location.coordinates).toEqual([37.1342603, 36.2021047]);
+      expect(createCallArgs.created_by).toBe(mockUserId);
+      expect(createCallArgs.updated_by).toBe(mockUserId);
     });
 
     it('should create a violation without location data', async () => {
       const violationData = {
         type: 'SHELLING',
         date: '2023-06-15',
+        location: {
+          name: {
+            en: 'Test Location Without Coordinates',
+            ar: 'موقع اختبار بدون إحداثيات'
+          },
+          administrative_division: {
+            en: 'Test Division',
+            ar: 'قسم الاختبار'
+          }
+        },
         description: {
-          en: 'Test violation without location',
+          en: 'Test violation without specific coordinates but with location name',
           ar: 'انتهاك اختبار بدون موقع'
         },
         source: {
@@ -205,8 +218,16 @@ describe('Violation Create Command', () => {
           ar: 'مصدر الاختبار'
         },
         verified: false,
-        certainty_level: 'reported'
+        certainty_level: 'possible',
+        perpetrator_affiliation: 'unknown'
       };
+
+      // This test will still geocode because we have a location name
+      geocodeLocation.mockResolvedValue([{
+        latitude: 36.2021047,
+        longitude: 37.1342603,
+        quality: 0.9
+      }]);
 
       const mockCreatedViolation = { ...violationData, _id: 'mock-id', created_by: mockUserId };
       Violation.create = jest.fn().mockResolvedValue(mockCreatedViolation);
@@ -214,12 +235,18 @@ describe('Violation Create Command', () => {
       const result = await createSingleViolation(violationData, mockUserId);
 
       expect(result).toEqual(mockCreatedViolation);
-      expect(geocodeLocation).not.toHaveBeenCalled();
-      expect(Violation.create).toHaveBeenCalledWith({
-        ...violationData,
-        created_by: mockUserId,
-        updated_by: mockUserId
-      });
+      expect(Violation.create).toHaveBeenCalled();
+      
+      // Verify the data passed to create has been processed
+      const createCallArgs = Violation.create.mock.calls[0][0];
+      expect(createCallArgs.date).toBeInstanceOf(Date);
+      expect(createCallArgs.location.coordinates).toEqual([37.1342603, 36.2021047]);
+      expect(createCallArgs.created_by).toBe(mockUserId);
+      expect(createCallArgs.updated_by).toBe(mockUserId);
+      // Verify sanitized defaults were added
+      expect(createCallArgs.source_url).toEqual({ en: '', ar: '' });
+      expect(createCallArgs.verification_method).toEqual({ en: '', ar: '' });
+      expect(createCallArgs.perpetrator).toEqual({ en: '', ar: '' });
     });
 
     it('should handle geocoding errors', async () => {
@@ -249,10 +276,11 @@ describe('Violation Create Command', () => {
           location: {
             name: { en: 'Location 1', ar: 'موقع 1' }
           },
-          description: { en: 'Description 1', ar: 'وصف 1' },
+          description: { en: 'Description 1 that is long enough to meet requirements', ar: 'وصف 1' },
           source: { en: 'Source 1', ar: 'مصدر 1' },
           verified: true,
           certainty_level: 'confirmed',
+          verification_method: { en: 'Video evidence', ar: 'أدلة فيديو' },
           perpetrator: { en: 'Perpetrator 1', ar: 'مرتكب 1' },
           perpetrator_affiliation: 'assad_regime'
         },
@@ -262,12 +290,12 @@ describe('Violation Create Command', () => {
           location: {
             name: { en: 'Location 2', ar: 'موقع 2' }
           },
-          description: { en: 'Description 2', ar: 'وصف 2' },
+          description: { en: 'Description 2 that is long enough to meet requirements', ar: 'وصف 2' },
           source: { en: 'Source 2', ar: 'مصدر 2' },
           verified: false,
-          certainty_level: 'reported',
+          certainty_level: 'possible',
           perpetrator: { en: 'Perpetrator 2', ar: 'مرتكب 2' },
-          perpetrator_affiliation: 'russian_forces'
+          perpetrator_affiliation: 'unknown'
         }
       ];
 
@@ -297,31 +325,36 @@ describe('Violation Create Command', () => {
       const violationsData = [
         {
           type: 'AIRSTRIKE',
+          date: '2023-06-15',
           location: {
             name: { en: 'Valid Location', ar: 'موقع صالح' }
           },
-          description: { en: 'Description', ar: 'وصف' },
+          description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' },
           source: { en: 'Source', ar: 'مصدر' },
           verified: true,
           certainty_level: 'confirmed',
+          verification_method: { en: 'Video evidence', ar: 'أدلة فيديو' },
           perpetrator: { en: 'Perpetrator', ar: 'مرتكب' },
           perpetrator_affiliation: 'assad_regime'
         },
         {
           type: 'SHELLING',
+          date: '2023-06-16',
           // Missing location.name - should fail
           location: {},
-          description: { en: 'Description', ar: 'وصف' }
+          description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' }
         },
         {
           type: 'SHOOTING',
+          date: '2023-06-17',
           location: {
             name: { en: 'Another Valid', ar: 'آخر صالح' }
           },
-          description: { en: 'Description', ar: 'وصف' },
+          description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' },
           source: { en: 'Source', ar: 'مصدر' },
           verified: true,
           certainty_level: 'confirmed',
+          verification_method: { en: 'Witness testimony', ar: 'شهادة شهود' },
           perpetrator: { en: 'Perpetrator', ar: 'مرتكب' },
           perpetrator_affiliation: 'assad_regime'
         }
@@ -333,19 +366,12 @@ describe('Violation Create Command', () => {
         quality: 0.9
       }]);
 
-      const mockCreatedViolations = [
-        { ...violationsData[0], _id: 'mock-id-0' },
-        { ...violationsData[2], _id: 'mock-id-2' }
-      ];
-
-      Violation.create = jest.fn().mockResolvedValue(mockCreatedViolations);
-
       const result = await createBatchViolations(violationsData, mockUserId);
 
       expect(result.violations.length).toBe(2);
-      expect(result.errors).toEqual([
-        { index: 1, error: 'Location name is required' }
-      ]);
+      expect(result.errors).toBeDefined();
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].index).toBe(1);
     });
 
     it('should throw error when input is not an array', async () => {

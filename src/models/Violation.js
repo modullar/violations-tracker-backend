@@ -341,4 +341,203 @@ ViolationSchema.methods.toJSON = function() {
   return violation;
 };
 
+// Static method for comprehensive validation with business rules
+ViolationSchema.statics.validateForCreation = async function(violationData, options = {}) {
+  const errors = [];
+  
+  // Sanitize data first
+  const sanitizedData = this.sanitizeData(violationData);
+  
+  // Business logic validation that goes beyond schema validation
+  await this._validateBusinessRules(sanitizedData, errors, options);
+  
+  if (errors.length > 0) {
+    const error = new Error('Validation failed');
+    error.name = 'ValidationError';
+    error.errors = errors.reduce((acc, err) => {
+      acc[err.field] = { message: err.message };
+      return acc;
+    }, {});
+    throw error;
+  }
+  
+  return sanitizedData;
+};
+
+// Static method for batch validation
+ViolationSchema.statics.validateBatch = async function(violationsData, options = {}) {
+  const results = { valid: [], invalid: [] };
+  
+  for (let i = 0; i < violationsData.length; i++) {
+    try {
+      const validatedData = await this.validateForCreation(violationsData[i], options);
+      results.valid.push({ ...validatedData, _batchIndex: i });
+    } catch (error) {
+      results.invalid.push({
+        index: i,
+        violation: violationsData[i],
+        errors: error.errors ? Object.values(error.errors).map(e => e.message) : [error.message]
+      });
+    }
+  }
+  
+  return results;
+};
+
+// Business rule validation (beyond schema validation)
+ViolationSchema.statics._validateBusinessRules = async function(data, errors, options) {
+  // Cross-field validation - ensure counts match violation types
+  if (data.type === 'DETENTION' && (!data.detained_count || data.detained_count === 0)) {
+    errors.push({
+      field: 'detained_count',
+      message: 'Detained count is required for detention violations'
+    });
+  }
+  
+  if (data.type === 'KIDNAPPING' && (!data.kidnapped_count || data.kidnapped_count === 0)) {
+    errors.push({
+      field: 'kidnapped_count', 
+      message: 'Kidnapped count is required for kidnapping violations'
+    });
+  }
+  
+  if (data.type === 'DISPLACEMENT' && (!data.displaced_count || data.displaced_count === 0)) {
+    errors.push({
+      field: 'displaced_count',
+      message: 'Displaced count is required for displacement violations'
+    });
+  }
+  
+  // Location validation for geocoding requirements
+  if (!data.location?.name?.en && options.requiresGeocoding !== false) {
+    errors.push({
+      field: 'location.name.en',
+      message: 'English location name is required for geocoding'
+    });
+  }
+  
+  // Conditional validation based on verification status
+  if (data.verified && !data.verification_method?.en?.trim()) {
+    errors.push({
+      field: 'verification_method.en',
+      message: 'Verification method is required for verified violations'
+    });
+  }
+  
+  // Validate victim counts vs actual victims array
+  if (data.victims && data.victims.length > 0) {
+    const deadVictims = data.victims.filter(v => v.death_date).length;
+    if (data.casualties && deadVictims > data.casualties) {
+      errors.push({
+        field: 'casualties',
+        message: 'Casualties count cannot be less than the number of victims with death dates'
+      });
+    }
+  }
+  
+  // Validate date relationships
+  if (data.date && data.reported_date) {
+    const incidentDate = new Date(data.date);
+    const reportedDate = new Date(data.reported_date);
+    
+    // Reported date should not be significantly earlier than incident date
+    const daysDiff = (incidentDate - reportedDate) / (1000 * 60 * 60 * 24);
+    if (daysDiff > 365) { // More than a year gap
+      errors.push({
+        field: 'reported_date',
+        message: 'Reported date cannot be more than a year before the incident date'
+      });
+    }
+  }
+  
+  // Validate victim death dates against incident date
+  if (data.victims && data.victims.length > 0 && data.date) {
+    const incidentDate = new Date(data.date);
+    data.victims.forEach((victim, index) => {
+      if (victim.death_date) {
+        const deathDate = new Date(victim.death_date);
+        if (deathDate < incidentDate) {
+          errors.push({
+            field: `victims[${index}].death_date`,
+            message: 'Victim death date cannot be before the incident date'
+          });
+        }
+      }
+    });
+  }
+};
+
+// Static method for sanitization/normalization
+ViolationSchema.statics.sanitizeData = function(violationData) {
+  const sanitized = JSON.parse(JSON.stringify(violationData)); // Deep clone
+  
+  // Normalize dates
+  if (sanitized.date) {
+    if (typeof sanitized.date === 'string') {
+      sanitized.date = new Date(sanitized.date);
+    }
+  }
+  
+  if (sanitized.reported_date) {
+    if (typeof sanitized.reported_date === 'string') {
+      sanitized.reported_date = new Date(sanitized.reported_date);
+    }
+  }
+  
+  // Normalize victim death dates
+  if (sanitized.victims && sanitized.victims.length > 0) {
+    sanitized.victims = sanitized.victims.map(victim => {
+      if (victim.death_date && typeof victim.death_date === 'string') {
+        victim.death_date = new Date(victim.death_date);
+      }
+      return victim;
+    });
+  }
+  
+  // Set required defaults
+  if (sanitized.verified === undefined) sanitized.verified = false;
+  if (!sanitized.perpetrator_affiliation) sanitized.perpetrator_affiliation = 'unknown';
+  if (!sanitized.certainty_level) sanitized.certainty_level = 'possible';
+  
+  // Ensure numeric fields are numbers
+  ['casualties', 'kidnapped_count', 'detained_count', 'injured_count', 'displaced_count'].forEach(field => {
+    if (sanitized[field] !== undefined && sanitized[field] !== null) {
+      sanitized[field] = Number(sanitized[field]) || 0;
+    }
+  });
+  
+  // Ensure required localized strings have proper structure
+  ['description', 'perpetrator', 'source', 'source_url', 'verification_method'].forEach(field => {
+    if (sanitized[field] && typeof sanitized[field] === 'string') {
+      // Convert plain string to localized object
+      sanitized[field] = { en: sanitized[field], ar: '' };
+    } else if (!sanitized[field]) {
+      if (field === 'description' || field === 'perpetrator') {
+        // Required fields get minimal structure
+        sanitized[field] = { en: '', ar: '' };
+      } else {
+        // Optional fields get default empty structure
+        sanitized[field] = { en: '', ar: '' };
+      }
+    }
+  });
+  
+  // Ensure location has proper structure
+  if (sanitized.location) {
+    if (sanitized.location.name && typeof sanitized.location.name === 'string') {
+      sanitized.location.name = { en: sanitized.location.name, ar: '' };
+    }
+    if (!sanitized.location.administrative_division) {
+      sanitized.location.administrative_division = { en: '', ar: '' };
+    } else if (typeof sanitized.location.administrative_division === 'string') {
+      sanitized.location.administrative_division = { 
+        en: sanitized.location.administrative_division, 
+        ar: '' 
+      };
+    }
+  }
+  
+  return sanitized;
+};
+
 module.exports = mongoose.model('Violation', ViolationSchema);
