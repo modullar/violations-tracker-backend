@@ -32,6 +32,16 @@ const {
   getViolationsTotal 
 } = require('./stats');
 
+// Merge operations
+const { 
+  mergeViolations, 
+  mergeWithExistingViolation, 
+  mergeVictims, 
+  mergeMediaLinks, 
+  mergeTags, 
+  mergeLocalizedString 
+} = require('./merge');
+
 module.exports = {
   // Create
   createSingleViolation,
@@ -56,5 +66,13 @@ module.exports = {
   getViolationsByType,
   getViolationsByLocation,
   getViolationsByYear,
-  getViolationsTotal
+  getViolationsTotal,
+  
+  // Merge
+  mergeViolations,
+  mergeWithExistingViolation,
+  mergeVictims,
+  mergeMediaLinks,
+  mergeTags,
+  mergeLocalizedString
 };

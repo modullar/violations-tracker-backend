@@ -233,6 +233,105 @@ jest.mock('../../utils/geocoder', () => ({
   ])
 }));
 
+// Mock duplicate checking utilities
+jest.mock('../../utils/duplicateChecker', () => ({
+  checkForDuplicates: jest.fn().mockResolvedValue({
+    hasDuplicates: false,
+    duplicates: [],
+    bestMatch: null
+  })
+}));
+
+// Mock merge functionality
+jest.mock('../../commands/violations/merge', () => ({
+  mergeWithExistingViolation: jest.fn().mockImplementation((newData, existing, userId) => {
+    return Promise.resolve({ ...existing, ...newData, updated_by: userId });
+  })
+}));
+
+// Mock create commands with new structure
+jest.mock('../../commands/violations', () => ({
+  createSingleViolation: jest.fn().mockImplementation(async (data, userId) => {
+    const violation = { ...mockViolation, ...data, created_by: userId };
+    return {
+      violation,
+      wasMerged: false
+    };
+  }),
+  createBatchViolations: jest.fn().mockImplementation(async (dataArray, userId) => {
+    const ErrorResponse = require('../../utils/errorResponse');
+    
+    if (!Array.isArray(dataArray)) {
+      throw new ErrorResponse('Request body must be an array of violations', 400);
+    }
+    
+    if (dataArray.length === 0) {
+      throw new ErrorResponse('At least one violation must be provided', 400);
+    }
+    
+    const violations = dataArray.map((data, index) => ({
+      ...mockViolation,
+      ...data,
+      _id: `batch-violation-id-${index}`,
+      created_by: userId
+    }));
+    return {
+      violations,
+      created: violations,
+      merged: [],
+      errors: undefined
+    };
+  }),
+  // Query operations
+  getViolations: jest.fn().mockResolvedValue({
+    violations: [mockViolation],
+    totalDocs: 1,
+    pagination: {
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPrevPage: false
+    }
+  }),
+  getViolationsInRadius: jest.fn().mockResolvedValue([mockViolation]),
+  getViolationById: jest.fn().mockImplementation((id) => {
+    if (id === violationId) {
+      return Promise.resolve(mockViolation);
+    }
+    return Promise.resolve(null);
+  }),
+  // Update operations
+  updateViolation: jest.fn().mockImplementation((id, data, userId) => {
+    if (id === violationId) {
+      return Promise.resolve({ ...mockViolation, ...data, updated_by: userId });
+    }
+    const ErrorResponse = require('../../utils/errorResponse');
+    throw new ErrorResponse(`Violation not found with id of ${id}`, 404);
+  }),
+  // Delete operations
+  deleteViolation: jest.fn().mockImplementation((id) => {
+    if (id === violationId) {
+      return Promise.resolve();
+    }
+    const ErrorResponse = require('../../utils/errorResponse');
+    throw new ErrorResponse(`Violation not found with id of ${id}`, 404);
+  }),
+  // Stats operations
+  getViolationStats: jest.fn().mockResolvedValue({}),
+  getViolationsByType: jest.fn().mockResolvedValue([
+    { _id: 'AIRSTRIKE', count: 2 },
+    { _id: 'ARTILLERY', count: 1 }
+  ]),
+  getViolationsByLocation: jest.fn().mockResolvedValue([
+    { _id: 'Test Division', count: 3 }
+  ]),
+  getViolationsByYear: jest.fn().mockResolvedValue([
+    { _id: 2023, count: 3 }
+  ]),
+  getViolationsTotal: jest.fn().mockResolvedValue(5)
+}));
+
 // Mock JWT verification
 jest.mock('jsonwebtoken', () => ({
   sign: jest.fn().mockImplementation((payload) => {
@@ -399,6 +498,77 @@ describe('Violations API', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data).toHaveProperty('_id');
       expect(res.body.data.type).toBe(newViolation.type);
+      expect(res.body).toHaveProperty('merged');
+      expect(typeof res.body.merged).toBe('boolean');
+      
+      // If merged is true, should have duplicateInfo
+      if (res.body.merged) {
+        expect(res.body).toHaveProperty('duplicateInfo');
+        expect(res.body.duplicateInfo).toHaveProperty('similarity');
+        expect(res.body.duplicateInfo).toHaveProperty('exactMatch');
+      }
+    });
+
+    it('should handle duplicate violation merge', async () => {
+      // Mock the commands to return a merged result
+      const { createSingleViolation } = require('../../commands/violations');
+      createSingleViolation.mockResolvedValueOnce({
+        violation: { 
+          ...mockViolation, 
+          casualties: 8, // Merged value
+          updated_by: '5f7d327c3642214df4d0e0f7'
+        },
+        wasMerged: true,
+        duplicateInfo: {
+          similarity: 0.95,
+          exactMatch: false,
+          originalId: mockViolation._id
+        }
+      });
+
+      const duplicateViolation = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        location: {
+          name: { en: 'Test Location', ar: 'موقع اختبار' },
+          administrative_division: { en: 'Test Division', ar: 'قسم اختبار' }
+        },
+        description: {
+          en: 'Similar violation description that meets the minimum length requirement.',
+          ar: 'وصف انتهاك مماثل'
+        },
+        source: {
+          en: 'Similar Source',
+          ar: 'مصدر مماثل'
+        },
+        verified: true,
+        certainty_level: 'confirmed',
+        verification_method: {
+          en: 'Video evidence',
+          ar: 'أدلة فيديو'
+        },
+        perpetrator: {
+          en: 'Similar Perpetrator',
+          ar: 'مرتكب مماثل'
+        },
+        perpetrator_affiliation: 'assad_regime',
+        casualties: 3
+      };
+      
+      const res = await request(app)
+        .post('/api/violations')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(duplicateViolation);
+      
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('_id');
+      expect(res.body.merged).toBe(true);
+      expect(res.body).toHaveProperty('duplicateInfo');
+      expect(res.body.duplicateInfo).toHaveProperty('similarity');
+      expect(res.body.duplicateInfo).toHaveProperty('exactMatch');
+      expect(res.body.duplicateInfo.similarity).toBe(0.95);
+      expect(res.body.duplicateInfo.exactMatch).toBe(false);
     });
     
     it('should require authentication', async () => {
@@ -670,6 +840,18 @@ describe('Violations API', () => {
       expect(res.body.data.length).toBe(violationsBatch.length);
       expect(res.body.data[0]).toHaveProperty('_id');
       expect(res.body.data[1]).toHaveProperty('_id');
+      
+      // Check for new summary information
+      expect(res.body).toHaveProperty('summary');
+      expect(res.body.summary).toHaveProperty('total');
+      expect(res.body.summary).toHaveProperty('created');
+      expect(res.body.summary).toHaveProperty('merged');
+      expect(res.body.summary).toHaveProperty('errors');
+      expect(res.body.summary.total).toBe(violationsBatch.length);
+      
+      // Check for merged info array
+      expect(res.body).toHaveProperty('mergedInfo');
+      expect(Array.isArray(res.body.mergedInfo)).toBe(true);
     });
     
     it('should require the request body to be an array', async () => {

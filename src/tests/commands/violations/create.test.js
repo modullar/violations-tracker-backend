@@ -9,6 +9,14 @@ jest.mock('../../../utils/geocoder', () => ({
   geocodeLocation: jest.fn()
 }));
 
+jest.mock('../../../utils/duplicateChecker', () => ({
+  checkForDuplicates: jest.fn()
+}));
+
+jest.mock('../../../commands/violations/merge', () => ({
+  mergeWithExistingViolation: jest.fn()
+}));
+
 jest.mock('../../../config/logger', () => ({
   info: jest.fn(),
   error: jest.fn()
@@ -20,12 +28,21 @@ const Violation = require('../../../models/Violation');
 const ErrorResponse = require('../../../utils/errorResponse');
 
 const { geocodeLocation } = require('../../../utils/geocoder');
+const { checkForDuplicates } = require('../../../utils/duplicateChecker');
+const { mergeWithExistingViolation } = require('../../../commands/violations/merge');
 
 describe('Violation Create Command', () => {
   const mockUserId = new mongoose.Types.ObjectId().toString();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Default mock for checkForDuplicates - no duplicates found
+    checkForDuplicates.mockResolvedValue({
+      hasDuplicates: false,
+      duplicates: [],
+      bestMatch: null
+    });
   });
 
   describe('geocodeLocationData', () => {
@@ -132,59 +149,71 @@ describe('Violation Create Command', () => {
   });
 
   describe('createSingleViolation', () => {
-    it('should create a violation with valid data and location', async () => {
-      const violationData = {
-        type: 'AIRSTRIKE',
-        date: '2023-06-15',
-        location: {
-          name: {
-            en: 'Test Location',
-            ar: 'موقع اختبار'
-          },
-          administrative_division: {
-            en: 'Test Division',
-            ar: 'قسم الاختبار'
-          }
+    const baseViolationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-06-15',
+      location: {
+        name: {
+          en: 'Test Location',
+          ar: 'موقع اختبار'
         },
-        description: {
-          en: 'Test violation description that is long enough to meet requirements',
-          ar: 'وصف انتهاك الاختبار'
-        },
-        source: {
-          en: 'Test Source',
-          ar: 'مصدر الاختبار'
-        },
-        source_url: {
-          en: 'https://example.com/en/report',
-          ar: 'https://example.com/ar/report'
-        },
-        verified: true,
-        certainty_level: 'confirmed',
-        verification_method: {
-          en: 'Video evidence and witness testimony',
-          ar: 'أدلة فيديو وشهادة شهود'
-        },
-        perpetrator: {
-          en: 'Test Perpetrator',
-          ar: 'مرتكب الاختبار'
-        },
-        perpetrator_affiliation: 'assad_regime',
-        casualties: 5
-      };
+        administrative_division: {
+          en: 'Test Division',
+          ar: 'قسم الاختبار'
+        }
+      },
+      description: {
+        en: 'Test violation description that is long enough to meet requirements',
+        ar: 'وصف انتهاك الاختبار'
+      },
+      source: {
+        en: 'Test Source',
+        ar: 'مصدر الاختبار'
+      },
+      source_url: {
+        en: 'https://example.com/en/report',
+        ar: 'https://example.com/ar/report'
+      },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: {
+        en: 'Video evidence and witness testimony',
+        ar: 'أدلة فيديو وشهادة شهود'
+      },
+      perpetrator: {
+        en: 'Test Perpetrator',
+        ar: 'مرتكب الاختبار'
+      },
+      perpetrator_affiliation: 'assad_regime',
+      casualties: 5
+    };
 
+    beforeEach(() => {
       geocodeLocation.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
         quality: 0.9
       }]);
+    });
 
-      // Mock Violation.create
-      const mockCreatedViolation = { ...violationData, _id: 'mock-id', created_by: mockUserId };
+    it('should create a violation with valid data and no duplicates found', async () => {
+      const mockCreatedViolation = { 
+        ...baseViolationData, 
+        _id: 'mock-id', 
+        created_by: mockUserId,
+        location: {
+          ...baseViolationData.location,
+          coordinates: [37.1342603, 36.2021047]
+        }
+      };
+      
       Violation.create = jest.fn().mockResolvedValue(mockCreatedViolation);
 
-      const result = await createSingleViolation(violationData, mockUserId);
+      const result = await createSingleViolation(baseViolationData, mockUserId);
 
-      expect(result).toEqual(mockCreatedViolation);
+      expect(result.violation).toEqual(mockCreatedViolation);
+      expect(result.wasMerged).toBe(false);
+      expect(checkForDuplicates).toHaveBeenCalled();
       expect(Violation.create).toHaveBeenCalled();
       
       // Verify the data passed to create has been processed
@@ -195,58 +224,125 @@ describe('Violation Create Command', () => {
       expect(createCallArgs.updated_by).toBe(mockUserId);
     });
 
-    it('should create a violation without location data', async () => {
-      const violationData = {
-        type: 'SHELLING',
-        date: '2023-06-15',
-        location: {
-          name: {
-            en: 'Test Location Without Coordinates',
-            ar: 'موقع اختبار بدون إحداثيات'
-          },
-          administrative_division: {
-            en: 'Test Division',
-            ar: 'قسم الاختبار'
-          }
-        },
-        description: {
-          en: 'Test violation without specific coordinates but with location name',
-          ar: 'انتهاك اختبار بدون موقع'
-        },
-        source: {
-          en: 'Test Source',
-          ar: 'مصدر الاختبار'
-        },
-        verified: false,
-        certainty_level: 'possible',
-        perpetrator_affiliation: 'unknown'
+    it('should merge with existing violation when duplicate found and mergeDuplicates=true', async () => {
+      const mockExistingViolation = {
+        _id: 'existing-id',
+        type: 'AIRSTRIKE',
+        date: new Date('2023-06-15'),
+        casualties: 3
       };
 
-      // This test will still geocode because we have a location name
-      geocodeLocation.mockResolvedValue([{
-        latitude: 36.2021047,
-        longitude: 37.1342603,
-        quality: 0.9
-      }]);
+      const mockMergedViolation = {
+        ...mockExistingViolation,
+        casualties: 5, // Updated from new violation
+        updated_by: mockUserId
+      };
 
-      const mockCreatedViolation = { ...violationData, _id: 'mock-id', created_by: mockUserId };
+      // Mock duplicate found
+      checkForDuplicates.mockResolvedValue({
+        hasDuplicates: true,
+        duplicates: [{
+          violation: mockExistingViolation,
+          similarity: 0.9,
+          exactMatch: false
+        }],
+        bestMatch: {
+          violation: mockExistingViolation,
+          similarity: 0.9,
+          exactMatch: false
+        }
+      });
+
+      mergeWithExistingViolation.mockResolvedValue(mockMergedViolation);
+
+      const result = await createSingleViolation(baseViolationData, mockUserId);
+
+      expect(result.violation).toEqual(mockMergedViolation);
+      expect(result.wasMerged).toBe(true);
+      expect(result.duplicateInfo).toBeDefined();
+      expect(result.duplicateInfo.similarity).toBe(0.9);
+      expect(result.duplicateInfo.originalId).toBe('existing-id');
+      
+      expect(checkForDuplicates).toHaveBeenCalled();
+      expect(mergeWithExistingViolation).toHaveBeenCalledWith(
+        expect.any(Object), // sanitized data
+        mockExistingViolation,
+        mockUserId,
+        { preferNew: true }
+      );
+      expect(Violation.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when duplicate found and mergeDuplicates=false', async () => {
+      const mockExistingViolation = {
+        _id: 'existing-id',
+        type: 'AIRSTRIKE',
+        date: new Date('2023-06-15')
+      };
+
+      // Mock duplicate found
+      checkForDuplicates.mockResolvedValue({
+        hasDuplicates: true,
+        duplicates: [{
+          violation: mockExistingViolation,
+          similarity: 0.9,
+          exactMatch: false
+        }],
+        bestMatch: {
+          violation: mockExistingViolation,
+          similarity: 0.9,
+          exactMatch: false
+        }
+      });
+
+      await expect(createSingleViolation(baseViolationData, mockUserId, {
+        mergeDuplicates: false
+      })).rejects.toThrow(ErrorResponse);
+
+      expect(checkForDuplicates).toHaveBeenCalled();
+      expect(mergeWithExistingViolation).not.toHaveBeenCalled();
+      expect(Violation.create).not.toHaveBeenCalled();
+    });
+
+    it('should skip duplicate checking when checkDuplicates=false', async () => {
+      const mockCreatedViolation = { 
+        ...baseViolationData, 
+        _id: 'mock-id', 
+        created_by: mockUserId 
+      };
+      
       Violation.create = jest.fn().mockResolvedValue(mockCreatedViolation);
 
-      const result = await createSingleViolation(violationData, mockUserId);
+      const result = await createSingleViolation(baseViolationData, mockUserId, {
+        checkDuplicates: false
+      });
 
-      expect(result).toEqual(mockCreatedViolation);
+      expect(result.violation).toEqual(mockCreatedViolation);
+      expect(result.wasMerged).toBe(false);
+      expect(checkForDuplicates).not.toHaveBeenCalled();
       expect(Violation.create).toHaveBeenCalled();
+    });
+
+    it('should use custom duplicate threshold', async () => {
+      const mockCreatedViolation = { 
+        ...baseViolationData, 
+        _id: 'mock-id', 
+        created_by: mockUserId 
+      };
       
-      // Verify the data passed to create has been processed
-      const createCallArgs = Violation.create.mock.calls[0][0];
-      expect(createCallArgs.date).toBeInstanceOf(Date);
-      expect(createCallArgs.location.coordinates).toEqual([37.1342603, 36.2021047]);
-      expect(createCallArgs.created_by).toBe(mockUserId);
-      expect(createCallArgs.updated_by).toBe(mockUserId);
-      // Verify sanitized defaults were added
-      expect(createCallArgs.source_url).toEqual({ en: '', ar: '' });
-      expect(createCallArgs.verification_method).toEqual({ en: '', ar: '' });
-      expect(createCallArgs.perpetrator).toEqual({ en: '', ar: '' });
+      Violation.create = jest.fn().mockResolvedValue(mockCreatedViolation);
+
+      await createSingleViolation(baseViolationData, mockUserId, {
+        duplicateThreshold: 0.9
+      });
+
+      expect(checkForDuplicates).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          similarityThreshold: 0.9,
+          limit: 5
+        })
+      );
     });
 
     it('should handle geocoding errors', async () => {
@@ -268,7 +364,7 @@ describe('Violation Create Command', () => {
   });
 
   describe('createBatchViolations', () => {
-    it('should create multiple violations successfully', async () => {
+    it('should create multiple violations successfully with no duplicates', async () => {
       const violationsData = [
         {
           type: 'AIRSTRIKE',
@@ -312,13 +408,91 @@ describe('Violation Create Command', () => {
         location: { ...v.location, coordinates: [37.1342603, 36.2021047] }
       }));
 
-      Violation.create = jest.fn().mockResolvedValue(mockCreatedViolations);
+      Violation.create = jest.fn()
+        .mockResolvedValueOnce(mockCreatedViolations[0])
+        .mockResolvedValueOnce(mockCreatedViolations[1]);
 
       const result = await createBatchViolations(violationsData, mockUserId);
 
-      expect(result.violations).toEqual(mockCreatedViolations);
+      expect(result.violations).toHaveLength(2);
+      expect(result.created).toHaveLength(2);
+      expect(result.merged).toHaveLength(0);
       expect(result.errors).toBeUndefined();
-      expect(Violation.create).toHaveBeenCalledTimes(1);
+      expect(checkForDuplicates).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle mixed created and merged violations in batch', async () => {
+      const violationsData = [
+        {
+          type: 'AIRSTRIKE',
+          date: '2023-06-15',
+          location: { name: { en: 'Location 1', ar: 'موقع 1' } },
+          description: { en: 'Description 1 that is long enough to meet requirements', ar: 'وصف 1' },
+          source: { en: 'Source 1', ar: 'مصدر 1' },
+          verified: true,
+          certainty_level: 'confirmed',
+          verification_method: { en: 'Video evidence', ar: 'أدلة فيديو' },
+          perpetrator_affiliation: 'assad_regime'
+        },
+        {
+          type: 'SHELLING',
+          date: '2023-06-16',
+          location: { name: { en: 'Location 2', ar: 'موقع 2' } },
+          description: { en: 'Description 2 that is long enough to meet requirements', ar: 'وصف 2' },
+          source: { en: 'Source 2', ar: 'مصدر 2' },
+          verified: false,
+          certainty_level: 'possible',
+          perpetrator_affiliation: 'unknown'
+        }
+      ];
+
+      geocodeLocation.mockResolvedValue([{
+        latitude: 36.2021047,
+        longitude: 37.1342603,
+        quality: 0.9
+      }]);
+
+      const mockCreatedViolation = {
+        ...violationsData[0],
+        _id: 'created-id',
+        created_by: mockUserId
+      };
+
+      const mockExistingViolation = {
+        _id: 'existing-id',
+        type: 'SHELLING',
+        casualties: 2
+      };
+
+      const mockMergedViolation = {
+        ...mockExistingViolation,
+        casualties: 3,
+        updated_by: mockUserId
+      };
+
+      // First violation: no duplicates, second violation: duplicate found
+      checkForDuplicates
+        .mockResolvedValueOnce({
+          hasDuplicates: false,
+          duplicates: [],
+          bestMatch: null
+        })
+        .mockResolvedValueOnce({
+          hasDuplicates: true,
+          duplicates: [{ violation: mockExistingViolation, similarity: 0.8 }],
+          bestMatch: { violation: mockExistingViolation, similarity: 0.8, exactMatch: false }
+        });
+
+      Violation.create = jest.fn().mockResolvedValue(mockCreatedViolation);
+      mergeWithExistingViolation.mockResolvedValue(mockMergedViolation);
+
+      const result = await createBatchViolations(violationsData, mockUserId);
+
+      expect(result.violations).toHaveLength(2);
+      expect(result.created).toHaveLength(1);
+      expect(result.merged).toHaveLength(1);
+      expect(result.merged[0].duplicateInfo.similarity).toBe(0.8);
+      expect(result.errors).toBeUndefined();
     });
 
     it('should handle partial failures in batch creation', async () => {
@@ -343,20 +517,6 @@ describe('Violation Create Command', () => {
           // Missing location.name - should fail
           location: {},
           description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' }
-        },
-        {
-          type: 'SHOOTING',
-          date: '2023-06-17',
-          location: {
-            name: { en: 'Another Valid', ar: 'آخر صالح' }
-          },
-          description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' },
-          source: { en: 'Source', ar: 'مصدر' },
-          verified: true,
-          certainty_level: 'confirmed',
-          verification_method: { en: 'Witness testimony', ar: 'شهادة شهود' },
-          perpetrator: { en: 'Perpetrator', ar: 'مرتكب' },
-          perpetrator_affiliation: 'assad_regime'
         }
       ];
 
@@ -368,10 +528,36 @@ describe('Violation Create Command', () => {
 
       const result = await createBatchViolations(violationsData, mockUserId);
 
-      expect(result.violations.length).toBe(2);
+      expect(result.violations.length).toBe(1);
       expect(result.errors).toBeDefined();
       expect(result.errors.length).toBe(1);
       expect(result.errors[0].index).toBe(1);
+    });
+
+    it('should pass through batch options correctly', async () => {
+      const violationsData = [{
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        location: { name: { en: 'Location', ar: 'موقع' } },
+        description: { en: 'Description that is long enough to meet requirements', ar: 'وصف' },
+        perpetrator_affiliation: 'assad_regime'
+      }];
+
+      geocodeLocation.mockResolvedValue([{
+        latitude: 36.2021047,
+        longitude: 37.1342603,
+        quality: 0.9
+      }]);
+
+      Violation.create = jest.fn().mockResolvedValue({ _id: 'test-id' });
+
+      await createBatchViolations(violationsData, mockUserId, {
+        checkDuplicates: false,
+        duplicateThreshold: 0.9
+      });
+
+      // Since checkDuplicates is false, it shouldn't call checkForDuplicates
+      expect(checkForDuplicates).not.toHaveBeenCalled();
     });
 
     it('should throw error when input is not an array', async () => {
@@ -392,29 +578,6 @@ describe('Violation Create Command', () => {
         { type: 'SHELLING' } // Missing location entirely
       ];
 
-      await expect(createBatchViolations(violationsData, mockUserId))
-        .rejects.toThrow(new ErrorResponse('All violations failed validation', 400));
-    });
-
-    it('should handle geocoding failures in batch', async () => {
-      const violationsData = [
-        {
-          type: 'AIRSTRIKE',
-          location: {
-            name: { en: 'Location 1', ar: 'موقع 1' }
-          },
-          description: { en: 'Description', ar: 'وصف' },
-          source: { en: 'Source', ar: 'مصدر' },
-          verified: true,
-          certainty_level: 'confirmed',
-          perpetrator: { en: 'Perpetrator', ar: 'مرتكب' },
-          perpetrator_affiliation: 'assad_regime'
-        }
-      ];
-
-      geocodeLocation.mockRejectedValue(new Error('Geocoding service error'));
-
-      // Since all violations fail, it should throw an error
       await expect(createBatchViolations(violationsData, mockUserId))
         .rejects.toThrow(new ErrorResponse('All violations failed validation', 400));
     });

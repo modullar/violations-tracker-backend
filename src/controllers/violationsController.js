@@ -86,12 +86,26 @@ exports.getViolation = asyncHandler(async (req, res, next) => {
  */
 exports.createViolation = asyncHandler(async (req, res, next) => {
   try {
-    const violation = await createSingleViolation(req.body, req.user.id);
+    const result = await createSingleViolation(req.body, req.user.id);
     
-    res.status(201).json({
+    // Build response object
+    const response = {
       success: true,
-      data: violation
-    });
+      data: result.violation
+    };
+
+    // Include duplicate information if violation was merged
+    if (result.wasMerged && result.duplicateInfo) {
+      response.merged = true;
+      response.duplicateInfo = {
+        similarity: result.duplicateInfo.similarity,
+        exactMatch: result.duplicateInfo.exactMatch
+      };
+    } else {
+      response.merged = false;
+    }
+    
+    res.status(201).json(response);
   } catch (error) {
     return next(new ErrorResponse(error.message, 400));
   }
@@ -222,6 +236,13 @@ exports.createViolationsBatch = asyncHandler(async (req, res, next) => {
       success: true,
       count: result.violations.length,
       data: result.violations,
+      summary: {
+        total: result.violations.length,
+        created: result.created.length,
+        merged: result.merged.length,
+        errors: result.errors ? result.errors.length : 0
+      },
+      mergedInfo: result.merged,
       errors: result.errors
     });
   } catch (error) {
