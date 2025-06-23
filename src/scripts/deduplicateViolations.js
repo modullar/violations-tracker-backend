@@ -4,7 +4,14 @@ const stringSimilarity = require('string-similarity');
 const path = require('path');
 
 // Load the appropriate .env file based on NODE_ENV
-const envFile = process.env.NODE_ENV === 'staging' ? '.env.staging' : '.env';
+let envFile = '.env';
+if (process.env.NODE_ENV === 'staging') {
+  envFile = '.env.staging';
+} else if (process.env.NODE_ENV === 'production') {
+  envFile = '.env.production';
+} else if (process.env.NODE_ENV === 'development') {
+  envFile = '.env.development';
+}
 require('dotenv').config({ path: path.resolve(__dirname, '..', '..', envFile) });
 
 // Configuration
