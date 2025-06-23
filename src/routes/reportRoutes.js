@@ -1,67 +1,33 @@
 const express = require('express');
-const { parseReport, getJobStatus, getAllJobs } = require('../controllers/reportController');
+const {
+  parseReport,
+  getJobStatus,
+  getAllJobs,
+  getReports,
+  getReport,
+  getReportStats,
+  getReportsReadyForProcessing,
+  markReportAsProcessed,
+  markReportAsFailed
+} = require('../controllers/reportController');
 const { protect, authorize } = require('../middleware/auth');
-const { validateRequest } = require('../middleware/validators');
-const { body, param } = require('express-validator');
+const { validateRequest, idParamRules } = require('../middleware/validators');
 
 const router = express.Router();
 
-// Validation rules for report parsing
-const reportParsingRules = [
-  body('reportText')
-    .notEmpty()
-    .withMessage('Report text is required')
-    .isLength({ min: 50 })
-    .withMessage('Report text should be at least 50 characters'),
-  
-  body('sourceURL.name')
-    .optional()
-    .notEmpty()
-    .withMessage('Source name is required when providing source information'),
-  
-  body('sourceURL.url')
-    .optional()
-    .isURL()
-    .withMessage('Source URL must be a valid URL'),
-  
-  body('sourceURL.reportDate')
-    .optional()
-    .isString()
-    .withMessage('Report date must be a string')
-];
+// Public routes
+router.get('/', getReports);
+router.get('/:id', idParamRules, validateRequest, getReport);
 
-// Validation rules for job ID parameter
-const jobIdParamRules = [
-  param('jobId')
-    .notEmpty()
-    .withMessage('Job ID is required')
-    .isMongoId()
-    .withMessage('Invalid job ID format')
-];
+// Protected routes - Report parsing
+router.post('/parse', protect, authorize('editor', 'admin'), parseReport);
+router.get('/jobs/:jobId', protect, getJobStatus);
+router.get('/jobs', protect, authorize('admin'), getAllJobs);
 
-// Routes
-router.post(
-  '/parse',
-  protect,
-  authorize('editor', 'admin'),
-  reportParsingRules,
-  validateRequest,
-  parseReport
-);
-
-router.get(
-  '/jobs/:jobId',
-  protect,
-  jobIdParamRules,
-  validateRequest,
-  getJobStatus
-);
-
-router.get(
-  '/jobs',
-  protect,
-  authorize('admin'),
-  getAllJobs
-);
+// Protected routes - Report management (Admin only)  
+router.get('/stats', protect, authorize('admin'), getReportStats);
+router.get('/ready-for-processing', protect, authorize('admin'), getReportsReadyForProcessing);
+router.put('/:id/mark-processed', protect, authorize('admin'), idParamRules, validateRequest, markReportAsProcessed);
+router.put('/:id/mark-failed', protect, authorize('admin'), idParamRules, validateRequest, markReportAsFailed);
 
 module.exports = router;

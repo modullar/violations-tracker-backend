@@ -23,9 +23,12 @@ require('./services/queueService');
 
 // Route files
 const authRoutes = require('./routes/authRoutes');
-const violationRoutes = require('./routes/violationRoutes');
 const userRoutes = require('./routes/userRoutes');
+const violationRoutes = require('./routes/violationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+
+// Jobs
+const telegramScrapingJob = require('./jobs/telegramScrapingJob');
 
 const app = express();
 
@@ -49,8 +52,8 @@ const { protect, authorize } = require('./middleware/auth');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
-app.use('/api/violations', violationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/violations', violationRoutes);
 app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
@@ -122,5 +125,15 @@ process.on('uncaughtException', (err) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 });
+
+// Start Telegram scraping job in production and development
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
+  try {
+    telegramScrapingJob.start();
+    logger.info('Telegram scraping job started');
+  } catch (error) {
+    logger.error('Failed to start Telegram scraping job:', error);
+  }
+}
 
 module.exports = server;

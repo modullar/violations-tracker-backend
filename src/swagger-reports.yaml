@@ -1,156 +1,579 @@
-  /reports/parse:
-    post:
-      tags:
-        - Reports
-      summary: Submit a report for parsing
-      description: Submit a human rights report for automated parsing with Claude AI (requires editor or admin role)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReportParseRequest'
-            example:
-              reportText: "On May 15, 2023, an airstrike hit a residential building in eastern Aleppo, killing 5 civilians and injuring 12 others. The Syrian Observatory for Human Rights reported that the attack was carried out at approximately 3:30 PM local time, targeting the Al-Firdous neighborhood. Residents reported seeing military aircraft in the area shortly before the bombing. Among the dead were two children and an elderly woman. The following day, on May 16, artillery shelling was reported in the rural areas south of Idlib, causing damage to agricultural land but no reported casualties."
-              sourceURL:
-                name: "Syrian Observatory for Human Rights"
-                url: "https://example.com/report-12345"
-                reportDate: "2023-05-16"
-      responses:
-        '200':
-          description: Report submitted for processing
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportParseResponse'
-              example:
-                success: true
-                data:
-                  jobId: "614c5387b45d8e001f3e4a12"
-                  estimatedProcessingTime: "2 minutes"
-                  submittedAt: "2023-05-17T14:23:45.123Z"
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Not authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+openapi: 3.0.0
+info:
+  title: Violations Tracker - Reports API
+  description: API documentation for Telegram scraped reports functionality
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@violations-tracker.com
 
-  /reports/jobs/{jobId}:
-    get:
-      tags:
-        - Reports
-      summary: Get status of a parsing job
-      description: Get the status and results of a report parsing job
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: jobId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Job status retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobStatusResponse'
-              example:
-                success: true
-                data:
-                  id: "614c5387b45d8e001f3e4a12"
-                  status: "completed"
-                  progress: 100
-                  submittedBy: "John Doe"
-                  submittedAt: "2023-05-17T14:23:45.123Z"
-                  estimatedProcessingTime: "2 minutes"
-                  source:
-                    name: "Syrian Observatory for Human Rights"
-                    url: "https://example.com/report-12345"
-                    reportDate: "2023-05-16"
-                  results:
-                    parsedViolationsCount: 2
-                    createdViolationsCount: 2
-                    violations: ["614c5387b45d8e001f3e4a13", "614c5387b45d8e001f3e4a14"]
-                    failedViolations: []
-        '401':
-          description: Not authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://api.violations-tracker.com/api
+    description: Production server
 
-  /reports/jobs:
+paths:
+  /reports:
     get:
+      summary: Get all scraped reports with filtering and pagination
+      description: Retrieve all reports scraped from Telegram channels with optional filtering by channel, status, language, keywords, and date ranges
       tags:
         - Reports
-      summary: Get all parsing jobs
-      description: Get a list of all report parsing jobs (admin only)
-      security:
-        - bearerAuth: []
       parameters:
         - name: page
           in: query
+          description: Page number for pagination
           schema:
             type: integer
             minimum: 1
             default: 1
         - name: limit
           in: query
+          description: Number of reports per page
           schema:
             type: integer
             minimum: 1
-            maximum: 50
+            maximum: 100
             default: 10
-        - name: status
+        - name: sort
           in: query
+          description: Sort field and order
           schema:
             type: string
-            enum: [queued, processing, validation, creating_violations, completed, failed]
+            default: '-metadata.scrapedAt'
+            enum: ['-metadata.scrapedAt', 'metadata.scrapedAt', '-date', 'date', '-metadata.viewCount', 'metadata.viewCount']
+        - name: channel
+          in: query
+          description: Filter by Telegram channel name
+          schema:
+            type: string
+        - name: parsedByLLM
+          in: query
+          description: Filter by LLM parsing status
+          schema:
+            type: boolean
+        - name: status
+          in: query
+          description: Filter by report status
+          schema:
+            type: string
+            enum: [new, processing, parsed, failed, ignored]
+        - name: language
+          in: query
+          description: Filter by detected language
+          schema:
+            type: string
+            enum: [ar, en, mixed, unknown]
+        - name: startDate
+          in: query
+          description: Filter reports from this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter reports until this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: scrapedStartDate
+          in: query
+          description: Filter reports scraped from this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: scrapedEndDate
+          in: query
+          description: Filter reports scraped until this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: keyword
+          in: query
+          description: Filter by matched keyword
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: Full-text search in report content
+          schema:
+            type: string
       responses:
         '200':
-          description: Jobs retrieved
+          description: Reports retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JobListResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    description: Number of reports in current page
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /reports/{id}:
+    get:
+      summary: Get report by ID
+      description: Retrieve a specific report by its MongoDB ObjectId
+      tags:
+        - Reports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Report ID
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '200':
+          description: Report found successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reports/stats:
+    get:
+      summary: Get report statistics
+      description: Get comprehensive statistics about scraped reports (Admin only)
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ReportStats'
         '401':
-          description: Not authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Forbidden
+          $ref: '#/components/responses/Forbidden'
+
+  /reports/ready-for-processing:
+    get:
+      summary: Get reports ready for LLM processing
+      description: Retrieve reports that are ready to be processed by LLM (Admin only)
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of reports to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Reports ready for processing retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /reports/{id}/mark-processed:
+    put:
+      summary: Mark report as processed
+      description: Mark a report as processed by LLM (Admin only)
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Report ID
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobId:
+                  type: string
+                  description: ID of the parsing job that processed this report
+                  pattern: '^[0-9a-fA-F]{24}$'
+              required:
+                - jobId
+      responses:
+        '200':
+          description: Report marked as processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reports/{id}/mark-failed:
+    put:
+      summary: Mark report as failed
+      description: Mark a report as failed during processing (Admin only)
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Report ID
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                errorMessage:
+                  type: string
+                  description: Error message describing why processing failed
+                  maxLength: 500
+      responses:
+        '200':
+          description: Report marked as failed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Report:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId
+          example: "507f1f77bcf86cd799439011"
+        source_url:
+          type: string
+          description: Original Telegram message URL
+          example: "https://t.me/channel_name/123"
+        text:
+          type: string
+          description: Text content of the Telegram message
+          example: "قصف جوي استهدف مستشفى في حلب أدى إلى مقتل 5 مدنيين"
+        date:
+          type: string
+          format: date-time
+          description: Date when the original incident occurred
+          example: "2024-01-15T10:30:00.000Z"
+        parsedByLLM:
+          type: boolean
+          description: Whether this report has been processed by LLM
+          example: false
+        status:
+          type: string
+          enum: [new, processing, parsed, failed, ignored]
+          description: Current processing status of the report
+          example: "new"
+        error:
+          type: string
+          nullable: true
+          description: Error message if processing failed
+          example: null
+        metadata:
+          $ref: '#/components/schemas/ReportMetadata'
+        parsingJobId:
+          type: string
+          nullable: true
+          description: ID of the parsing job that processed this report
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          description: When this report record was created
+          example: "2024-01-15T10:35:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this report record was last updated
+          example: "2024-01-15T10:35:00.000Z"
+
+    ReportMetadata:
+      type: object
+      properties:
+        channel:
+          type: string
+          description: Name of the Telegram channel
+          example: "SyrianCivilDefence"
+        messageId:
+          type: string
+          description: Telegram message ID
+          example: "123"
+        scrapedAt:
+          type: string
+          format: date-time
+          description: When this message was scraped
+          example: "2024-01-15T10:35:00.000Z"
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+          description: Arabic keywords that matched in the text
+          example: ["قصف جوي", "مستشفى", "مدنيين", "حلب"]
+        language:
+          type: string
+          enum: [ar, en, mixed, unknown]
+          description: Detected language of the text
+          example: "ar"
+        mediaCount:
+          type: integer
+          minimum: 0
+          description: Number of media files in the message
+          example: 2
+        forwardedFrom:
+          type: string
+          nullable: true
+          description: Original channel if message was forwarded
+          example: null
+        viewCount:
+          type: integer
+          minimum: 0
+          description: Number of views the message has
+          example: 1250
+
+    ReportStats:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of reports
+              example: 1500
+            parsed:
+              type: integer
+              description: Number of reports processed by LLM
+              example: 1200
+            unparsed:
+              type: integer
+              description: Number of reports not yet processed
+              example: 300
+            recent24h:
+              type: integer
+              description: Number of reports scraped in last 24 hours
+              example: 50
+            parsingRate:
+              type: string
+              description: Percentage of reports that have been parsed
+              example: "80.00"
+        channels:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                description: Channel name
+              count:
+                type: integer
+                description: Total reports from this channel
+              parsed:
+                type: integer
+                description: Parsed reports from this channel
+              unparsed:
+                type: integer
+                description: Unparsed reports from this channel
+        languages:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                description: Language code
+              count:
+                type: integer
+                description: Number of reports in this language
+        statuses:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                description: Status name
+              count:
+                type: integer
+                description: Number of reports with this status
+        topKeywords:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                description: Keyword
+              count:
+                type: integer
+                description: Number of times this keyword was matched
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        pages:
+          type: integer
+          description: Total number of pages
+          example: 15
+        limit:
+          type: integer
+          description: Number of items per page
+          example: 10
+        total:
+          type: integer
+          description: Total number of items
+          example: 150
+        hasNext:
+          type: boolean
+          description: Whether there is a next page
+          example: true
+        hasPrev:
+          type: boolean
+          description: Whether there is a previous page
+          example: false
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Report not found with id of 507f1f77bcf86cd799439011"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Not authorized to access this route"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "User role admin required to access this route"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Error fetching reports"
