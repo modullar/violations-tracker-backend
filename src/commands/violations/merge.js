@@ -125,6 +125,42 @@ function updateCasualtyCounts(mergedData) {
 }
 
 /**
+ * Merge source URLs from source into target, combining them as an array
+ * @param {Object} targetSourceUrl - Existing source URL object
+ * @param {Object} sourceSourceUrl - Source URL object to merge
+ * @returns {Object} Merged source URL object with arrays for each language
+ */
+function mergeSourceUrls(targetSourceUrl = {}, sourceSourceUrl = {}) {
+  const merged = {};
+  
+  // Handle English URLs
+  const targetEn = targetSourceUrl.en || '';
+  const sourceEn = sourceSourceUrl.en || '';
+  
+  if (targetEn && sourceEn && targetEn !== sourceEn) {
+    // If both exist and are different, combine them
+    merged.en = targetEn + '; ' + sourceEn;
+  } else {
+    // Use whichever exists
+    merged.en = targetEn || sourceEn || '';
+  }
+  
+  // Handle Arabic URLs
+  const targetAr = targetSourceUrl.ar || '';
+  const sourceAr = sourceSourceUrl.ar || '';
+  
+  if (targetAr && sourceAr && targetAr !== sourceAr) {
+    // If both exist and are different, combine them
+    merged.ar = targetAr + '; ' + sourceAr;
+  } else {
+    // Use whichever exists
+    merged.ar = targetAr || sourceAr || '';
+  }
+  
+  return merged;
+}
+
+/**
  * Merge two violations, combining their data intelligently
  * @param {Object} newViolationData - New violation data
  * @param {Object} existingViolation - Existing violation from database
@@ -170,10 +206,7 @@ function mergeViolations(newViolationData, existingViolation, options = {}) {
   }
 
   if (newViolationData.source_url || existingViolation.source_url) {
-    merged.source_url = mergeLocalizedString(
-      existingViolation.source_url,
-      newViolationData.source_url
-    );
+    merged.source_url = mergeSourceUrls(existingViolation.source_url, newViolationData.source_url);
   }
 
   if (newViolationData.verification_method || existingViolation.verification_method) {
@@ -251,7 +284,7 @@ async function mergeWithExistingViolation(newViolationData, existingViolation, u
       { new: true, runValidators: true }
     );
 
-    logger.info(`Merged violation data`, {
+    logger.info('Merged violation data', {
       violationId: existingViolation._id,
       userId,
       fieldsUpdated: Object.keys(mergedData).length
@@ -259,7 +292,7 @@ async function mergeWithExistingViolation(newViolationData, existingViolation, u
 
     return updatedViolation;
   } catch (error) {
-    logger.error(`Error merging violation data`, {
+    logger.error('Error merging violation data', {
       violationId: existingViolation._id,
       userId,
       error: error.message
@@ -275,5 +308,6 @@ module.exports = {
   mergeMediaLinks,
   mergeTags,
   mergeLocalizedString,
-  mergeLocation
+  mergeLocation,
+  mergeSourceUrls
 }; 
