@@ -1,5 +1,7 @@
 const Violation = require('../../models/Violation');
 const { geocodeLocation } = require('../../utils/geocoder');
+const { checkForDuplicates } = require('../../utils/duplicateChecker');
+const { mergeWithExistingViolation } = require('./merge');
 const logger = require('../../config/logger');
 const ErrorResponse = require('../../utils/errorResponse');
 
@@ -72,31 +74,102 @@ const processViolationData = async (violationData, userId) => {
 };
 
 /**
- * Create a single violation
+ * Create a single violation with duplicate checking
  * @param {Object} violationData - Violation data
  * @param {String} userId - User ID creating the violation
- * @returns {Promise<Object>} - Created violation
+ * @param {Object} options - Creation options
+ * @returns {Promise<Object>} - Created or merged violation
  */
-const createSingleViolation = async (violationData, userId) => {
+const createSingleViolation = async (violationData, userId, options = {}) => {
+  const { 
+    checkDuplicates = true,
+    mergeDuplicates = true,
+    duplicateThreshold = 0.75 
+  } = options;
+
   // 1. Validate and sanitize data using model validation
   const sanitizedData = await Violation.validateForCreation(violationData, { 
     requiresGeocoding: true 
   });
 
-  // 2. Process data (geocode and add user info)
+  // 2. Check for duplicates if enabled
+  if (checkDuplicates) {
+    const duplicateResult = await checkForDuplicates(sanitizedData, {
+      similarityThreshold: duplicateThreshold,
+      limit: 5
+    });
+
+    if (duplicateResult.hasDuplicates) {
+      const bestMatch = duplicateResult.bestMatch;
+      
+      logger.info(`Found potential duplicate for violation`, {
+        similarity: bestMatch.similarity,
+        exactMatch: bestMatch.exactMatch,
+        existingViolationId: bestMatch.violation._id
+      });
+
+      if (mergeDuplicates) {
+        // Merge with existing violation
+        const mergedViolation = await mergeWithExistingViolation(
+          sanitizedData, 
+          bestMatch.violation, 
+          userId,
+          { preferNew: true }
+        );
+
+        return {
+          violation: mergedViolation,
+          wasMerged: true,
+          duplicateInfo: {
+            similarity: bestMatch.similarity,
+            exactMatch: bestMatch.exactMatch,
+            originalId: bestMatch.violation._id
+          }
+        };
+      } else {
+        // Return duplicate information without merging
+        throw new ErrorResponse(
+          'Potential duplicate violation found. Please review before creating.',
+          409,
+          { 
+            duplicates: duplicateResult.duplicates.map(d => ({
+              id: d.violation._id,
+              similarity: d.similarity,
+              exactMatch: d.exactMatch,
+              violation: d.violation
+            }))
+          }
+        );
+      }
+    }
+  }
+
+  // 3. Process data (geocode and add user info)
   const processedData = await processViolationData(sanitizedData, userId);
   
-  // 3. Create violation (schema validation happens here as final safety net)
-  return await Violation.create(processedData);
+  // 4. Create violation (schema validation happens here as final safety net)
+  const violation = await Violation.create(processedData);
+
+  return {
+    violation,
+    wasMerged: false
+  };
 };
 
 /**
- * Create multiple violations in batch
+ * Create multiple violations in batch with duplicate checking
  * @param {Array} violationsData - Array of violation data
  * @param {String} userId - User ID creating the violations
+ * @param {Object} options - Creation options
  * @returns {Promise<Object>} - Object with created violations and errors
  */
-const createBatchViolations = async (violationsData, userId) => {
+const createBatchViolations = async (violationsData, userId, options = {}) => {
+  const { 
+    checkDuplicates = true,
+    mergeDuplicates = true,
+    duplicateThreshold = 0.75 
+  } = options;
+
   if (!Array.isArray(violationsData)) {
     throw new ErrorResponse('Request body must be an array of violations', 400);
   }
@@ -114,36 +187,47 @@ const createBatchViolations = async (violationsData, userId) => {
     throw new ErrorResponse('All violations failed validation', 400, { errors: invalid });
   }
 
-  // 2. Process valid violations
-  const processedViolations = await Promise.all(
-    valid.map(async (data) => {
-      const { _batchIndex, ...violationData } = data;
-      try {
-        return await processViolationData(violationData, userId);
-      } catch (err) {
-        // Add to invalid list if processing fails
-        invalid.push({
-          index: _batchIndex,
-          violation: violationData,
-          errors: [err.message]
-        });
-        return null;
-      }
-    })
-  );
+  // 2. Process valid violations with duplicate checking
+  const processedResults = [];
+  
+  for (const data of valid) {
+    const { _batchIndex, ...violationData } = data;
+    try {
+      const result = await createSingleViolation(violationData, userId, {
+        checkDuplicates,
+        mergeDuplicates,
+        duplicateThreshold
+      });
+      
+      processedResults.push({
+        ...result,
+        batchIndex: _batchIndex
+      });
+    } catch (err) {
+      // Add to invalid list if processing fails
+      invalid.push({
+        index: _batchIndex,
+        violation: violationData,
+        errors: [err.message]
+      });
+    }
+  }
 
-  // Filter out failed processing
-  const validProcessedViolations = processedViolations.filter(v => v !== null);
-
-  if (validProcessedViolations.length === 0) {
+  if (processedResults.length === 0) {
     throw new ErrorResponse('All violations failed processing', 400, { errors: invalid });
   }
 
-  // 3. Create violations (batch insert)
-  const violations = await Violation.create(validProcessedViolations);
+  // Separate created vs merged violations
+  const created = processedResults.filter(r => !r.wasMerged).map(r => r.violation);
+  const merged = processedResults.filter(r => r.wasMerged);
 
   return {
-    violations,
+    violations: processedResults.map(r => r.violation),
+    created: created,
+    merged: merged.map(r => ({
+      violation: r.violation,
+      duplicateInfo: r.duplicateInfo
+    })),
     errors: invalid.length > 0 ? invalid : undefined
   };
 };
