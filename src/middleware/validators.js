@@ -223,6 +223,11 @@ const violationFilterRules = [
     .isISO8601()
     .withMessage('End date must be a valid ISO date (YYYY-MM-DD)'),
   
+  query('dateFilterType')
+    .optional()
+    .isIn(['date', 'reported_date'])
+    .withMessage('Date filter type must be either "date" or "reported_date"'),
+  
   query('location')
     .optional()
     .isString()

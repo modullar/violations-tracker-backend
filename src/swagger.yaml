@@ -461,6 +461,13 @@ paths:
           schema:
             type: string
             format: date
+        - name: dateFilterType
+          in: query
+          schema:
+            type: string
+            enum: [date, reported_date]
+            default: date
+          description: Which date field to filter by - 'date' for incident date or 'reported_date' for reported date
         - name: location
           in: query
           schema:

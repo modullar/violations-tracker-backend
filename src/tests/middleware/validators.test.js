@@ -217,8 +217,10 @@ describe('Validators Middleware', () => {
     it('should validate date range filters', () => {
       const startDateRule = violationFilterRules.find(rule => rule.field === 'startDate');
       const endDateRule = violationFilterRules.find(rule => rule.field === 'endDate');
+      const dateFilterTypeRule = violationFilterRules.find(rule => rule.field === 'dateFilterType');
       expect(startDateRule).toBeDefined();
       expect(endDateRule).toBeDefined();
+      expect(dateFilterTypeRule).toBeDefined();
     });
 
     it('should validate location filters', () => {

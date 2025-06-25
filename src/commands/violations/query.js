@@ -13,16 +13,19 @@ const buildFilterQuery = (queryParams) => {
     query.type = queryParams.type;
   }
 
-  // Filter by date range
+  // Filter by date range with support for dateFilterType
   if (queryParams.startDate || queryParams.endDate) {
-    query.date = {};
+    // Determine which date field to filter by
+    const dateField = queryParams.dateFilterType === 'reported_date' ? 'reported_date' : 'date';
+    
+    query[dateField] = {};
     
     if (queryParams.startDate) {
-      query.date.$gte = new Date(queryParams.startDate);
+      query[dateField].$gte = new Date(queryParams.startDate);
     }
     
     if (queryParams.endDate) {
-      query.date.$lte = new Date(queryParams.endDate);
+      query[dateField].$lte = new Date(queryParams.endDate);
     }
   }
 

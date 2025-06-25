@@ -35,6 +35,41 @@ describe('Violation Query Command', () => {
       expect(query.date.$lte).toEqual(new Date('2023-12-31'));
     });
 
+    it('should filter by incident date when dateFilterType is "date"', () => {
+      const params = {
+        startDate: '2023-01-01',
+        endDate: '2023-12-31',
+        dateFilterType: 'date'
+      };
+      const query = buildFilterQuery(params);
+      expect(query.date.$gte).toEqual(new Date('2023-01-01'));
+      expect(query.date.$lte).toEqual(new Date('2023-12-31'));
+      expect(query.reported_date).toBeUndefined();
+    });
+
+    it('should filter by reported date when dateFilterType is "reported_date"', () => {
+      const params = {
+        startDate: '2023-01-01',
+        endDate: '2023-12-31',
+        dateFilterType: 'reported_date'
+      };
+      const query = buildFilterQuery(params);
+      expect(query.reported_date.$gte).toEqual(new Date('2023-01-01'));
+      expect(query.reported_date.$lte).toEqual(new Date('2023-12-31'));
+      expect(query.date).toBeUndefined();
+    });
+
+    it('should default to incident date when dateFilterType is not specified', () => {
+      const params = {
+        startDate: '2023-01-01',
+        endDate: '2023-12-31'
+      };
+      const query = buildFilterQuery(params);
+      expect(query.date.$gte).toEqual(new Date('2023-01-01'));
+      expect(query.date.$lte).toEqual(new Date('2023-12-31'));
+      expect(query.reported_date).toBeUndefined();
+    });
+
     it('should filter by location name in English', () => {
       const query = buildFilterQuery({ location: 'Aleppo', lang: 'en' });
       expect(query['location.name.en']).toBeInstanceOf(RegExp);
