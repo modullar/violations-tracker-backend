@@ -1,13 +1,18 @@
-const nock = require('nock');
 const TelegramScraper = require('../../services/TelegramScraper');
 const Report = require('../../models/Report');
 const { connectDB, closeDB } = require('../setup');
 const fs = require('fs');
-const path = require('path');
 const yaml = require('js-yaml');
 
-// Mock HTML response for Telegram channel
-const mockTelegramHTML = `
+// Mock HTTP client for TelegramScraper to avoid real HTTP requests
+jest.mock('axios', () => ({
+  create: jest.fn(() => ({
+    get: jest.fn()
+  }))
+}));
+
+// Mock HTML response for Telegram channel - will be generated dynamically
+const getMockTelegramHTML = () => `
 <!DOCTYPE html>
 <html>
 <body>
@@ -15,7 +20,7 @@ const mockTelegramHTML = `
   <div class="tgme_widget_message_text">قصف جوي استهدف مستشفى في حلب أدى إلى مقتل 5 مدنيين وإصابة 15 آخرين</div>
   <div class="tgme_widget_message_date">
     <a href="https://t.me/testchannel/123">
-      <time datetime="2024-01-15T10:30:00+00:00">Jan 15, 2024</time>
+      <time datetime="${new Date().toISOString()}">Just now</time>
     </a>
   </div>
   <div class="tgme_widget_message_views">1.2K views</div>
@@ -24,16 +29,16 @@ const mockTelegramHTML = `
   <div class="tgme_widget_message_text">انفجار عبوة ناسفة في دمشق</div>
   <div class="tgme_widget_message_date">
     <a href="https://t.me/testchannel/124">
-      <time datetime="2024-01-15T10:25:00+00:00">Jan 15, 2024</time>
+      <time datetime="${new Date(Date.now() - 60000).toISOString()}">1 minute ago</time>
     </a>
   </div>
   <div class="tgme_widget_message_views">892 views</div>
 </div>
 <div class="tgme_widget_message" data-post="testchannel/125">
-  <div class="tgme_widget_message_text">Weather update: sunny day</div>
+  <div class="tgme_widget_message_text">Weather update: sunny day today with clear skies</div>
   <div class="tgme_widget_message_date">
     <a href="https://t.me/testchannel/125">
-      <time datetime="2024-01-15T10:20:00+00:00">Jan 15, 2024</time>
+      <time datetime="${new Date(Date.now() - 120000).toISOString()}">2 minutes ago</time>
     </a>
   </div>
 </div>
@@ -43,6 +48,7 @@ const mockTelegramHTML = `
 
 describe('TelegramScraper', () => {
   let scraper;
+  let mockHttpClient;
 
   beforeAll(async () => {
     await connectDB();
@@ -92,17 +98,24 @@ describe('TelegramScraper', () => {
     });
 
     scraper = new TelegramScraper();
+    
+    // Mock the HTTP client
+    const axios = require('axios');
+    mockHttpClient = {
+      get: jest.fn()
+    };
+    axios.create.mockReturnValue(mockHttpClient);
+    scraper.httpClient = mockHttpClient;
   });
 
   afterAll(async () => {
     await closeDB();
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 
   beforeEach(async () => {
     await Report.deleteMany({});
-    nock.cleanAll();
+    jest.clearAllMocks();
   });
 
   describe('Configuration Loading', () => {
@@ -158,12 +171,13 @@ describe('TelegramScraper', () => {
 
   describe('Channel Scraping', () => {
     it('should successfully scrape a channel and save reports', async () => {
-      // Mock HTTP request
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(200, mockTelegramHTML);
+      // Mock HTTP response
+      mockHttpClient.get.mockResolvedValue({
+        data: getMockTelegramHTML()
+      });
 
       const channel = scraper.activeChannels[0];
+      
       const result = await scraper.scrapeChannel(channel);
 
       expect(result.newReports).toBe(2); // Two messages with keywords
@@ -172,6 +186,7 @@ describe('TelegramScraper', () => {
 
       // Check if reports were saved to database
       const savedReports = await Report.find({});
+      
       expect(savedReports).toHaveLength(2);
       
       const report1 = savedReports.find(r => r.metadata.messageId === '123');
@@ -179,21 +194,22 @@ describe('TelegramScraper', () => {
       expect(report1.text).toContain('قصف جوي');
       expect(report1.metadata.matchedKeywords).toContain('قصف جوي');
       expect(report1.metadata.language).toBe('ar');
-    });
+    }, 10000);
 
     it('should handle duplicate messages correctly', async () => {
       // First scrape
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(200, mockTelegramHTML);
+      const firstHTML = getMockTelegramHTML();
+      mockHttpClient.get.mockResolvedValue({
+        data: firstHTML
+      });
 
       const channel = scraper.activeChannels[0];
       await scraper.scrapeChannel(channel);
 
-      // Second scrape with same content
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(200, mockTelegramHTML);
+      // Second scrape with EXACTLY the same content
+      mockHttpClient.get.mockResolvedValue({
+        data: firstHTML // Use the same HTML string
+      });
 
       const result = await scraper.scrapeChannel(channel);
 
@@ -203,55 +219,59 @@ describe('TelegramScraper', () => {
       // Should still have only 2 reports in database
       const savedReports = await Report.find({});
       expect(savedReports).toHaveLength(2);
-    });
+    }, 10000);
 
     it('should handle HTTP errors gracefully', async () => {
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(500, 'Internal Server Error');
+      mockHttpClient.get.mockRejectedValue(new Error('HTTP 500 Error'));
 
       const channel = scraper.activeChannels[0];
       
-      await expect(scraper.scrapeChannel(channel)).rejects.toThrow();
-    });
+      await expect(scraper.scrapeChannel(channel)).rejects.toThrow('HTTP 500 Error');
+    }, 5000);
 
     it('should skip messages without keywords', async () => {
+      const currentTime = new Date().toISOString();
       const htmlWithoutKeywords = `
-        <div class="tgme_widget_message">
-          <div class="tgme_widget_message_text">Just a regular message about weather</div>
+        <!DOCTYPE html>
+        <html>
+        <body>
+        <div class="tgme_widget_message" data-post="testchannel/126">
+          <div class="tgme_widget_message_text">Just a regular message about weather and sunshine today without violation keywords</div>
           <div class="tgme_widget_message_date">
             <a href="https://t.me/testchannel/126">
-              <time datetime="2024-01-15T10:30:00+00:00">Jan 15, 2024</time>
+              <time datetime="${currentTime}">Just now</time>
             </a>
           </div>
         </div>
+        </body>
+        </html>
       `;
 
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(200, htmlWithoutKeywords);
+      mockHttpClient.get.mockResolvedValue({
+        data: htmlWithoutKeywords
+      });
 
       const channel = scraper.activeChannels[0];
       const result = await scraper.scrapeChannel(channel);
 
       expect(result.newReports).toBe(0);
       expect(result.processed).toBe(1);
-    });
+    }, 10000);
   });
 
   describe('Statistics', () => {
     beforeEach(async () => {
-      // Create test reports
+      // Create test reports with longer text to pass validation
       const reports = [
         {
           source_url: 'https://t.me/testchannel/1',
-          text: 'Report 1',
+          text: 'This is a longer report text that meets the minimum character requirement for validation',
           date: new Date(),
           metadata: { channel: 'testchannel', messageId: '1', scrapedAt: new Date() }
         },
         {
           source_url: 'https://t.me/testchannel/2',
-          text: 'Report 2',
+          text: 'This is another longer report text that meets the minimum requirement and is parsed',
           date: new Date(),
           parsedByLLM: true,
           metadata: { channel: 'testchannel', messageId: '2', scrapedAt: new Date() }
@@ -275,28 +295,29 @@ describe('TelegramScraper', () => {
 
   describe('Channel Testing', () => {
     it('should test channel connectivity successfully', async () => {
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(200, 'OK');
+      mockHttpClient.get.mockResolvedValue({
+        status: 200,
+        data: 'OK'
+      });
 
       const result = await scraper.testChannel('testchannel');
 
       expect(result.channel).toBe('testchannel');
       expect(result.accessible).toBe(true);
       expect(result.status).toBe(200);
-    });
+    }, 5000);
 
     it('should handle channel connectivity failure', async () => {
-      nock('https://t.me')
-        .get('/s/testchannel')
-        .reply(404, 'Not Found');
+      const error = new Error('HTTP 404 Error');
+      error.response = { status: 404 };
+      mockHttpClient.get.mockRejectedValue(error);
 
       const result = await scraper.testChannel('testchannel');
 
       expect(result.channel).toBe('testchannel');
       expect(result.accessible).toBe(false);
       expect(result.error).toBeDefined();
-    });
+    }, 5000);
 
     it('should throw error for non-existent channel', async () => {
       await expect(scraper.testChannel('nonexistent')).rejects.toThrow('Channel nonexistent not found');

@@ -5,7 +5,7 @@ const ReportParsingJob = require('../models/jobs/ReportParsingJob');
 const Violation = require('../models/Violation');
 const { geocodeLocation } = require('../utils/geocoder');
 
-// Create a new queue
+// Create queues
 const reportParsingQueue = new Queue('report-parsing-queue', {
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
@@ -20,6 +20,27 @@ const reportParsingQueue = new Queue('report-parsing-queue', {
     },
     removeOnComplete: 100,  // Keep last 100 completed jobs
     removeOnFail: 200       // Keep last 200 failed jobs
+  }
+});
+
+// Create Telegram scraping queue
+const telegramScrapingQueue = new Queue('telegram-scraping-queue', {
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD
+  },
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: 'exponential',
+      delay: 3000
+    },
+    removeOnComplete: 50,   // Keep last 50 completed jobs
+    removeOnFail: 100,      // Keep last 100 failed jobs
+    repeat: {
+      cron: '*/5 * * * *'   // Every 5 minutes
+    }
   }
 });
 
@@ -242,6 +263,59 @@ reportParsingQueue.on('failed', (job, error) => {
   logger.error(`Job ${job.id} failed: ${error.message}`);
 });
 
+// Process Telegram scraping jobs
+telegramScrapingQueue.process('telegram-scraping', async (job) => {
+  const TelegramScraper = require('./TelegramScraper');
+  
+  try {
+    logger.info(`Starting Telegram scraping job ${job.id}`);
+    job.progress(10);
+    
+    const scraper = new TelegramScraper();
+    job.progress(20);
+    
+    const results = await scraper.scrapeAllChannels();
+    job.progress(90);
+    
+    logger.info(`Telegram scraping job ${job.id} completed:`, {
+      newReports: results.newReports,
+      duplicates: results.duplicates,
+      successfulChannels: results.success,
+      failedChannels: results.failed
+    });
+    
+    job.progress(100);
+    
+    return {
+      success: true,
+      newReports: results.newReports,
+      duplicates: results.duplicates,
+      channels: results.channels,
+      completedAt: new Date()
+    };
+    
+  } catch (error) {
+    logger.error(`Telegram scraping job ${job.id} failed:`, error);
+    throw error;
+  }
+});
+
+// Handle Telegram scraping job events
+telegramScrapingQueue.on('completed', (job, result) => {
+  logger.info(`Telegram scraping job ${job.id} completed successfully:`, {
+    newReports: result.newReports,
+    duplicates: result.duplicates
+  });
+});
+
+telegramScrapingQueue.on('failed', (job, error) => {
+  logger.error(`Telegram scraping job ${job.id} failed:`, error);
+});
+
+telegramScrapingQueue.on('stalled', (job) => {
+  logger.warn(`Telegram scraping job ${job.id} stalled`);
+});
+
 // Add a job to the queue
 const addJob = async (jobId) => {
   await reportParsingQueue.add({ jobId }, {
@@ -253,10 +327,59 @@ const addJob = async (jobId) => {
   });
 };
 
+// Add function to start Telegram scraping
+const startTelegramScraping = async () => {
+  try {
+    // Add a repeating job for Telegram scraping
+    await telegramScrapingQueue.add('telegram-scraping', {
+      startedAt: new Date(),
+      description: 'Automated Telegram channel scraping'
+    }, {
+      repeat: { cron: '*/5 * * * *' },
+      jobId: 'telegram-scraping-recurring' // Use fixed ID to prevent duplicates
+    });
+    
+    logger.info('Telegram scraping recurring job added to queue (every 5 minutes)');
+  } catch (error) {
+    logger.error('Error starting Telegram scraping job:', error);
+  }
+};
+
+// Add function to stop Telegram scraping
+const stopTelegramScraping = async () => {
+  try {
+    await telegramScrapingQueue.removeRepeatable('telegram-scraping', {
+      cron: '*/5 * * * *',
+      jobId: 'telegram-scraping-recurring'
+    });
+    logger.info('Telegram scraping recurring job removed from queue');
+  } catch (error) {
+    logger.error('Error stopping Telegram scraping job:', error);
+  }
+};
+
+// Add function to trigger manual scraping
+const triggerManualScraping = async () => {
+  try {
+    const job = await telegramScrapingQueue.add('telegram-scraping', {
+      startedAt: new Date(),
+      description: 'Manual Telegram channel scraping',
+      manual: true
+    });
+    
+    logger.info(`Manual Telegram scraping job ${job.id} added to queue`);
+    return job;
+  } catch (error) {
+    logger.error('Error triggering manual Telegram scraping:', error);
+    throw error;
+  }
+};
+
 // Cleanup function to close Redis connections
 const cleanup = async () => {
   try {
     await reportParsingQueue.close();
+    await telegramScrapingQueue.close();
     logger.info('Queue service cleanup completed');
   } catch (error) {
     logger.error('Error during queue service cleanup:', error);
@@ -266,5 +389,9 @@ const cleanup = async () => {
 module.exports = {
   addJob,
   reportParsingQueue,
+  telegramScrapingQueue,
+  startTelegramScraping,
+  stopTelegramScraping,
+  triggerManualScraping,
   cleanup
 };

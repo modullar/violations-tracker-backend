@@ -1,183 +1,87 @@
-const cron = require('node-cron');
 const logger = require('../config/logger');
-const TelegramScraper = require('../services/TelegramScraper');
+const { triggerTelegramScraping, startRecurringTelegramScraping, stopRecurringTelegramScraping } = require('../services/queueService');
 
-class TelegramScrapingJob {
+class TelegramScrapingJobManager {
   constructor() {
-    this.scraper = new TelegramScraper();
-    this.isRunning = false;
-    this.schedule = null;
-    this.lastRun = null;
-    this.totalRuns = 0;
     this.stats = {
-      totalReports: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
+      totalManualRuns: 0,
+      lastManualRun: null,
       lastError: null
     };
   }
 
   /**
-   * Start the scheduled scraping job
-   */
-  start() {
-    if (this.schedule) {
-      logger.warn('Telegram scraping job is already running');
-      return;
-    }
-
-    // Schedule to run every 5 minutes
-    this.schedule = cron.schedule('*/5 * * * *', async () => {
-      await this.runScraping();
-    }, {
-      scheduled: false,
-      timezone: 'UTC'
-    });
-
-    this.schedule.start();
-    logger.info('Telegram scraping job scheduled to run every 5 minutes');
-  }
-
-  /**
-   * Stop the scheduled scraping job
-   */
-  stop() {
-    if (this.schedule) {
-      this.schedule.stop();
-      this.schedule = null;
-      logger.info('Telegram scraping job stopped');
-    }
-  }
-
-  /**
-   * Run the scraping process
-   */
-  async runScraping() {
-    if (this.isRunning) {
-      logger.warn('Telegram scraping already in progress, skipping this run');
-      return;
-    }
-
-    this.isRunning = true;
-    this.lastRun = new Date();
-    this.totalRuns++;
-
-    logger.info(`Starting Telegram scraping run #${this.totalRuns}`);
-
-    try {
-      const startTime = Date.now();
-      const results = await this.scraper.scrapeAllChannels();
-      const duration = Date.now() - startTime;
-
-      // Update statistics
-      this.stats.totalReports += results.newReports;
-      this.stats.successfulRuns++;
-      this.stats.lastError = null;
-
-      logger.info(`Scraping run #${this.totalRuns} completed in ${duration}ms:`, {
-        newReports: results.newReports,
-        duplicates: results.duplicates,
-        successfulChannels: results.success,
-        failedChannels: results.failed
-      });
-
-      // Log detailed channel results
-      results.channels.forEach(channel => {
-        if (channel.status === 'success') {
-          logger.debug(`Channel ${channel.name}: ${channel.newReports} new, ${channel.duplicates} duplicates`);
-        } else {
-          logger.error(`Channel ${channel.name} failed: ${channel.error}`);
-        }
-      });
-
-    } catch (error) {
-      this.stats.failedRuns++;
-      this.stats.lastError = error.message;
-      
-      logger.error(`Telegram scraping run #${this.totalRuns} failed:`, error);
-    } finally {
-      this.isRunning = false;
-    }
-  }
-
-  /**
-   * Force run scraping (for manual triggers)
+   * Trigger a manual scraping run (adds job to Bull queue)
    */
   async forceRun() {
-    logger.info('Forcing Telegram scraping run');
-    await this.runScraping();
+    try {
+      logger.info('Triggering manual Telegram scraping run');
+      const job = await triggerTelegramScraping();
+      
+      this.stats.totalManualRuns++;
+      this.stats.lastManualRun = new Date();
+      this.stats.lastError = null;
+      
+      logger.info(`Manual Telegram scraping job ${job.jobId} added to queue`);
+      return {
+        success: true,
+        jobId: job.jobId,
+        message: 'Manual scraping job added to queue'
+      };
+    } catch (error) {
+      this.stats.lastError = error.message;
+      logger.error('Failed to trigger manual Telegram scraping:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get job status and statistics
+   * Start the scheduled scraping (via Bull queue)
+   */
+  async start() {
+    try {
+      await startRecurringTelegramScraping();
+      logger.info('Telegram scraping recurring job started');
+      return {
+        success: true,
+        message: 'Recurring scraping job started (every 5 minutes)'
+      };
+    } catch (error) {
+      logger.error('Failed to start Telegram scraping:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop the scheduled scraping (via Bull queue)
+   */
+  async stop() {
+    try {
+      await stopRecurringTelegramScraping();
+      logger.info('Telegram scraping recurring job stopped');
+      return {
+        success: true,
+        message: 'Recurring scraping job stopped'
+      };
+    } catch (error) {
+      logger.error('Failed to stop Telegram scraping:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get job manager status and statistics
    */
   getStatus() {
     return {
-      isRunning: this.isRunning,
-      isScheduled: !!this.schedule,
-      lastRun: this.lastRun,
-      totalRuns: this.totalRuns,
       stats: this.stats,
-      nextRun: this.schedule ? this.getNextRunTime() : null
+      queueEnabled: true,
+      description: 'Telegram scraping is managed via Bull queue system. View jobs at /admin/queues'
     };
-  }
-
-  /**
-   * Get next scheduled run time
-   */
-  getNextRunTime() {
-    if (!this.schedule) return null;
-    
-    // Calculate next 5-minute interval
-    const now = new Date();
-    const nextRun = new Date(now);
-    const minutes = now.getMinutes();
-    const nextMinutes = Math.ceil(minutes / 5) * 5;
-    
-    if (nextMinutes >= 60) {
-      nextRun.setHours(now.getHours() + 1);
-      nextRun.setMinutes(0);
-    } else {
-      nextRun.setMinutes(nextMinutes);
-    }
-    
-    nextRun.setSeconds(0);
-    nextRun.setMilliseconds(0);
-    
-    return nextRun;
-  }
-
-  /**
-   * Get scraper statistics
-   */
-  async getScraperStats() {
-    return await this.scraper.getStats();
-  }
-
-  /**
-   * Test connectivity to all channels
-   */
-  async testAllChannels() {
-    const results = [];
-    
-    for (const channel of this.scraper.activeChannels) {
-      try {
-        const result = await this.scraper.testChannel(channel.name);
-        results.push(result);
-      } catch (error) {
-        results.push({
-          channel: channel.name,
-          accessible: false,
-          error: error.message
-        });
-      }
-    }
-    
-    return results;
   }
 }
 
 // Create singleton instance
-const telegramScrapingJob = new TelegramScrapingJob();
+const telegramScrapingJobManager = new TelegramScrapingJobManager();
 
-module.exports = telegramScrapingJob;
+module.exports = telegramScrapingJobManager;

@@ -4,6 +4,7 @@ const logger = require('../config/logger');
 const ReportParsingJob = require('../models/jobs/ReportParsingJob');
 const queueService = require('../services/queueService');
 const Report = require('../models/Report');
+const telegramScrapingJobManager = require('../jobs/telegramScrapingJob');
 
 /**
  * @desc    Submit a report for parsing
@@ -407,5 +408,77 @@ exports.markReportAsFailed = asyncHandler(async (req, res, next) => {
     });
   } catch (error) {
     return next(new ErrorResponse('Error marking report as failed', 500));
+  }
+});
+
+/**
+ * @desc    Trigger manual Telegram scraping
+ * @route   POST /api/reports/scraping/trigger
+ * @access  Private (Admin)
+ */
+exports.triggerManualScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.forceRun();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error triggering manual scraping', 500));
+  }
+});
+
+/**
+ * @desc    Start Telegram scraping recurring job
+ * @route   POST /api/reports/scraping/start
+ * @access  Private (Admin)
+ */
+exports.startTelegramScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.start();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error starting Telegram scraping', 500));
+  }
+});
+
+/**
+ * @desc    Stop Telegram scraping recurring job
+ * @route   POST /api/reports/scraping/stop
+ * @access  Private (Admin)
+ */
+exports.stopTelegramScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.stop();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error stopping Telegram scraping', 500));
+  }
+});
+
+/**
+ * @desc    Get Telegram scraping job status
+ * @route   GET /api/reports/scraping/status
+ * @access  Private (Admin)
+ */
+exports.getScrapingJobStatus = asyncHandler(async (req, res, next) => {
+  try {
+    const status = telegramScrapingJobManager.getStatus();
+    
+    res.status(200).json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error getting scraping job status', 500));
   }
 });

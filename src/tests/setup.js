@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+// Only import MongoMemoryServer when needed for integration tests
+let MongoMemoryServer;
 
 // Mock for the geocoder in test environment
 jest.mock('node-geocoder', () => {
@@ -97,31 +98,79 @@ jest.mock('node-geocoder', () => {
   };
 });
 
+// Mock Bull queue for tests
+jest.mock('bull', () => {
+  return jest.fn().mockImplementation(() => ({
+    add: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+    process: jest.fn(),
+    on: jest.fn(),
+    close: jest.fn().mockResolvedValue(),
+    removeRepeatable: jest.fn().mockResolvedValue()
+  }));
+});
+
+// Mock Bull Board to prevent issues in tests
+jest.mock('@bull-board/api', () => ({
+  createBullBoard: jest.fn().mockReturnValue({}),
+  BullAdapter: jest.fn().mockImplementation(() => ({}))
+}));
+
+jest.mock('@bull-board/express', () => ({
+  ExpressAdapter: jest.fn().mockImplementation(() => ({
+    setBasePath: jest.fn(),
+    getRouter: jest.fn().mockReturnValue((req, res, next) => next())
+  }))
+}));
+
 let mongoServer;
 
-// Set up MongoDB in-memory server for testing
-// We conditionally connect here only for integration tests that need a real DB
-beforeAll(async () => {
-  if (process.env.REAL_DB_TEST) {
+// Database connection functions for tests
+const connectDB = async () => {
+  try {
+    // Only import MongoMemoryServer when actually needed
+    if (!MongoMemoryServer) {
+      const { MongoMemoryServer: MMS } = require('mongodb-memory-server');
+      MongoMemoryServer = MMS;
+    }
+    
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     
-    // Only connect if not already connected (for unit tests that mock connections)
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(mongoUri);
     }
+  } catch (error) {
+    console.error('Error connecting to test database:', error);
+    throw error;
   }
-});
+};
 
-// Clean up after tests
-afterAll(async () => {
-  if (process.env.REAL_DB_TEST) {
+const closeDB = async () => {
+  try {
     if (mongoose.connection.readyState !== 0) {
       await mongoose.connection.close();
     }
     if (mongoServer) {
       await mongoServer.stop();
     }
+  } catch (error) {
+    console.error('Error closing test database:', error);
+    throw error;
+  }
+};
+
+// Set up MongoDB in-memory server for testing
+// We conditionally connect here only for integration tests that need a real DB
+beforeAll(async () => {
+  if (process.env.REAL_DB_TEST) {
+    await connectDB();
+  }
+});
+
+// Clean up after tests
+afterAll(async () => {
+  if (process.env.REAL_DB_TEST) {
+    await closeDB();
   }
 });
 
@@ -136,3 +185,8 @@ afterEach(async () => {
     }
   }
 });
+
+module.exports = {
+  connectDB,
+  closeDB
+};

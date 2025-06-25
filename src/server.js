@@ -27,9 +27,6 @@ const userRoutes = require('./routes/userRoutes');
 const violationRoutes = require('./routes/violationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
-// Jobs
-const telegramScrapingJob = require('./jobs/telegramScrapingJob');
-
 const app = express();
 
 // Body parser
@@ -71,15 +68,18 @@ const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 
-// Import the queue
-const { reportParsingQueue } = require('./services/queueService');
+// Import the queues
+const { reportParsingQueue, telegramScrapingQueue, startTelegramScraping } = require('./services/queueService');
 
 // Setup Bull Board
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullAdapter(reportParsingQueue)],
+  queues: [
+    new BullAdapter(reportParsingQueue),
+    new BullAdapter(telegramScrapingQueue)
+  ],
   serverAdapter
 });
 
@@ -113,7 +113,7 @@ const server = app.listen(
 );
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   logger.error(`Unhandled Rejection: ${err.message}`);
   // Close server & exit process
   server.close(() => process.exit(1));
@@ -129,8 +129,8 @@ process.on('uncaughtException', (err) => {
 // Start Telegram scraping job in production and development
 if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
   try {
-    telegramScrapingJob.start();
-    logger.info('Telegram scraping job started');
+    startTelegramScraping();
+    logger.info('Telegram scraping job started and added to queue');
   } catch (error) {
     logger.error('Failed to start Telegram scraping job:', error);
   }

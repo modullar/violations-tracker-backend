@@ -145,11 +145,15 @@ class TelegramScraper {
         const messageElement = messages.eq(i);
         
         try {
-          const messageData = await this.parseMessage(messageElement, channel, $);
+          const messageData = await this.parseMessage(messageElement, channel);
           
           if (!messageData) {
             continue;
           }
+
+          // Increment processed count here since we successfully parsed the message
+          processedCount++;
+          result.processed++;
 
           // Check if message is within our time window
           if (messageData.date < cutoffTime) {
@@ -160,14 +164,14 @@ class TelegramScraper {
           // Check for keywords
           const matchedKeywords = this.findMatchingKeywords(messageData.text);
           if (matchedKeywords.length === 0) {
-            logger.debug(`No keywords matched for message ${messageData.messageId}`);
+            logger.debug(`No keywords matched for message ${messageData.metadata.messageId}`);
             continue;
           }
 
           messageData.metadata.matchedKeywords = matchedKeywords;
 
           // Check if report already exists
-          const existingReport = await Report.exists(channel.name, messageData.messageId);
+          const existingReport = await Report.exists(channel.name, messageData.metadata.messageId);
           if (existingReport) {
             result.duplicates++;
             continue;
@@ -179,15 +183,12 @@ class TelegramScraper {
           await report.save();
           
           result.newReports++;
-          logger.debug(`Saved new report: ${messageData.messageId} from ${channel.name}`);
+          logger.debug(`Saved new report: ${messageData.metadata.messageId} from ${channel.name}`);
           
         } catch (error) {
           result.errors.push(`Message parsing error: ${error.message}`);
           logger.error(`Error parsing message from ${channel.name}:`, error);
         }
-
-        processedCount++;
-        result.processed++;
       }
 
     } catch (error) {
@@ -201,10 +202,14 @@ class TelegramScraper {
   /**
    * Parse a single message element
    */
-  async parseMessage(messageElement, channel, $) {
+  async parseMessage(messageElement, channel) {
     try {
       // Extract message ID from data attribute or href
-      const messageLink = messageElement.find('.tgme_widget_message_date').attr('href');
+      let messageLink = messageElement.find('.tgme_widget_message_date a').attr('href');
+      if (!messageLink) {
+        // Fallback to old structure if needed
+        messageLink = messageElement.find('.tgme_widget_message_date').attr('href');
+      }
       if (!messageLink) {
         return null;
       }

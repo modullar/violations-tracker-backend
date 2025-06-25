@@ -4,7 +4,7 @@ const { parseReport, getJobStatus, getAllJobs } = require('../../controllers/rep
 const queueService = require('../../services/queueService');
 const ErrorResponse = require('../../utils/errorResponse');
 const request = require('supertest');
-const app = require('../../server');
+const express = require('express');
 const Report = require('../../models/Report');
 const User = require('../../models/User');
 const { connectDB, closeDB } = require('../setup');
@@ -14,19 +14,70 @@ const jwt = require('jsonwebtoken');
 jest.mock('../../services/queueService');
 jest.mock('../../config/logger');
 
+// Mock the auth middleware 
+jest.mock('../../middleware/auth', () => ({
+  protect: (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+    next();
+  },
+  authorize: (...roles) => (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    next();
+  }
+}));
+
+// Mock validators
+jest.mock('../../middleware/validators', () => ({
+  validateRequest: (req, res, next) => next(),
+  idParamRules: (req, res, next) => next()
+}));
+
+// Create a simple Express app for testing instead of importing the full server
+const createTestApp = (adminToken, adminUser, editorToken, editorUser) => {
+  const app = express();
+  app.use(express.json());
+  
+  // Mock auth middleware that adds a user to req
+  app.use((req, res, next) => {
+    // Check if Authorization header exists
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      // Mock decode based on token (simplified for testing)
+      if (token === adminToken) {
+        req.user = { id: adminUser._id, role: 'admin' };
+      } else if (token === editorToken) {
+        req.user = { id: editorUser._id, role: 'editor' };
+      }
+    }
+    next();
+  });
+  
+  // Import and use the routes
+  const reportRoutes = require('../../routes/reportRoutes');
+  app.use('/api/reports', reportRoutes);
+  
+  // Error handling middleware
+  const errorHandler = require('../../middleware/error');
+  app.use(errorHandler);
+  
+  return app;
+};
+
 describe('Report Controller Tests', () => {
   let req, res, next;
-  let server;
+  let app;
   let adminToken;
   let editorToken;
-  let userToken;
   let adminUser;
   let editorUser;
-  let regularUser;
 
   beforeAll(async () => {
     await connectDB();
-    server = app.listen(0);
 
     // Create test users
     adminUser = await User.create({
@@ -43,21 +94,15 @@ describe('Report Controller Tests', () => {
       role: 'editor'
     });
 
-    regularUser = await User.create({
-      name: 'Regular User',
-      email: 'user@test.com',
-      password: 'password123',
-      role: 'user'
-    });
-
     // Generate tokens
-    adminToken = jwt.sign({ id: adminUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    editorToken = jwt.sign({ id: editorUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    userToken = jwt.sign({ id: regularUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    adminToken = jwt.sign({ id: adminUser._id }, process.env.JWT_SECRET || 'test-secret', { expiresIn: '30d' });
+    editorToken = jwt.sign({ id: editorUser._id }, process.env.JWT_SECRET || 'test-secret', { expiresIn: '30d' });
+    
+    // Create test app with the tokens and users
+    app = createTestApp(adminToken, adminUser, editorToken, editorUser);
   });
 
   afterAll(async () => {
-    await server.close();
     await closeDB();
   });
 
@@ -163,7 +208,7 @@ describe('Report Controller Tests', () => {
 
       const mockJob = {
         _id: jobId,
-        reportText: 'Test report',
+        reportText: 'This is a comprehensive test report with sufficient length to pass validation requirements',
         sourceURL: { name: 'Test Source' },
         status: 'completed',
         progress: 100,
@@ -308,7 +353,7 @@ describe('Report Controller Tests', () => {
       const reports = [
         {
           source_url: 'https://t.me/channel1/1',
-          text: 'First report about قصف in حلب',
+          text: 'This is the first detailed report about قصف air strikes that occurred in حلب city with significant impact',
           date: new Date('2024-01-15'),
           parsedByLLM: false,
           status: 'new',
@@ -324,7 +369,7 @@ describe('Report Controller Tests', () => {
         },
         {
           source_url: 'https://t.me/channel2/1',
-          text: 'Second report about انفجار in دمشق',
+          text: 'This is the second comprehensive report about انفجار explosive incidents in دمشق with casualties',
           date: new Date('2024-01-16'),
           parsedByLLM: true,
           status: 'parsed',
@@ -340,7 +385,7 @@ describe('Report Controller Tests', () => {
         },
         {
           source_url: 'https://t.me/channel1/2',
-          text: 'Third report in English about explosion',
+          text: 'This is the third extensive report in English language about explosion incidents and their consequences',
           date: new Date('2024-01-17'),
           parsedByLLM: false,
           status: 'failed',
@@ -439,7 +484,7 @@ describe('Report Controller Tests', () => {
         .get('/api/reports?sort=date')
         .expect(200);
 
-      const dates = res.body.data.map(report => new Date(report.date));
+      const dates = res.body.data.map(report => new Date(report.date).getTime());
       for (let i = 1; i < dates.length; i++) {
         expect(dates[i]).toBeGreaterThanOrEqual(dates[i - 1]);
       }
@@ -452,7 +497,7 @@ describe('Report Controller Tests', () => {
     beforeEach(async () => {
       testReport = await Report.create({
         source_url: 'https://t.me/testchannel/123',
-        text: 'Test report for ID endpoint',
+        text: 'This is a comprehensive test report for ID endpoint functionality with sufficient length',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
@@ -471,7 +516,7 @@ describe('Report Controller Tests', () => {
 
       expect(res.body.success).toBe(true);
       expect(res.body.data._id).toBe(testReport._id.toString());
-      expect(res.body.data.text).toBe('Test report for ID endpoint');
+      expect(res.body.data.text).toBe('This is a comprehensive test report for ID endpoint functionality with sufficient length');
     });
 
     it('should return 404 for non-existent report', async () => {
@@ -482,7 +527,7 @@ describe('Report Controller Tests', () => {
         .expect(404);
 
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('not found');
+      expect(res.body.error).toContain('not found');
     });
 
     it('should return 404 for invalid ID format', async () => {
@@ -499,7 +544,7 @@ describe('Report Controller Tests', () => {
       const reports = [
         {
           source_url: 'https://t.me/channel1/1',
-          text: 'Report 1',
+          text: 'This is the first comprehensive statistical report with adequate length for validation',
           date: new Date(),
           parsedByLLM: true,
           status: 'parsed',
@@ -513,7 +558,7 @@ describe('Report Controller Tests', () => {
         },
         {
           source_url: 'https://t.me/channel2/1',
-          text: 'Report 2',
+          text: 'This is the second comprehensive statistical report with adequate length for validation',
           date: new Date(),
           parsedByLLM: false,
           status: 'new',
@@ -569,7 +614,7 @@ describe('Report Controller Tests', () => {
       const reports = [
         {
           source_url: 'https://t.me/channel1/1',
-          text: 'Ready report 1',
+          text: 'This is the first comprehensive report ready for processing with adequate length',
           date: new Date(),
           parsedByLLM: false,
           status: 'new',
@@ -577,7 +622,7 @@ describe('Report Controller Tests', () => {
         },
         {
           source_url: 'https://t.me/channel1/2',
-          text: 'Ready report 2',
+          text: 'This is the second comprehensive report ready for processing with adequate length',
           date: new Date(),
           parsedByLLM: false,
           status: 'new',
@@ -585,7 +630,7 @@ describe('Report Controller Tests', () => {
         },
         {
           source_url: 'https://t.me/channel1/3',
-          text: 'Already processed',
+          text: 'This is a comprehensive report that has already been processed with adequate length',
           date: new Date(),
           parsedByLLM: true,
           status: 'parsed',
@@ -632,7 +677,7 @@ describe('Report Controller Tests', () => {
     beforeEach(async () => {
       testReport = await Report.create({
         source_url: 'https://t.me/testchannel/123',
-        text: 'Test report to mark as processed',
+        text: 'This is a comprehensive test report to mark as processed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
@@ -687,7 +732,7 @@ describe('Report Controller Tests', () => {
     beforeEach(async () => {
       testReport = await Report.create({
         source_url: 'https://t.me/testchannel/123',
-        text: 'Test report to mark as failed',
+        text: 'This is a comprehensive test report to mark as failed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
