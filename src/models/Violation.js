@@ -144,8 +144,14 @@ const ViolationSchema = new mongoose.Schema({
         if (!value) return true;
         const now = new Date();
         const reportedDate = new Date(value);
-        // Set time to end of day for date-only strings
-        reportedDate.setHours(23, 59, 59, 999);
+        
+        // Only set time to end of day for date-only strings (when time is 00:00:00)
+        // This handles cases where users input just dates without times
+        if (reportedDate.getHours() === 0 && reportedDate.getMinutes() === 0 && 
+            reportedDate.getSeconds() === 0 && reportedDate.getMilliseconds() === 0) {
+          reportedDate.setHours(23, 59, 59, 999);
+        }
+        
         // Allow for a 24-hour buffer to account for timezone differences
         const buffer = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
         const maxAllowedDate = new Date(now.getTime() + buffer);
