@@ -20,7 +20,7 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - **Security features** including rate limiting, CORS, and input sanitization
 - **Claude AI integration** for automated parsing of human rights reports
 - **Background job processing** with Bull and Redis for handling long-running tasks
-- **Telegram Scraping**: Automated scraping of Telegram channels for violation reports
+- **Telegram Scraping**: Automated scraping of Telegram channels for human rights violation reports, focusing on Syrian conflict documentation including airstrikes, shelling, detention, and civilian casualties
 - **Report Processing**: Integration with LLM for automated violation parsing
 
 ## API Endpoints
@@ -78,6 +78,8 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - `scrapedStartDate`, `scrapedEndDate` - Filter by scraping date range
 - `keyword` - Filter by matched keywords
 - `search` - Full-text search in report content
+
+> **Note**: Keep this parameter list updated when adding new filter options to ensure comprehensive API documentation and effective monitoring capabilities.
 
 ## Getting Started
 
@@ -302,12 +304,12 @@ POST /api/reports/parse
 
 ## New: Telegram Scraper Integration
 
-The system now includes automated Telegram scraping capabilities:
+The system now includes automated Telegram scraping capabilities specifically focused on Syrian human rights violations:
 
 ### Features
-- **Automated Scraping**: Runs every 5 minutes to collect recent posts
-- **Keyword Matching**: Uses Arabic keywords to identify potential violations
-- **Channel Management**: Configurable list of Telegram channels to monitor
+- **Automated Scraping**: Runs every 5 minutes to collect recent posts from Syrian civil society and monitoring organizations
+- **Keyword Matching**: Uses Arabic keywords to identify potential violations including airstrikes (غارة جوية), shelling (قصف), detention (اعتقال), and civilian casualties (ضحايا مدنيين)
+- **Channel Management**: Configurable list of Telegram channels from Syrian monitoring organizations, civil defense groups, and human rights groups
 - **Language Detection**: Automatic detection of Arabic, English, and mixed content
 - **Duplicate Prevention**: Prevents duplicate reports from being saved
 - **Status Tracking**: Tracks processing status of each scraped report
@@ -337,6 +339,8 @@ The system now includes automated Telegram scraping capabilities:
 - `scrapedStartDate`, `scrapedEndDate` - Filter by scraping date range
 - `keyword` - Filter by matched keywords
 - `search` - Full-text search in report content
+
+> **Note**: Keep this parameter list updated when adding new filter options to ensure comprehensive API documentation and effective monitoring capabilities.
 
 ## Environment Variables
 

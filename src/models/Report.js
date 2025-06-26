@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const mongoosePaginate = require('mongoose-paginate-v2');
 
+// Helper function to get current time (can be overridden for testing)
+const getCurrentTime = () => new Date();
+
 // Report schema for storing scraped Telegram messages
 const ReportSchema = new mongoose.Schema({
   source_url: {
@@ -24,7 +27,8 @@ const ReportSchema = new mongoose.Schema({
     required: [true, 'Report date is required'],
     validate: {
       validator: function(value) {
-        const now = new Date();
+        // Use module.exports to get the current function reference
+        const now = module.exports.getCurrentTime();
         const reportDate = new Date(value);
         // Allow reports up to 1 hour in the future to account for timezone differences
         const buffer = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -207,4 +211,15 @@ ReportSchema.methods.extractKeywords = function(keywordsList) {
   return matchedKeywords;
 };
 
-module.exports = mongoose.model('Report', ReportSchema);
+const Report = mongoose.model('Report', ReportSchema);
+
+// Export the model and helper functions for testing
+module.exports = Report;
+
+// Export helper function for testing purposes
+module.exports.getCurrentTime = getCurrentTime;
+
+// Allow overriding the getCurrentTime function for testing
+module.exports.setCurrentTimeProvider = (provider) => {
+  module.exports.getCurrentTime = provider;
+};

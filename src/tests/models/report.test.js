@@ -295,4 +295,6 @@ describe('Report Model', () => {
       expect(json.metadata.scrapedAt).toBe(scrapedDate.toISOString());
     });
   });
+
+
 });
