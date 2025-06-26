@@ -106,6 +106,21 @@ describe('Report Controller Tests', () => {
     await closeDB();
   });
 
+  // Clean up test data between tests to avoid duplicate key errors
+  afterEach(async () => {
+    if (mongoose.connection.readyState !== 0) {
+      // Clear all collections except users (which we need for authentication)
+      const collections = mongoose.connection.collections;
+      
+      for (const key in collections) {
+        const collection = collections[key];
+        if (collection.collectionName !== 'users') {
+          await collection.deleteMany();
+        }
+      }
+    }
+  });
+
   beforeEach(() => {
     req = {
       body: {
@@ -496,12 +511,12 @@ describe('Report Controller Tests', () => {
 
     beforeEach(async () => {
       testReport = await Report.create({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: 'https://t.me/testchannel/get-by-id',
         text: 'This is a comprehensive test report for ID endpoint functionality with sufficient length',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123',
+          messageId: 'get-by-id',
           scrapedAt: new Date(),
           matchedKeywords: ['test'],
           language: 'en'
@@ -676,14 +691,14 @@ describe('Report Controller Tests', () => {
 
     beforeEach(async () => {
       testReport = await Report.create({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: 'https://t.me/testchannel/mark-processed',
         text: 'This is a comprehensive test report to mark as processed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
         metadata: {
           channel: 'testchannel',
-          messageId: '123',
+          messageId: 'mark-processed',
           scrapedAt: new Date()
         }
       });
@@ -731,14 +746,14 @@ describe('Report Controller Tests', () => {
 
     beforeEach(async () => {
       testReport = await Report.create({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: 'https://t.me/testchannel/mark-failed',
         text: 'This is a comprehensive test report to mark as failed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
         metadata: {
           channel: 'testchannel',
-          messageId: '123',
+          messageId: 'mark-failed',
           scrapedAt: new Date()
         }
       });
