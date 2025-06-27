@@ -1,67 +1,45 @@
 const express = require('express');
-const { parseReport, getJobStatus, getAllJobs } = require('../controllers/reportController');
+const {
+  parseReport,
+  getJobStatus,
+  getAllJobs,
+  getReports,
+  getReport,
+  getReportStats,
+  getReportsReadyForProcessing,
+  markReportAsProcessed,
+  markReportAsFailed,
+  triggerManualScraping,
+  startTelegramScraping,
+  stopTelegramScraping,
+  getScrapingJobStatus
+} = require('../controllers/reportController');
 const { protect, authorize } = require('../middleware/auth');
-const { validateRequest } = require('../middleware/validators');
-const { body, param } = require('express-validator');
+const { validateRequest, idParamRules } = require('../middleware/validators');
 
 const router = express.Router();
 
-// Validation rules for report parsing
-const reportParsingRules = [
-  body('reportText')
-    .notEmpty()
-    .withMessage('Report text is required')
-    .isLength({ min: 50 })
-    .withMessage('Report text should be at least 50 characters'),
-  
-  body('sourceURL.name')
-    .optional()
-    .notEmpty()
-    .withMessage('Source name is required when providing source information'),
-  
-  body('sourceURL.url')
-    .optional()
-    .isURL()
-    .withMessage('Source URL must be a valid URL'),
-  
-  body('sourceURL.reportDate')
-    .optional()
-    .isString()
-    .withMessage('Report date must be a string')
-];
+// Public routes - SPECIFIC ROUTES FIRST
+router.get('/', getReports);
 
-// Validation rules for job ID parameter
-const jobIdParamRules = [
-  param('jobId')
-    .notEmpty()
-    .withMessage('Job ID is required')
-    .isMongoId()
-    .withMessage('Invalid job ID format')
-];
+// Protected routes - Report parsing
+router.post('/parse', protect, authorize('editor', 'admin'), parseReport);
+router.get('/jobs/:jobId', protect, getJobStatus);
+router.get('/jobs', protect, authorize('admin'), getAllJobs);
 
-// Routes
-router.post(
-  '/parse',
-  protect,
-  authorize('editor', 'admin'),
-  reportParsingRules,
-  validateRequest,
-  parseReport
-);
+// Protected routes - Report management (Admin only) - SPECIFIC ROUTES BEFORE PARAMETERIZED
+router.get('/stats', protect, authorize('admin'), getReportStats);
+router.get('/ready-for-processing', protect, authorize('admin'), getReportsReadyForProcessing);
 
-router.get(
-  '/jobs/:jobId',
-  protect,
-  jobIdParamRules,
-  validateRequest,
-  getJobStatus
-);
+// Protected routes - Telegram scraping job management (Admin only)
+router.post('/scraping/trigger', protect, authorize('admin'), triggerManualScraping);
+router.post('/scraping/start', protect, authorize('admin'), startTelegramScraping);
+router.post('/scraping/stop', protect, authorize('admin'), stopTelegramScraping);
+router.get('/scraping/status', protect, authorize('admin'), getScrapingJobStatus);
 
-router.get(
-  '/jobs',
-  protect,
-  authorize('admin'),
-  getAllJobs
-);
+// PARAMETERIZED ROUTES LAST - these catch-all routes must be at the end
+router.get('/:id', idParamRules, validateRequest, getReport);
+router.put('/:id/mark-processed', protect, authorize('admin'), idParamRules, validateRequest, markReportAsProcessed);
+router.put('/:id/mark-failed', protect, authorize('admin'), idParamRules, validateRequest, markReportAsFailed);
 
 module.exports = router;

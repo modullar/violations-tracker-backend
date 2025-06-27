@@ -1,0 +1,32 @@
+# Telegram Channels Configuration
+# List of public Telegram channels to monitor for violations reports
+
+channels:
+  # Syrian Civil Defense (White Helmets)
+  - name: "Naher Media"
+    url: "https://t.me/nahermedia"
+    description: "Naher Media"
+    active: true
+    priority: "high"
+    language: "ar"
+    
+# Scraping configuration
+scraping:
+  # How often to run the scraper (in minutes)
+  interval: 5
+  
+  # How far back to look for messages (in minutes)
+  lookback_window: 120
+  
+  # Maximum number of messages to process per channel per run
+  max_messages_per_channel: 50
+  
+  # Timeout for HTTP requests (in seconds)
+  request_timeout: 30
+  
+  # Retry configuration
+  max_retries: 3
+  retry_delay: 5000  # milliseconds
+  
+  # User agent for web scraping
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

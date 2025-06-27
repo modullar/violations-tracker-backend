@@ -20,6 +20,8 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - **Security features** including rate limiting, CORS, and input sanitization
 - **Claude AI integration** for automated parsing of human rights reports
 - **Background job processing** with Bull and Redis for handling long-running tasks
+- **Telegram Scraping**: Automated scraping of Telegram channels for human rights violation reports, focusing on Syrian conflict documentation including airstrikes, shelling, detention, and civilian casualties
+- **Report Processing**: Integration with LLM for automated violation parsing
 
 ## API Endpoints
 
@@ -54,6 +56,30 @@ A RESTful API backend for tracking human rights violations in Syria, built with 
 - `POST /api/reports/parse` - Submit a report for parsing (editor or admin)
 - `GET /api/reports/jobs/:jobId` - Get status of a specific parsing job
 - `GET /api/reports/jobs` - Get all parsing jobs (admin only)
+
+### Reports Management
+
+- `GET /api/reports` - Get all scraped reports with filtering and pagination
+- `GET /api/reports/:id` - Get specific report by ID
+- `GET /api/reports/stats` - Get comprehensive report statistics (Admin only)
+- `GET /api/reports/ready-for-processing` - Get reports ready for LLM processing (Admin only)
+- `PUT /api/reports/:id/mark-processed` - Mark report as processed (Admin only)
+- `PUT /api/reports/:id/mark-failed` - Mark report as failed (Admin only)
+
+### Query Parameters for GET /api/reports
+
+- `page`, `limit` - Pagination
+- `sort` - Sort order (default: -metadata.scrapedAt)
+- `channel` - Filter by Telegram channel
+- `parsedByLLM` - Filter by LLM processing status
+- `status` - Filter by processing status (new, processing, parsed, failed, ignored)
+- `language` - Filter by detected language (ar, en, mixed, unknown)
+- `startDate`, `endDate` - Filter by incident date range
+- `scrapedStartDate`, `scrapedEndDate` - Filter by scraping date range
+- `keyword` - Filter by matched keywords
+- `search` - Full-text search in report content
+
+> **Note**: Keep this parameter list updated when adding new filter options to ensure comprehensive API documentation and effective monitoring capabilities.
 
 ## Getting Started
 
@@ -275,3 +301,191 @@ POST /api/reports/parse
 - Based on the work of human rights documentation organizations in Syria
 - Uses HERE Geocoding API for location services
 - Uses Anthropic's Claude AI for natural language processing
+
+## New: Telegram Scraper Integration
+
+The system now includes automated Telegram scraping capabilities specifically focused on Syrian human rights violations:
+
+### Features
+- **Automated Scraping**: Runs every 5 minutes to collect recent posts from Syrian civil society and monitoring organizations
+- **Keyword Matching**: Uses Arabic keywords to identify potential violations including airstrikes (غارة جوية), shelling (قصف), detention (اعتقال), and civilian casualties (ضحايا مدنيين)
+- **Channel Management**: Configurable list of Telegram channels from Syrian monitoring organizations, civil defense groups, and human rights groups
+- **Language Detection**: Automatic detection of Arabic, English, and mixed content
+- **Duplicate Prevention**: Prevents duplicate reports from being saved
+- **Status Tracking**: Tracks processing status of each scraped report
+
+### Configuration Files
+- `src/config/telegram-channels.yaml` - List of channels to monitor
+- `src/config/violation-keywords.yaml` - Arabic keywords for violation detection
+
+### API Endpoints
+
+#### Reports Management
+- `GET /api/reports` - Get all scraped reports with filtering and pagination
+- `GET /api/reports/:id` - Get specific report by ID
+- `GET /api/reports/stats` - Get comprehensive report statistics (Admin only)
+- `GET /api/reports/ready-for-processing` - Get reports ready for LLM processing (Admin only)
+- `PUT /api/reports/:id/mark-processed` - Mark report as processed (Admin only)
+- `PUT /api/reports/:id/mark-failed` - Mark report as failed (Admin only)
+
+#### Query Parameters for GET /api/reports
+- `page`, `limit` - Pagination
+- `sort` - Sort order (default: -metadata.scrapedAt)
+- `channel` - Filter by Telegram channel
+- `parsedByLLM` - Filter by LLM processing status
+- `status` - Filter by processing status (new, processing, parsed, failed, ignored)
+- `language` - Filter by detected language (ar, en, mixed, unknown)
+- `startDate`, `endDate` - Filter by incident date range
+- `scrapedStartDate`, `scrapedEndDate` - Filter by scraping date range
+- `keyword` - Filter by matched keywords
+- `search` - Full-text search in report content
+
+> **Note**: Keep this parameter list updated when adding new filter options to ensure comprehensive API documentation and effective monitoring capabilities.
+
+## Environment Variables
+
+```env
+NODE_ENV=development
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/violations-tracker
+JWT_SECRET=your-jwt-secret
+JWT_EXPIRE=30d
+
+# Redis for job queues
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Optional: External APIs
+GOOGLE_MAPS_API_KEY=your-google-maps-key
+HERE_API_KEY=your-here-api-key
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run specific test file
+npm test -- src/tests/models/report.test.js
+```
+
+## API Documentation
+
+The API includes comprehensive Swagger documentation:
+
+- Main API: `GET /api-docs`
+- Reports API: `GET /api-docs/reports`
+
+## Background Jobs
+
+The system includes automated background jobs:
+
+### Telegram Scraping Job
+- **Schedule**: Every 5 minutes
+- **Function**: Scrapes configured Telegram channels for new posts
+- **Keywords**: Matches Arabic keywords related to violations
+- **Storage**: Saves matching posts as reports in the database
+
+### Job Management
+- View job status and statistics via the API
+- Manual job triggering for testing
+- Comprehensive error handling and logging
+
+## Database Models
+
+### Report Model
+```javascript
+{
+  source_url: String,        // Telegram message URL
+  text: String,             // Message content
+  date: Date,               // Incident date
+  parsedByLLM: Boolean,     // Processing status
+  status: String,           // new|processing|parsed|failed|ignored
+  metadata: {
+    channel: String,        // Telegram channel name
+    messageId: String,      // Telegram message ID
+    scrapedAt: Date,       // When scraped
+    matchedKeywords: [String], // Matched Arabic keywords
+    language: String,       // Detected language
+    mediaCount: Number,     // Number of media files
+    viewCount: Number       // Message view count
+  }
+}
+```
+
+## Configuration Management
+
+### Telegram Channels (`src/config/telegram-channels.yaml`)
+```yaml
+channels:
+  - name: "SyrianCivilDefence"
+    url: "https://t.me/SyrianCivilDefence"
+    active: true
+    priority: "high"
+    language: "ar"
+
+scraping:
+  interval: 5                    # minutes
+  lookback_window: 5            # minutes
+  max_messages_per_channel: 50
+  request_timeout: 30           # seconds
+```
+
+### Keywords (`src/config/violation-keywords.yaml`)
+```yaml
+keywords:
+  AIRSTRIKE:
+    - "غارة جوية"
+    - "قصف جوي"
+    - "طيران حربي"
+  
+  SHELLING:
+    - "قصف"
+    - "قذائف"
+    - "مدفعية"
+```
+
+## Security
+
+- **JWT Authentication**: Secure token-based authentication
+- **Role-Based Access**: Admin, Editor, and User roles
+- **Rate Limiting**: API rate limiting to prevent abuse
+- **Input Validation**: Comprehensive input validation and sanitization
+- **CORS Protection**: Configurable CORS settings
+
+## Performance
+
+- **Database Indexing**: Optimized MongoDB indexes for fast queries
+- **Pagination**: Efficient pagination for large datasets
+- **Caching**: Redis caching for frequently accessed data
+- **Background Processing**: Non-blocking background job processing
+
+## Monitoring
+
+- **Logging**: Comprehensive logging with Winston
+- **Health Checks**: Built-in health check endpoints
+- **Job Monitoring**: Bull dashboard for job queue monitoring
+- **Error Tracking**: Detailed error reporting and tracking
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+This project is licensed under the ISC License.
+
+## Support
+
+For support and questions, please create an issue on the repository or contact the development team.
