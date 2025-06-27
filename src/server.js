@@ -126,8 +126,8 @@ process.on('uncaughtException', (err) => {
   server.close(() => process.exit(1));
 });
 
-// Start Telegram scraping job in production and development
-if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
+// Start Telegram scraping job in production, staging, and development
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development') {
   try {
     startTelegramScraping();
     logger.info('Telegram scraping job started and added to queue');

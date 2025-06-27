@@ -5,44 +5,82 @@ const ReportParsingJob = require('../models/jobs/ReportParsingJob');
 const Violation = require('../models/Violation');
 const { geocodeLocation } = require('../utils/geocoder');
 
-// Create queues
-const reportParsingQueue = new Queue('report-parsing-queue', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD
-  },
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 5000
-    },
-    removeOnComplete: 100,  // Keep last 100 completed jobs
-    removeOnFail: 200       // Keep last 200 failed jobs
-  }
-});
+// Check if Redis is available
+let redisAvailable = true;
+let reportParsingQueue;
+let telegramScrapingQueue;
 
-// Create Telegram scraping queue
-const telegramScrapingQueue = new Queue('telegram-scraping-queue', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD
-  },
-  defaultJobOptions: {
-    attempts: 2,
-    backoff: {
-      type: 'exponential',
-      delay: 3000
+try {
+  // Create queues
+  reportParsingQueue = new Queue('report-parsing-queue', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD
     },
-    removeOnComplete: 50,   // Keep last 50 completed jobs
-    removeOnFail: 100,      // Keep last 100 failed jobs
-    repeat: {
-      cron: '*/5 * * * *'   // Every 5 minutes
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000
+      },
+      removeOnComplete: 100,  // Keep last 100 completed jobs
+      removeOnFail: 200       // Keep last 200 failed jobs
     }
-  }
-});
+  });
+
+  // Create Telegram scraping queue
+  telegramScrapingQueue = new Queue('telegram-scraping-queue', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD
+    },
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'exponential',
+        delay: 3000
+      },
+      removeOnComplete: 50,   // Keep last 50 completed jobs
+      removeOnFail: 100,      // Keep last 100 failed jobs
+      repeat: {
+        cron: '*/5 * * * *'   // Every 5 minutes
+      }
+    }
+  });
+
+  // Test Redis connection
+  reportParsingQueue.on('error', (error) => {
+    logger.error('Queue error - Redis may not be available:', error);
+    redisAvailable = false;
+  });
+
+  telegramScrapingQueue.on('error', (error) => {
+    logger.error('Telegram queue error - Redis may not be available:', error);
+    redisAvailable = false;
+  });
+
+} catch (error) {
+  logger.error('Failed to initialize queues - Redis not available:', error);
+  redisAvailable = false;
+  
+  // Create mock queues for fallback
+  reportParsingQueue = {
+    process: () => {},
+    add: () => Promise.resolve({ id: 'mock' }),
+    on: () => {},
+    close: () => Promise.resolve()
+  };
+  
+  telegramScrapingQueue = {
+    process: () => {},
+    add: () => Promise.resolve({ id: 'mock' }),
+    removeRepeatable: () => Promise.resolve(),
+    on: () => {},
+    close: () => Promise.resolve()
+  };
+}
 
 // Process jobs
 reportParsingQueue.process(async (job, done) => {
@@ -330,16 +368,46 @@ const addJob = async (jobId) => {
 // Add function to start Telegram scraping
 const startTelegramScraping = async () => {
   try {
-    // Add a repeating job for Telegram scraping
-    await telegramScrapingQueue.add('telegram-scraping', {
-      startedAt: new Date(),
-      description: 'Automated Telegram channel scraping'
-    }, {
-      repeat: { cron: '*/5 * * * *' },
-      jobId: 'telegram-scraping-recurring' // Use fixed ID to prevent duplicates
-    });
-    
-    logger.info('Telegram scraping recurring job added to queue (every 5 minutes)');
+    if (redisAvailable) {
+      // Add a repeating job for Telegram scraping
+      await telegramScrapingQueue.add('telegram-scraping', {
+        startedAt: new Date(),
+        description: 'Automated Telegram channel scraping'
+      }, {
+        repeat: { cron: '*/5 * * * *' },
+        jobId: 'telegram-scraping-recurring' // Use fixed ID to prevent duplicates
+      });
+      
+      logger.info('Telegram scraping recurring job added to queue (every 5 minutes)');
+    } else {
+      // Fallback: Use setInterval for scraping when Redis is not available
+      logger.warn('Redis not available - using fallback timer for Telegram scraping');
+      
+      const runScraping = async () => {
+        try {
+          const TelegramScraper = require('./TelegramScraper');
+          const scraper = new TelegramScraper();
+          const results = await scraper.scrapeAllChannels();
+          
+          logger.info('Fallback Telegram scraping completed:', {
+            newReports: results.newReports,
+            duplicates: results.duplicates,
+            successfulChannels: results.success,
+            failedChannels: results.failed
+          });
+        } catch (error) {
+          logger.error('Fallback Telegram scraping failed:', error);
+        }
+      };
+      
+      // Run immediately
+      runScraping();
+      
+      // Then every 5 minutes
+      setInterval(runScraping, 5 * 60 * 1000);
+      
+      logger.info('Telegram scraping fallback timer started (every 5 minutes)');
+    }
   } catch (error) {
     logger.error('Error starting Telegram scraping job:', error);
   }

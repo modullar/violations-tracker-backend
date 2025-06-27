@@ -9,7 +9,56 @@ channels:
     active: true
     priority: "high"
     language: "ar"
-    
+
+  - name: "SNN"
+    url: "https://t.me/ShaamNetwork"
+    description: "SNN"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "NEDAAPOST"
+    url: "https://t.me/NEDAAPOST"
+    description: "NEDAAPOST"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "Reporters_sy"
+    url: "https://t.me/Reporters_sy"
+    description: "Reporters_sy"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "sham_plus3"
+    url: "https://t.me/sham_plus3"
+    description: "sham_plus3"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "مراسل الشرقية"
+    url: "https://t.me/AbomosaabSharkea"
+    description: "AbomosaabSharkea"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "alkhabour"
+    url: "https://t.me/alkhabour"
+    description: "alkhabour"
+    active: true
+    priority: "high"
+    language: "ar"
+
+  - name: "D24net"
+    url: "https://t.me/D24net"
+    description: "D24net"
+    active: true
+    priority: "high"
+    language: "ar"
+
 # Scraping configuration
 scraping:
   # How often to run the scraper (in minutes)
