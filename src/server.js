@@ -23,8 +23,8 @@ require('./services/queueService');
 
 // Route files
 const authRoutes = require('./routes/authRoutes');
-const violationRoutes = require('./routes/violationRoutes');
 const userRoutes = require('./routes/userRoutes');
+const violationRoutes = require('./routes/violationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
@@ -49,8 +49,8 @@ const { protect, authorize } = require('./middleware/auth');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
-app.use('/api/violations', violationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/violations', violationRoutes);
 app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
@@ -68,15 +68,18 @@ const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 
-// Import the queue
-const { reportParsingQueue } = require('./services/queueService');
+// Import the queues
+const { reportParsingQueue, telegramScrapingQueue, startTelegramScraping } = require('./services/queueService');
 
 // Setup Bull Board
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullAdapter(reportParsingQueue)],
+  queues: [
+    new BullAdapter(reportParsingQueue),
+    new BullAdapter(telegramScrapingQueue)
+  ],
   serverAdapter
 });
 
@@ -110,7 +113,7 @@ const server = app.listen(
 );
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   logger.error(`Unhandled Rejection: ${err.message}`);
   // Close server & exit process
   server.close(() => process.exit(1));
@@ -122,5 +125,15 @@ process.on('uncaughtException', (err) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 });
+
+// Start Telegram scraping job in production and development
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
+  try {
+    startTelegramScraping();
+    logger.info('Telegram scraping job started and added to queue');
+  } catch (error) {
+    logger.error('Failed to start Telegram scraping job:', error);
+  }
+}
 
 module.exports = server;

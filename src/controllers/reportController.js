@@ -3,6 +3,8 @@ const ErrorResponse = require('../utils/errorResponse');
 const logger = require('../config/logger');
 const ReportParsingJob = require('../models/jobs/ReportParsingJob');
 const queueService = require('../services/queueService');
+const Report = require('../models/Report');
+const telegramScrapingJobManager = require('../jobs/telegramScrapingJob');
 
 /**
  * @desc    Submit a report for parsing
@@ -136,4 +138,347 @@ exports.getAllJobs = asyncHandler(async (req, res, next) => {
     pagination,
     data: jobs
   });
+});
+
+/**
+ * @desc    Get all scraped reports with filtering, sorting, and pagination
+ * @route   GET /api/reports
+ * @access  Public
+ */
+exports.getReports = asyncHandler(async (req, res, next) => {
+  const paginationOptions = {
+    page: parseInt(req.query.page, 10) || 1,
+    limit: parseInt(req.query.limit, 10) || 10,
+    sort: req.query.sort || '-metadata.scrapedAt'
+  };
+
+  // Build filter object
+  const filter = {};
+
+  // Filter by channel
+  if (req.query.channel) {
+    filter['metadata.channel'] = req.query.channel;
+  }
+
+  // Filter by parsed status
+  if (req.query.parsedByLLM !== undefined) {
+    filter.parsedByLLM = req.query.parsedByLLM === 'true';
+  }
+
+  // Filter by status
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
+
+  // Filter by language
+  if (req.query.language) {
+    filter['metadata.language'] = req.query.language;
+  }
+
+  // Filter by date range
+  if (req.query.startDate || req.query.endDate) {
+    filter.date = {};
+    if (req.query.startDate) {
+      filter.date.$gte = new Date(req.query.startDate);
+    }
+    if (req.query.endDate) {
+      filter.date.$lte = new Date(req.query.endDate);
+    }
+  }
+
+  // Filter by scraped date range
+  if (req.query.scrapedStartDate || req.query.scrapedEndDate) {
+    filter['metadata.scrapedAt'] = {};
+    if (req.query.scrapedStartDate) {
+      filter['metadata.scrapedAt'].$gte = new Date(req.query.scrapedStartDate);
+    }
+    if (req.query.scrapedEndDate) {
+      filter['metadata.scrapedAt'].$lte = new Date(req.query.scrapedEndDate);
+    }
+  }
+
+  // Filter by keywords
+  if (req.query.keyword) {
+    filter['metadata.matchedKeywords'] = { $in: [req.query.keyword] };
+  }
+
+  // Text search
+  if (req.query.search) {
+    filter.$text = { $search: req.query.search };
+  }
+
+  try {
+    const result = await Report.paginate(filter, paginationOptions);
+
+    // Format pagination info
+    const pagination = {
+      page: result.page,
+      pages: result.totalPages,
+      limit: result.limit,
+      total: result.totalDocs,
+      hasNext: result.hasNextPage,
+      hasPrev: result.hasPrevPage
+    };
+
+    res.status(200).json({
+      success: true,
+      count: result.docs.length,
+      pagination,
+      data: result.docs
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error fetching reports', 500));
+  }
+});
+
+/**
+ * @desc    Get report by ID
+ * @route   GET /api/reports/:id
+ * @access  Public
+ */
+exports.getReport = asyncHandler(async (req, res, next) => {
+  try {
+    const report = await Report.findById(req.params.id)
+      .populate('parsingJobId', 'status progress results');
+
+    if (!report) {
+      return next(new ErrorResponse(`Report not found with id of ${req.params.id}`, 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    return next(new ErrorResponse(`Report not found with id of ${req.params.id}`, 404));
+  }
+});
+
+/**
+ * @desc    Get reports statistics
+ * @route   GET /api/reports/stats
+ * @access  Private (Admin)
+ */
+exports.getReportStats = asyncHandler(async (req, res, next) => {
+  try {
+    // Get basic counts
+    const totalReports = await Report.countDocuments();
+    const parsedReports = await Report.countDocuments({ parsedByLLM: true });
+    const unparsedReports = await Report.countDocuments({ parsedByLLM: false });
+    const recentReports = await Report.countDocuments({
+      'metadata.scrapedAt': { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+    });
+
+    // Get reports by channel
+    const channelStats = await Report.aggregate([
+      {
+        $group: {
+          _id: '$metadata.channel',
+          count: { $sum: 1 },
+          parsed: { $sum: { $cond: ['$parsedByLLM', 1, 0] } },
+          unparsed: { $sum: { $cond: ['$parsedByLLM', 0, 1] } }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get reports by language
+    const languageStats = await Report.aggregate([
+      {
+        $group: {
+          _id: '$metadata.language',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get reports by status
+    const statusStats = await Report.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get top keywords
+    const keywordStats = await Report.aggregate([
+      { $unwind: '$metadata.matchedKeywords' },
+      {
+        $group: {
+          _id: '$metadata.matchedKeywords',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 20 }
+    ]);
+
+    const stats = {
+      summary: {
+        total: totalReports,
+        parsed: parsedReports,
+        unparsed: unparsedReports,
+        recent24h: recentReports,
+        parsingRate: totalReports > 0 ? ((parsedReports / totalReports) * 100).toFixed(2) : 0
+      },
+      channels: channelStats,
+      languages: languageStats,
+      statuses: statusStats,
+      topKeywords: keywordStats
+    };
+
+    res.status(200).json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error fetching report statistics', 500));
+  }
+});
+
+/**
+ * @desc    Get reports ready for LLM processing
+ * @route   GET /api/reports/ready-for-processing
+ * @access  Private (Admin)
+ */
+exports.getReportsReadyForProcessing = asyncHandler(async (req, res, next) => {
+  const limit = parseInt(req.query.limit, 10) || 10;
+
+  try {
+    const reports = await Report.findReadyForProcessing(limit);
+
+    res.status(200).json({
+      success: true,
+      count: reports.length,
+      data: reports
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error fetching reports ready for processing', 500));
+  }
+});
+
+/**
+ * @desc    Mark report as processed
+ * @route   PUT /api/reports/:id/mark-processed
+ * @access  Private (Admin)
+ */
+exports.markReportAsProcessed = asyncHandler(async (req, res, next) => {
+  try {
+    const report = await Report.findById(req.params.id);
+
+    if (!report) {
+      return next(new ErrorResponse(`Report not found with id of ${req.params.id}`, 404));
+    }
+
+    const { jobId } = req.body;
+    await report.markAsProcessed(jobId);
+
+    res.status(200).json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error marking report as processed', 500));
+  }
+});
+
+/**
+ * @desc    Mark report as failed
+ * @route   PUT /api/reports/:id/mark-failed
+ * @access  Private (Admin)
+ */
+exports.markReportAsFailed = asyncHandler(async (req, res, next) => {
+  try {
+    const report = await Report.findById(req.params.id);
+
+    if (!report) {
+      return next(new ErrorResponse(`Report not found with id of ${req.params.id}`, 404));
+    }
+
+    const { errorMessage } = req.body;
+    await report.markAsFailed(errorMessage || 'Processing failed');
+
+    res.status(200).json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error marking report as failed', 500));
+  }
+});
+
+/**
+ * @desc    Trigger manual Telegram scraping
+ * @route   POST /api/reports/scraping/trigger
+ * @access  Private (Admin)
+ */
+exports.triggerManualScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.forceRun();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error triggering manual scraping', 500));
+  }
+});
+
+/**
+ * @desc    Start Telegram scraping recurring job
+ * @route   POST /api/reports/scraping/start
+ * @access  Private (Admin)
+ */
+exports.startTelegramScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.start();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error starting Telegram scraping', 500));
+  }
+});
+
+/**
+ * @desc    Stop Telegram scraping recurring job
+ * @route   POST /api/reports/scraping/stop
+ * @access  Private (Admin)
+ */
+exports.stopTelegramScraping = asyncHandler(async (req, res, next) => {
+  try {
+    const result = await telegramScrapingJobManager.stop();
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error stopping Telegram scraping', 500));
+  }
+});
+
+/**
+ * @desc    Get Telegram scraping job status
+ * @route   GET /api/reports/scraping/status
+ * @access  Private (Admin)
+ */
+exports.getScrapingJobStatus = asyncHandler(async (req, res, next) => {
+  try {
+    const status = telegramScrapingJobManager.getStatus();
+    
+    res.status(200).json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error getting scraping job status', 500));
+  }
 });
