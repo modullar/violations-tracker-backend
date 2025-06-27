@@ -11,6 +11,8 @@ let reportParsingQueue;
 let telegramScrapingQueue;
 
 try {
+  logger.info('Attempting to initialize queues with Redis...');
+
   // Create queues
   reportParsingQueue = new Queue('report-parsing-queue', {
     redis: {
@@ -61,8 +63,10 @@ try {
     redisAvailable = false;
   });
 
+  logger.info('Queues initialized successfully with Redis');
+
 } catch (error) {
-  logger.error('Failed to initialize queues - Redis not available:', error);
+  logger.warn('Redis not available - initializing fallback mode:', error.message);
   redisAvailable = false;
   
   // Create mock queues for fallback
