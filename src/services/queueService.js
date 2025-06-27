@@ -13,13 +13,27 @@ let telegramScrapingQueue;
 try {
   logger.info('Attempting to initialize queues with Redis...');
 
-  // Create queues
-  reportParsingQueue = new Queue('report-parsing-queue', {
-    redis: {
+  // Create Redis configuration
+  // Priority: REDIS_URL (full URL) > INTERNAL_REDIS_URL (Render internal) > individual components
+  let redisConfig;
+  
+  if (process.env.REDIS_URL) {
+    redisConfig = process.env.REDIS_URL;
+    logger.info('Using REDIS_URL for connection');
+  } else if (process.env.INTERNAL_REDIS_URL) {
+    redisConfig = process.env.INTERNAL_REDIS_URL;
+    logger.info('Using INTERNAL_REDIS_URL for connection');
+  } else {
+    redisConfig = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT) || 6379,
       password: process.env.REDIS_PASSWORD
-    },
+    };
+    logger.info('Using individual Redis configuration components');
+  }
+
+  reportParsingQueue = new Queue('report-parsing-queue', {
+    redis: redisConfig,
     defaultJobOptions: {
       attempts: 3,
       backoff: {
@@ -33,11 +47,7 @@ try {
 
   // Create Telegram scraping queue
   telegramScrapingQueue = new Queue('telegram-scraping-queue', {
-    redis: {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT) || 6379,
-      password: process.env.REDIS_PASSWORD
-    },
+    redis: redisConfig,
     defaultJobOptions: {
       attempts: 2,
       backoff: {
