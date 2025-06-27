@@ -3,6 +3,15 @@ const Report = require('../../models/Report');
 const { connectDB, closeDB } = require('../setup');
 
 describe('Report Model', () => {
+  let testCounter = 0;
+  
+  // Helper function to generate unique URLs for each test
+  const generateUniqueUrl = (messageId = null) => {
+    testCounter++;
+    const id = messageId || testCounter;
+    return `https://t.me/testchannel/${Date.now()}_${id}`;
+  };
+
   beforeAll(async () => {
     await connectDB();
   });
@@ -18,7 +27,7 @@ describe('Report Model', () => {
   describe('Report Creation', () => {
     it('should create a valid report with all required fields', async () => {
       const reportData = {
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('123'),
         text: 'This is a test report with enough text to meet the minimum requirement',
         date: new Date('2024-01-15T10:00:00Z'),
         parsedByLLM: false,
@@ -64,12 +73,12 @@ describe('Report Model', () => {
 
     it('should fail validation with short text', async () => {
       const reportData = {
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('124'),
         text: 'Short',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123'
+          messageId: '124'
         }
       };
 
@@ -83,12 +92,12 @@ describe('Report Model', () => {
       futureDate.setHours(futureDate.getHours() + 2);
 
       const reportData = {
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('125'),
         text: 'This is a test report with enough text',
         date: futureDate,
         metadata: {
           channel: 'testchannel',
-          messageId: '123'
+          messageId: '125'
         }
       };
 
@@ -178,12 +187,12 @@ describe('Report Model', () => {
 
     beforeEach(async () => {
       report = new Report({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('126'),
         text: 'Test report with keywords: قصف and مدنيين in Arabic',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123',
+          messageId: '126',
           scrapedAt: new Date()
         }
       });
@@ -224,13 +233,14 @@ describe('Report Model', () => {
 
   describe('Indexes and Uniqueness', () => {
     it('should enforce unique constraint on source_url', async () => {
+      const uniqueUrl = generateUniqueUrl('127');
       const reportData = {
-        source_url: 'https://t.me/testchannel/123',
+        source_url: uniqueUrl,
         text: 'First report with this URL',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123'
+          messageId: '127'
         }
       };
 
@@ -247,23 +257,23 @@ describe('Report Model', () => {
 
     it('should enforce unique constraint on channel + messageId combination', async () => {
       const report1 = new Report({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('128'),
         text: 'First report',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123'
+          messageId: '128'
         }
       });
       await report1.save();
 
       const report2 = new Report({
-        source_url: 'https://t.me/testchannel/124',
+        source_url: generateUniqueUrl('129'),
         text: 'Second report with same channel and messageId',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '123'
+          messageId: '128'
         }
       });
 
@@ -277,12 +287,12 @@ describe('Report Model', () => {
       const scrapedDate = new Date('2024-01-15T10:35:00Z');
 
       const report = new Report({
-        source_url: 'https://t.me/testchannel/123',
+        source_url: generateUniqueUrl('130'),
         text: 'Test report for JSON serialization',
         date: testDate,
         metadata: {
           channel: 'testchannel',
-          messageId: '123',
+          messageId: '130',
           scrapedAt: scrapedDate
         }
       });

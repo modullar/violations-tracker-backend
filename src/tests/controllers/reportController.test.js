@@ -688,17 +688,19 @@ describe('Report Controller Tests', () => {
 
   describe('PUT /api/reports/:id/mark-processed', () => {
     let testReport;
+    let testCounter = 0;
 
     beforeEach(async () => {
+      testCounter++;
       testReport = await Report.create({
-        source_url: 'https://t.me/testchannel/mark-processed',
+        source_url: `https://t.me/testchannel/mark-processed-${Date.now()}-${testCounter}`,
         text: 'This is a comprehensive test report to mark as processed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
         metadata: {
           channel: 'testchannel',
-          messageId: 'mark-processed',
+          messageId: `mark-processed-${testCounter}`,
           scrapedAt: new Date()
         }
       });
@@ -743,17 +745,19 @@ describe('Report Controller Tests', () => {
 
   describe('PUT /api/reports/:id/mark-failed', () => {
     let testReport;
+    let testCounter = 0;
 
     beforeEach(async () => {
+      testCounter++;
       testReport = await Report.create({
-        source_url: 'https://t.me/testchannel/mark-failed',
+        source_url: `https://t.me/testchannel/mark-failed-${Date.now()}-${testCounter}`,
         text: 'This is a comprehensive test report to mark as failed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
         status: 'new',
         metadata: {
           channel: 'testchannel',
-          messageId: 'mark-failed',
+          messageId: `mark-failed-${testCounter}`,
           scrapedAt: new Date()
         }
       });

@@ -9,6 +9,8 @@ services:
       - NODE_ENV=production
       - PORT=5000
       - MONGO_URI=mongodb://mongodb:27017/syria-violations-tracker
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET:-please_change_this_jwt_secret_in_production}
       - JWT_EXPIRES_IN=30d
       - JWT_COOKIE_EXPIRE=30
@@ -19,6 +21,8 @@ services:
       - ./logs:/usr/src/app/logs
     depends_on:
       mongodb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -36,5 +40,20 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
 volumes:
   mongodb_data:
+  redis_data:
