@@ -2,8 +2,7 @@ const Queue = require('bull');
 const logger = require('../config/logger');
 const claudeParser = require('./claudeParser');
 const ReportParsingJob = require('../models/jobs/ReportParsingJob');
-const Violation = require('../models/Violation');
-const { geocodeLocation } = require('../utils/geocoder');
+const { createSingleViolation } = require('../commands/violations/create');
 
 // Check if Redis is available
 let redisAvailable = true;
@@ -194,10 +193,6 @@ reportParsingQueue.process(async (job, done) => {
 
     for (const violation of valid) {
       try {
-        // Add the submitter as creator
-        violation.created_by = dbJob.submittedBy;
-        violation.updated_by = dbJob.submittedBy;
-        
         // Add source URL if available
         if (sourceURL && sourceURL.name) {
           violation.source = violation.source || { en: '', ar: '' };
@@ -208,57 +203,30 @@ reportParsingQueue.process(async (job, done) => {
             violation.source_url.en = sourceURL.url;
           }
         }
-        
-        // Process geocoding if needed
-        if (violation.location && violation.location.name) {
-          try {
-            // Try both Arabic and English location names
-            const locationNameAr = violation.location.name.ar || '';
-            const locationNameEn = violation.location.name.en || '';
-            const adminDivisionAr = violation.location.administrative_division ? 
-              (violation.location.administrative_division.ar || '') : '';
-            const adminDivisionEn = violation.location.administrative_division ? 
-              (violation.location.administrative_division.en || '') : '';
-            
-            logger.info(`Attempting to geocode location: ${locationNameEn || locationNameAr}`);
-            
-            // Try Arabic first if available
-            let geoDataAr = locationNameAr ? await geocodeLocation(locationNameAr, adminDivisionAr) : null;
-            
-            // Try English
-            let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
-            
-            // Use the best result based on quality score
-            let geoData;
-            if (geoDataAr && geoDataAr.length > 0 && geoDataEn && geoDataEn.length > 0) {
-              // If we have both results, pick the one with higher quality
-              geoData = (geoDataAr[0].quality || 0) >= (geoDataEn[0].quality || 0) ? geoDataAr : geoDataEn;
-              logger.info(`Using ${geoData === geoDataAr ? 'Arabic' : 'English'} geocoding result with quality ${geoData[0].quality || 0}`);
-            } else {
-              // Otherwise use whichever one succeeded
-              geoData = (geoDataAr && geoDataAr.length > 0) ? geoDataAr : geoDataEn;
-            }
 
-            if (geoData && geoData.length > 0) {
-              violation.location.coordinates = [
-                geoData[0].longitude,
-                geoData[0].latitude
-              ];
-              logger.info(`Successfully geocoded to coordinates: [${geoData[0].longitude}, ${geoData[0].latitude}]`);
-            } else {
-              throw new Error(`Could not find valid coordinates for location. Tried both Arabic (${locationNameAr}) and English (${locationNameEn}) names.`);
-            }
-          } catch (geoError) {
-            logger.error(`Geocoding failed for location: ${geoError.message}`);
-            throw new Error(`Geocoding failed: ${geoError.message}. Please verify the location names.`);
-          }
+        // Use the proper creation function with duplicate checking enabled
+        const result = await createSingleViolation(violation, dbJob.submittedBy, {
+          checkDuplicates: true,
+          mergeDuplicates: true,
+          duplicateThreshold: 0.85 // Slightly higher threshold for LLM-parsed content
+        });
+
+        if (result.wasMerged) {
+          logger.info('LLM violation merged with existing violation', {
+            newViolationData: violation.description?.en?.substring(0, 100) + '...',
+            mergedWithId: result.duplicateInfo.originalId,
+            similarity: result.duplicateInfo.similarity,
+            exactMatch: result.duplicateInfo.exactMatch
+          });
         } else {
-          throw new Error('Location name is required.');
+          logger.info('LLM violation created as new violation', {
+            violationId: result.violation._id,
+            type: result.violation.type,
+            location: result.violation.location?.name?.en
+          });
         }
 
-        // Create the violation
-        const newViolation = await Violation.create(violation);
-        createdViolations.push(newViolation._id);
+        createdViolations.push(result.violation._id);
       } catch (error) {
         logger.error(`Failed to create violation: ${error.message}`);
         failedCreations.push({

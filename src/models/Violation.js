@@ -193,7 +193,18 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(value) {
         if (!value) return true;
-        const validateUrl = (url) => !url || /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url);
+        const validateUrl = (url) => {
+          if (!url) return true;
+          try {
+            // Allow URLs with or without protocol
+            const urlToTest = url.startsWith('http') ? url : `https://${url}`;
+            new URL(urlToTest);
+            return true;
+          } catch {
+            // Fallback to regex for edge cases
+            return /^(https?:\/\/)?([a-zA-Z0-9._-]+)\.([a-zA-Z]{2,})([/\w._~:/?#[\]@!$&'()*+,;=%-]*)?$/i.test(url);
+          }
+        };
         if (value.en && !validateUrl(value.en)) return false;
         if (value.ar && !validateUrl(value.ar)) return false;
         if (value.en && value.en.length > 1000) return false;
@@ -280,7 +291,18 @@ const ViolationSchema = new mongoose.Schema({
     validate: {
       validator: function(v) {
         if (!v) return true;
-        return v.every(url => /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url));
+        return v.every(url => {
+          if (!url) return true;
+          try {
+            // Allow URLs with or without protocol
+            const urlToTest = url.startsWith('http') ? url : `https://${url}`;
+            new URL(urlToTest);
+            return true;
+          } catch {
+            // Fallback to regex for edge cases
+            return /^(https?:\/\/)?([a-zA-Z0-9._-]+)\.([a-zA-Z]{2,})([/\w._~:/?#[\]@!$&'()*+,;=%-]*)?$/i.test(url);
+          }
+        });
       },
       message: 'One or more media links are invalid URLs'
     }
@@ -308,6 +330,15 @@ const ViolationSchema = new mongoose.Schema({
   updated_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  // Hash of key violation fields to prevent identical duplicates
+  content_hash: {
+    type: String,
+    unique: true,
+    default: function() {
+      // Generate hash on creation if not provided
+      return this.generateContentHash();
+    }
   }
 }, {
   timestamps: true,
@@ -317,6 +348,38 @@ const ViolationSchema = new mongoose.Schema({
 
 // Create a 2dsphere index for geospatial queries
 ViolationSchema.index({ 'location.coordinates': '2dsphere' });
+
+// Method to generate content hash
+ViolationSchema.methods.generateContentHash = function() {
+  const crypto = require('crypto');
+  
+  // Create hash from key identifying fields
+  const hashContent = JSON.stringify({
+    type: this.type,
+    date: this.date ? this.date.toISOString().split('T')[0] : '', // Date only, no time
+    perpetrator_affiliation: this.perpetrator_affiliation || '',
+    coordinates: this.location?.coordinates || [],
+    description_en: this.description?.en?.trim()?.toLowerCase().substring(0, 200) || '' // First 200 chars, normalized
+  });
+  
+  return crypto.createHash('sha256').update(hashContent).digest('hex');
+};
+
+// Pre-save hook to generate content hash if not present
+ViolationSchema.pre('save', function(next) {
+  if (!this.content_hash || this.isModified(['type', 'date', 'perpetrator_affiliation', 'location.coordinates', 'description.en'])) {
+    try {
+      this.content_hash = this.generateContentHash();
+    } catch (error) {
+      console.warn('Failed to generate content_hash:', error.message);
+      // Fallback: generate a simple hash based on timestamp and random value
+      this.content_hash = require('crypto').createHash('sha256')
+        .update(`${Date.now()}-${Math.random()}`)
+        .digest('hex');
+    }
+  }
+  next();
+});
 
 // Add pagination plugin
 ViolationSchema.plugin(mongoosePaginate);
