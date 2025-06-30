@@ -1,4 +1,5 @@
 const Violation = require('../../models/Violation');
+const mongoose = require('mongoose');
 const { geocodeLocation } = require('../../utils/geocoder');
 const { checkForDuplicates } = require('../../utils/duplicateChecker');
 const { mergeWithExistingViolation } = require('./merge');
@@ -94,22 +95,105 @@ const createSingleViolation = async (violationData, userId, options = {}) => {
 
   // 2. Check for duplicates if enabled
   if (checkDuplicates) {
-    const duplicateResult = await checkForDuplicates(sanitizedData, {
-      similarityThreshold: duplicateThreshold,
-      limit: 5
-    });
+    // Use a more robust duplicate checking with retry logic to handle race conditions
+    let duplicateResult;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    if (duplicateResult.hasDuplicates) {
-      const bestMatch = duplicateResult.bestMatch;
-      
-      logger.info(`Found potential duplicate for violation`, {
-        similarity: bestMatch.similarity,
-        exactMatch: bestMatch.exactMatch,
-        existingViolationId: bestMatch.violation._id
+    while (retryCount < maxRetries) {
+      duplicateResult = await checkForDuplicates(sanitizedData, {
+        similarityThreshold: duplicateThreshold,
+        limit: 5
       });
 
-      if (mergeDuplicates) {
-        // Merge with existing violation
+      if (duplicateResult.hasDuplicates) {
+        const bestMatch = duplicateResult.bestMatch;
+        
+        logger.info(`Found potential duplicate for violation (attempt ${retryCount + 1})`, {
+          similarity: bestMatch.similarity,
+          exactMatch: bestMatch.exactMatch,
+          existingViolationId: bestMatch.violation._id
+        });
+
+        if (mergeDuplicates) {
+          // Double-check the violation still exists before merging (race condition protection)
+          // Skip this check in test environment or if _id is not a valid ObjectId
+          let existingViolation = bestMatch.violation;
+           
+          if (process.env.NODE_ENV !== 'test' && mongoose.Types.ObjectId.isValid(bestMatch.violation._id)) {
+            const freshViolation = await Violation.findById(bestMatch.violation._id);
+            if (!freshViolation) {
+              // Violation was deleted, retry duplicate check
+              retryCount++;
+              await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+              continue;
+            }
+            existingViolation = freshViolation;
+          }
+
+          // Merge with existing violation
+          const mergedViolation = await mergeWithExistingViolation(
+            sanitizedData, 
+            existingViolation, 
+            userId,
+            { preferNew: true }
+          );
+
+          return {
+            violation: mergedViolation,
+            wasMerged: true,
+            duplicateInfo: {
+              similarity: bestMatch.similarity,
+              exactMatch: bestMatch.exactMatch,
+              originalId: bestMatch.violation._id
+            }
+          };
+        } else {
+          // Return duplicate information without merging
+          throw new ErrorResponse(
+            'Potential duplicate violation found. Please review before creating.',
+            409,
+            { 
+              duplicates: duplicateResult.duplicates.map(d => ({
+                id: d.violation._id,
+                similarity: d.similarity,
+                exactMatch: d.exactMatch,
+                violation: d.violation
+              }))
+            }
+          );
+        }
+      }
+      
+      // No duplicates found, break out of retry loop
+      break;
+    }
+  }
+
+  // 3. Process data (geocode and add user info)
+  const processedData = await processViolationData(sanitizedData, userId);
+  
+  // 4. Create violation with additional race condition protection
+  try {
+    const violation = await Violation.create(processedData);
+    return {
+      violation,
+      wasMerged: false
+    };
+  } catch (error) {
+    // If it's a duplicate key error, do one final duplicate check and merge
+    if (error.code === 11000 && checkDuplicates && mergeDuplicates) {
+      logger.info('Caught duplicate key error, performing final duplicate check', {
+        error: error.message
+      });
+      
+      const finalDuplicateResult = await checkForDuplicates(sanitizedData, {
+        similarityThreshold: duplicateThreshold,
+        limit: 1
+      });
+
+      if (finalDuplicateResult.hasDuplicates) {
+        const bestMatch = finalDuplicateResult.bestMatch;
         const mergedViolation = await mergeWithExistingViolation(
           sanitizedData, 
           bestMatch.violation, 
@@ -126,34 +210,12 @@ const createSingleViolation = async (violationData, userId, options = {}) => {
             originalId: bestMatch.violation._id
           }
         };
-      } else {
-        // Return duplicate information without merging
-        throw new ErrorResponse(
-          'Potential duplicate violation found. Please review before creating.',
-          409,
-          { 
-            duplicates: duplicateResult.duplicates.map(d => ({
-              id: d.violation._id,
-              similarity: d.similarity,
-              exactMatch: d.exactMatch,
-              violation: d.violation
-            }))
-          }
-        );
       }
     }
+    
+    // Re-throw the original error if we can't handle it
+    throw error;
   }
-
-  // 3. Process data (geocode and add user info)
-  const processedData = await processViolationData(sanitizedData, userId);
-  
-  // 4. Create violation (schema validation happens here as final safety net)
-  const violation = await Violation.create(processedData);
-
-  return {
-    violation,
-    wasMerged: false
-  };
 };
 
 /**

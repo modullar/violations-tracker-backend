@@ -136,8 +136,8 @@ ReportSchema.statics.findReadyForProcessing = function(limit = 10) {
     parsedByLLM: false,
     status: 'new'
   })
-  .sort({ 'metadata.scrapedAt': -1 })
-  .limit(limit);
+    .sort({ 'metadata.scrapedAt': -1 })
+    .limit(limit);
 };
 
 // Static method to find recent reports by channel
@@ -147,7 +147,7 @@ ReportSchema.statics.findRecentByChannel = function(channel, hours = 24) {
     'metadata.channel': channel,
     'metadata.scrapedAt': { $gte: startDate }
   })
-  .sort({ 'metadata.scrapedAt': -1 });
+    .sort({ 'metadata.scrapedAt': -1 });
 };
 
 // Static method to check if a report already exists
