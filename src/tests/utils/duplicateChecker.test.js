@@ -127,7 +127,7 @@ describe('Duplicate Checker Utility', () => {
     it('should detect high similarity match even with different details', () => {
       const newViolation = {
         ...baseViolation,
-        casualties: 7, // Different casualty count
+        casualties: 7, // Different casualty count  
         location: {
           coordinates: [37.1350, 36.2025] // Slightly different coordinates (within 100m)
         }
@@ -136,13 +136,13 @@ describe('Duplicate Checker Utility', () => {
       const result = checkViolationsMatch(newViolation, baseViolation);
 
       expect(result.isDuplicate).toBe(true);
-      expect(result.exactMatch).toBe(false);
+      expect(result.exactMatch).toBe(true); // Now exact match due to flexible casualty matching (20% tolerance)
       expect(result.similarity).toBe(1.0); // Same description
       expect(result.matchDetails.sameType).toBe(true);
       expect(result.matchDetails.sameDate).toBe(true);
-      expect(result.matchDetails.samePerpetrator).toBe(true);
+      expect(result.matchDetails.samePerpetrator).toBe(true);  
       expect(result.matchDetails.nearbyLocation).toBe(true);
-      expect(result.matchDetails.sameCasualties).toBe(false);
+      expect(result.matchDetails.sameCasualties).toBe(true); // Now true due to flexible matching
     });
 
     it('should not match violations with different types', () => {
@@ -234,6 +234,53 @@ describe('Duplicate Checker Utility', () => {
       const result = checkViolationsMatch(newViolation, baseViolation);
 
       expect(result.similarity).toBe(0);
+    });
+
+    it('should match based on Arabic description similarity', () => {
+      const newViolation = {
+        ...baseViolation,
+        type: 'SHELLING', // Different type to prevent exact match
+        casualties: 6, // Different casualties  
+        description: {
+          ar: 'اعتقلت قوات الأمن الداخلي 5 أشخاص من فلول نظام الأسد',
+          en: '' // No English description
+        }
+      };
+
+      const existingViolation = {
+        ...baseViolation,
+        type: 'DETENTION', // Different from newViolation type
+        casualties: 5,
+        description: {
+          ar: 'مداهمات نفذتها قوى الأمن الداخلي اسفرت عن اعتقال 5 اشخاص من فلول النظام',
+          en: '' // No English description
+        }
+      };
+
+      const result = checkViolationsMatch(newViolation, existingViolation);
+
+      expect(result.isDuplicate).toBe(true);
+      expect(result.exactMatch).toBe(false); // Should be false due to different types
+      expect(result.similarity).toBeGreaterThan(0); // Should find similarity in Arabic text
+    });
+
+    it('should use flexible casualty matching for similar totals', () => {
+      const newViolation = {
+        ...baseViolation,
+        detained_count: 5,
+        casualties: 0
+      };
+
+      const existingViolation = {
+        ...baseViolation, 
+        detained_count: 6, // Slightly different count
+        casualties: 0
+      };
+
+      const result = checkViolationsMatch(newViolation, existingViolation);
+
+      expect(result.matchDetails.sameCasualties).toBe(true); // Should match due to flexible counting
+      expect(result.exactMatch).toBe(true); // Should be exact match due to all other criteria matching
     });
   });
 

@@ -196,11 +196,11 @@ const ViolationSchema = new mongoose.Schema({
         const validateUrl = (url) => !url || /^(https?:\/\/)?([a-z0-9.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url);
         if (value.en && !validateUrl(value.en)) return false;
         if (value.ar && !validateUrl(value.ar)) return false;
-        if (value.en && value.en.length > 500) return false;
-        if (value.ar && value.ar.length > 500) return false;
+        if (value.en && value.en.length > 1000) return false;
+        if (value.ar && value.ar.length > 1000) return false;
         return true;
       },
-      message: 'One or more source URLs are invalid or exceed 500 characters'
+      message: 'One or more source URLs are invalid or exceed 1000 characters'
     }
   },
   verified: {
@@ -478,16 +478,40 @@ ViolationSchema.statics.sanitizeData = function(violationData) {
   const sanitized = JSON.parse(JSON.stringify(violationData)); // Deep clone
   
   // Normalize dates
-  if (sanitized.date) {
+  if (sanitized.date && sanitized.date !== '') {
     if (typeof sanitized.date === 'string') {
       sanitized.date = new Date(sanitized.date);
     }
+  } else {
+    sanitized.date = null;
   }
   
-  if (sanitized.reported_date) {
+  if (sanitized.reported_date && sanitized.reported_date !== '') {
     if (typeof sanitized.reported_date === 'string') {
       sanitized.reported_date = new Date(sanitized.reported_date);
     }
+  } else {
+    sanitized.reported_date = null;
+  }
+  
+  // Handle missing dates by defaulting to each other
+  const hasValidDate = sanitized.date && sanitized.date instanceof Date && !isNaN(sanitized.date.getTime());
+  const hasValidReportedDate = sanitized.reported_date && sanitized.reported_date instanceof Date && !isNaN(sanitized.reported_date.getTime());
+  
+  if (hasValidDate && !hasValidReportedDate) {
+    // If violation date exists but reported date doesn't, use violation date as reported date
+    sanitized.reported_date = new Date(sanitized.date);
+  } else if (hasValidReportedDate && !hasValidDate) {
+    // If reported date exists but violation date doesn't, use reported date as violation date
+    sanitized.date = new Date(sanitized.reported_date);
+  }
+  
+  // Clean up null values (set to undefined so they're not included in the final object if not needed)
+  if (sanitized.date === null) {
+    delete sanitized.date;
+  }
+  if (sanitized.reported_date === null) {
+    delete sanitized.reported_date;
   }
   
   // Normalize victim death dates

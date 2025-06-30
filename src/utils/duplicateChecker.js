@@ -64,19 +64,54 @@ function checkViolationsMatch(newViolation, existingViolation) {
 
   // Check casualties match (comparing all count fields)
   const casualtyFields = ['casualties', 'kidnapped_count', 'detained_count', 'injured_count', 'displaced_count'];
-  const sameCasualties = casualtyFields.every(field => 
+  const exactCasualtyMatch = casualtyFields.every(field => 
     (newViolation[field] || 0) === (existingViolation[field] || 0)
   );
   
+  // Only apply flexible casualty matching if other key criteria match
+  const keyFieldsMatch = sameType && sameDate && samePerpetrator && nearbyLocation;
+  let sameCasualties = exactCasualtyMatch;
+  
+  if (!exactCasualtyMatch && keyFieldsMatch) {
+    // Also check if total affected people count is similar (within 20% tolerance)
+    const getTotalAffected = (violation) => casualtyFields.reduce((total, field) => total + (violation[field] || 0), 0);
+    const total1 = getTotalAffected(newViolation);
+    const total2 = getTotalAffected(existingViolation);
+    const totalDifference = Math.abs(total1 - total2);
+    const maxTotal = Math.max(total1, total2);
+    const similarCasualtyCount = maxTotal === 0 ? true : (totalDifference / maxTotal) <= 0.2; // 20% tolerance
+    
+    sameCasualties = similarCasualtyCount;
+  }
+  
   // Calculate description similarity
-  const similarity = stringSimilarity.compareTwoStrings(
-    newViolation.description?.en || '',
-    existingViolation.description?.en || ''
-  );
+  const enText1 = newViolation.description?.en || '';
+  const enText2 = existingViolation.description?.en || '';
+  const arText1 = newViolation.description?.ar || '';
+  const arText2 = existingViolation.description?.ar || '';
+  
+  let enSimilarity = 0;
+  let arSimilarity = 0;
+  
+  // Only calculate similarity if both texts are non-empty
+  if (enText1.trim() && enText2.trim()) {
+    enSimilarity = stringSimilarity.compareTwoStrings(enText1, enText2);
+  }
+  
+  if (arText1.trim() && arText2.trim()) {
+    arSimilarity = stringSimilarity.compareTwoStrings(arText1, arText2);
+  }
+  
+  // Use the higher similarity score between English and Arabic
+  const similarity = Math.max(enSimilarity, arSimilarity);
 
   // Determine if it's an exact match or high similarity match
   const exactMatch = sameType && sameDate && samePerpetrator && nearbyLocation && sameCasualties;
-  const highSimilarity = similarity >= SIMILARITY_THRESHOLD;
+  
+  // Use different similarity thresholds for different languages
+  const hasArabicContent = (newViolation.description?.ar && existingViolation.description?.ar);
+  const effectiveThreshold = hasArabicContent ? SIMILARITY_THRESHOLD * 0.8 : SIMILARITY_THRESHOLD; // Lower threshold for Arabic
+  const highSimilarity = similarity >= effectiveThreshold;
   
   const isDuplicate = exactMatch || highSimilarity;
 

@@ -573,6 +573,162 @@ describe('Static validation methods', () => {
       expect(sanitized.description).toEqual({ en: 'Test description', ar: '' });
       expect(sanitized.victims[0].death_date).toBeInstanceOf(Date);
     });
+
+    it('should set reported_date to violation date when reported_date is missing', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        // No reported_date provided
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+      expect(sanitized.reported_date.toISOString().split('T')[0]).toBe('2023-06-15');
+    });
+
+    it('should set violation date to reported_date when violation date is missing', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        // No date provided
+        reported_date: '2023-06-16',
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);  
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+      expect(sanitized.date.toISOString().split('T')[0]).toBe('2023-06-16');
+    });
+
+    it('should not modify dates when both are provided', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        reported_date: '2023-06-17',
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.toISOString().split('T')[0]).toBe('2023-06-15');
+      expect(sanitized.reported_date.toISOString().split('T')[0]).toBe('2023-06-17');
+    });
+
+    it('should handle string dates correctly when setting missing dates', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15T10:30:00Z',
+        // No reported_date provided
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+    });
+
+    it('should handle Date objects correctly when setting missing dates', () => {
+      const testDate = new Date('2023-06-15T10:30:00Z');
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: testDate,
+        // No reported_date provided
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+      expect(sanitized.date.getTime()).toBe(testDate.getTime());
+    });
+
+    it('should not set dates when both are missing', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        // No date provided
+        // No reported_date provided
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeUndefined();
+      expect(sanitized.reported_date).toBeUndefined();
+    });
+
+    it('should handle null or empty string dates correctly', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        reported_date: null,
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+    });
+
+    it('should handle empty string dates correctly', () => {
+      const rawData = {
+        type: 'AIRSTRIKE',
+        date: '',
+        reported_date: '2023-06-16',
+        location: {
+          name: 'Test Location',
+          administrative_division: 'Test Division'
+        },
+        description: 'Test description'
+      };
+
+      const sanitized = Violation.sanitizeData(rawData);
+
+      expect(sanitized.date).toBeInstanceOf(Date);
+      expect(sanitized.reported_date).toBeInstanceOf(Date);
+      expect(sanitized.date.getTime()).toBe(sanitized.reported_date.getTime());
+    });
   });
 
   describe('validateForCreation', () => {
@@ -748,5 +904,206 @@ describe('Date formatting in JSON', () => {
 
     const jsonViolation = violation.toJSON();
     expect(jsonViolation.date).toBe('2023-06-15');
+  });
+});
+
+describe('Date Auto-assignment Integration Tests', () => {
+  it('should create violation with reported_date auto-set from violation date', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-06-15',
+      // No reported_date provided
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const validatedData = await Violation.validateForCreation(violationData);
+    expect(validatedData.date).toBeInstanceOf(Date);
+    expect(validatedData.reported_date).toBeInstanceOf(Date);
+    expect(validatedData.date.getTime()).toBe(validatedData.reported_date.getTime());
+
+    const violation = new Violation(validatedData);
+    await violation.validate();
+
+    const jsonOutput = violation.toJSON();
+    expect(jsonOutput.date).toBe('2023-06-15');
+    expect(jsonOutput.reported_date).toBe('2023-06-15');
+  });
+
+  it('should create violation with violation date auto-set from reported_date', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      // No date provided
+      reported_date: '2023-06-16',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const validatedData = await Violation.validateForCreation(violationData);
+    expect(validatedData.date).toBeInstanceOf(Date);
+    expect(validatedData.reported_date).toBeInstanceOf(Date);
+    expect(validatedData.date.getTime()).toBe(validatedData.reported_date.getTime());
+
+    const violation = new Violation(validatedData);
+    await violation.validate();
+
+    const jsonOutput = violation.toJSON();
+    expect(jsonOutput.date).toBe('2023-06-16');
+    expect(jsonOutput.reported_date).toBe('2023-06-16');
+  });
+
+  it('should preserve both dates when both are provided', async () => {
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-06-15',
+      reported_date: '2023-06-17',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const validatedData = await Violation.validateForCreation(violationData);
+    expect(validatedData.date).toBeInstanceOf(Date);
+    expect(validatedData.reported_date).toBeInstanceOf(Date);
+    expect(validatedData.date.getTime()).not.toBe(validatedData.reported_date.getTime());
+
+    const violation = new Violation(validatedData);
+    await violation.validate();
+
+    const jsonOutput = violation.toJSON();
+    expect(jsonOutput.date).toBe('2023-06-15');
+    expect(jsonOutput.reported_date).toBe('2023-06-17');
+  });
+
+  it('should work with batch validation when dates are missing', async () => {
+    const violationsData = [
+      {
+        type: 'AIRSTRIKE',
+        date: '2023-06-15',
+        // No reported_date
+        location: {
+          name: { en: 'Location 1', ar: '' }
+        },
+        description: { en: 'Description that is long enough for validation', ar: '' },
+        verified: false,
+        certainty_level: 'confirmed'
+      },
+      {
+        type: 'SHELLING',
+        // No date
+        reported_date: '2023-06-16',
+        location: {
+          name: { en: 'Location 2', ar: '' }
+        },
+        description: { en: 'Another description that is long enough', ar: '' },
+        verified: false,
+        certainty_level: 'probable'
+      }
+    ];
+
+    const result = await Violation.validateBatch(violationsData);
+
+    expect(result.valid).toHaveLength(2);
+    expect(result.invalid).toHaveLength(0);
+
+    // Check first violation
+    expect(result.valid[0].date).toBeInstanceOf(Date);
+    expect(result.valid[0].reported_date).toBeInstanceOf(Date);
+    expect(result.valid[0].date.getTime()).toBe(result.valid[0].reported_date.getTime());
+
+    // Check second violation
+    expect(result.valid[1].date).toBeInstanceOf(Date);
+    expect(result.valid[1].reported_date).toBeInstanceOf(Date);
+    expect(result.valid[1].date.getTime()).toBe(result.valid[1].reported_date.getTime());
+  });
+});
+
+describe('Source URL Validation', () => {
+  it('should accept source URLs up to 1000 characters', async () => {
+    // Create a URL that's 600 characters long (over old 500 limit, under new 1000 limit)
+    const baseUrl = 'https://example.com/article/';
+    const longPath = 'a'.repeat(600 - baseUrl.length);
+    const longUrl = baseUrl + longPath;
+    
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: longUrl, ar: longUrl },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).resolves.not.toThrow();
+  });
+
+  it('should reject source URLs over 1000 characters', async () => {
+    // Create a URL that's 1001 characters long
+    const baseUrl = 'https://example.com/article/';
+    const longPath = 'a'.repeat(1001 - baseUrl.length);
+    const tooLongUrl = baseUrl + longPath;
+    
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: tooLongUrl, ar: '' },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
   });
 }); 

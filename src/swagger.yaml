@@ -256,7 +256,7 @@ components:
           description: Source of information in English and Arabic
         source_url:
           $ref: '#/components/schemas/LocalizedString'
-          description: Source URL in English and Arabic, each URL up to 500 characters
+          description: Source URL in English and Arabic, each URL up to 1000 characters
         verified:
           type: boolean
         certainty_level:
