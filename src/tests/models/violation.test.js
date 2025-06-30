@@ -1048,4 +1048,62 @@ describe('Date Auto-assignment Integration Tests', () => {
     expect(result.valid[1].reported_date).toBeInstanceOf(Date);
     expect(result.valid[1].date.getTime()).toBe(result.valid[1].reported_date.getTime());
   });
+});
+
+describe('Source URL Validation', () => {
+  it('should accept source URLs up to 1000 characters', async () => {
+    // Create a URL that's 600 characters long (over old 500 limit, under new 1000 limit)
+    const baseUrl = 'https://example.com/article/';
+    const longPath = 'a'.repeat(600 - baseUrl.length);
+    const longUrl = baseUrl + longPath;
+    
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: longUrl, ar: longUrl },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).resolves.not.toThrow();
+  });
+
+  it('should reject source URLs over 1000 characters', async () => {
+    // Create a URL that's 1001 characters long
+    const baseUrl = 'https://example.com/article/';
+    const longPath = 'a'.repeat(1001 - baseUrl.length);
+    const tooLongUrl = baseUrl + longPath;
+    
+    const violationData = {
+      type: 'AIRSTRIKE',
+      date: '2023-01-01',
+      location: {
+        coordinates: [37.1, 36.2],
+        name: { en: 'Test Location', ar: 'موقع الاختبار' },
+        administrative_division: { en: 'Test Division', ar: 'قسم الاختبار' }
+      },
+      description: { en: 'Test description', ar: 'وصف الاختبار' },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: tooLongUrl, ar: '' },
+      verified: true,
+      certainty_level: 'confirmed',
+      verification_method: { en: 'Test verification', ar: 'التحقق' },
+      perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
+      perpetrator_affiliation: 'assad_regime'
+    };
+
+    const violation = new Violation(violationData);
+    await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
+  });
 }); 
