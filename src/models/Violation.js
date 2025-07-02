@@ -371,11 +371,13 @@ ViolationSchema.pre('save', function(next) {
     try {
       this.content_hash = this.generateContentHash();
     } catch (error) {
-      console.warn('Failed to generate content_hash:', error.message);
-      // Fallback: generate a simple hash based on timestamp and random value
-      this.content_hash = require('crypto').createHash('sha256')
-        .update(`${Date.now()}-${Math.random()}`)
-        .digest('hex');
+      const logger = require('../config/logger');
+      logger.error('Failed to generate content_hash. Halting save to prevent potential duplicates.', {
+        error: error.message,
+        violationId: this._id
+      });
+      // Pass the error to the next middleware to halt the save operation
+      return next(error);
     }
   }
   next();

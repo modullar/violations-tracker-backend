@@ -4,6 +4,7 @@ const stringSimilarity = require('string-similarity');
 // Configuration
 const SIMILARITY_THRESHOLD = 0.75;
 const MAX_DISTANCE_METERS = 100;
+const COMPARISON_DATE_TOLERANCE = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 /**
  * Calculate distance between two points using Haversine formula
@@ -138,30 +139,17 @@ function checkViolationsMatch(newViolation, existingViolation) {
  * @returns {Promise<Array>} Array of potential duplicates with match details
  */
 async function findPotentialDuplicates(newViolationData, options = {}) {
-  const { 
-    similarityThreshold = SIMILARITY_THRESHOLD,
-    maxDistance = MAX_DISTANCE_METERS,
-    limit = 10 
-  } = options;
+  const { limit = 5 } = options;
 
   try {
-    // Build a query to find potential candidates more efficiently
+    // Build query conditions
     const query = {
       type: newViolationData.type,
-      perpetrator_affiliation: newViolationData.perpetrator_affiliation
+      date: {
+        $gte: new Date(newViolationData.date.getTime() - COMPARISON_DATE_TOLERANCE),
+        $lte: new Date(newViolationData.date.getTime() + COMPARISON_DATE_TOLERANCE)
+      }
     };
-
-    // Add date range filter (within 7 days)
-    if (newViolationData.date) {
-      const incidentDate = new Date(newViolationData.date);
-      const startDate = new Date(incidentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const endDate = new Date(incidentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-      
-      query.date = {
-        $gte: startDate,
-        $lte: endDate
-      };
-    }
 
     // Find potential candidates
     const candidates = await Violation.find(query)
