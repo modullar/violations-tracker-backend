@@ -6,7 +6,8 @@ jest.mock('node-geocoder', () => {
 });
 
 jest.mock('../../../utils/geocoder', () => ({
-  geocodeLocation: jest.fn()
+  geocodeLocation: jest.fn(),
+  getCachedOrFreshGeocode: jest.fn()
 }));
 
 jest.mock('../../../utils/duplicateChecker', () => ({
@@ -27,7 +28,7 @@ const { createSingleViolation, createBatchViolations, geocodeLocationData } = re
 const Violation = require('../../../models/Violation');
 const ErrorResponse = require('../../../utils/errorResponse');
 
-const { geocodeLocation } = require('../../../utils/geocoder');
+const { getCachedOrFreshGeocode } = require('../../../utils/geocoder');
 const { checkForDuplicates } = require('../../../utils/duplicateChecker');
 const { mergeWithExistingViolation } = require('../../../commands/violations/merge');
 
@@ -58,24 +59,26 @@ describe('Violation Create Command', () => {
         }
       };
 
-      geocodeLocation
+      getCachedOrFreshGeocode
         .mockImplementationOnce(async () => [{ // Arabic call
           latitude: 36.186764,
           longitude: 37.1441285,
-          quality: 0.9
+          quality: 0.9,
+          fromCache: false
         }])
         .mockImplementationOnce(async () => [{ // English call
           latitude: 36.186764,
           longitude: 37.1441285,
-          quality: 0.8
+          quality: 0.8,
+          fromCache: false
         }]);
 
       const result = await geocodeLocationData(location);
 
       expect(result).toEqual([37.1441285, 36.186764]);
-      expect(geocodeLocation).toHaveBeenCalledTimes(2);
-      expect(geocodeLocation).toHaveBeenCalledWith('بستان القصر', 'حلب');
-      expect(geocodeLocation).toHaveBeenCalledWith('Bustan al-Qasr', 'Aleppo');
+      expect(getCachedOrFreshGeocode).toHaveBeenCalledTimes(2);
+      expect(getCachedOrFreshGeocode).toHaveBeenCalledWith('بستان القصر', 'حلب', 'ar');
+      expect(getCachedOrFreshGeocode).toHaveBeenCalledWith('Bustan al-Qasr', 'Aleppo', 'en');
     });
 
     it('should use English result when Arabic fails', async () => {
@@ -90,18 +93,19 @@ describe('Violation Create Command', () => {
         }
       };
 
-      geocodeLocation
+      getCachedOrFreshGeocode
         .mockImplementationOnce(async () => []) // Arabic fails
         .mockImplementationOnce(async () => [{ // English succeeds
           latitude: 33.5138,
           longitude: 36.2765,
-          quality: 0.8
+          quality: 0.8,
+          fromCache: false
         }]);
 
       const result = await geocodeLocationData(location);
 
       expect(result).toEqual([36.2765, 33.5138]);
-      expect(geocodeLocation).toHaveBeenCalledTimes(2);
+      expect(getCachedOrFreshGeocode).toHaveBeenCalledTimes(2);
     });
 
     it('should throw error when location name is missing', async () => {
@@ -123,7 +127,7 @@ describe('Violation Create Command', () => {
         }
       };
 
-      geocodeLocation
+      getCachedOrFreshGeocode
         .mockImplementationOnce(async () => []) // Arabic fails
         .mockImplementationOnce(async () => []); // English fails
 
@@ -140,7 +144,7 @@ describe('Violation Create Command', () => {
         }
       };
 
-      geocodeLocation.mockRejectedValue(new Error('Geocoding service unavailable'));
+      getCachedOrFreshGeocode.mockRejectedValue(new Error('Geocoding service unavailable'));
 
       await expect(geocodeLocationData(location)).rejects.toThrow(
         'Geocoding failed: Geocoding service unavailable'
@@ -189,10 +193,11 @@ describe('Violation Create Command', () => {
     };
 
     beforeEach(() => {
-      geocodeLocation.mockResolvedValue([{
+      getCachedOrFreshGeocode.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
-        quality: 0.9
+        quality: 0.9,
+        fromCache: false
       }]);
     });
 
@@ -356,7 +361,7 @@ describe('Violation Create Command', () => {
         }
       };
 
-      geocodeLocation.mockResolvedValue([]);
+      getCachedOrFreshGeocode.mockResolvedValue([]);
 
       await expect(createSingleViolation(violationData, mockUserId))
         .rejects.toThrow('Could not find valid coordinates for location');
@@ -395,10 +400,11 @@ describe('Violation Create Command', () => {
         }
       ];
 
-      geocodeLocation.mockResolvedValue([{
+      getCachedOrFreshGeocode.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
-        quality: 0.9
+        quality: 0.9,
+        fromCache: false
       }]);
 
       const mockCreatedViolations = violationsData.map((v, i) => ({
@@ -446,10 +452,11 @@ describe('Violation Create Command', () => {
         }
       ];
 
-      geocodeLocation.mockResolvedValue([{
+      getCachedOrFreshGeocode.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
-        quality: 0.9
+        quality: 0.9,
+        fromCache: false
       }]);
 
       const mockCreatedViolation = {
@@ -520,10 +527,11 @@ describe('Violation Create Command', () => {
         }
       ];
 
-      geocodeLocation.mockResolvedValue([{
+      getCachedOrFreshGeocode.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
-        quality: 0.9
+        quality: 0.9,
+        fromCache: false
       }]);
 
       const result = await createBatchViolations(violationsData, mockUserId);
@@ -543,10 +551,11 @@ describe('Violation Create Command', () => {
         perpetrator_affiliation: 'assad_regime'
       }];
 
-      geocodeLocation.mockResolvedValue([{
+      getCachedOrFreshGeocode.mockResolvedValue([{
         latitude: 36.2021047,
         longitude: 37.1342603,
-        quality: 0.9
+        quality: 0.9,
+        fromCache: false
       }]);
 
       Violation.create = jest.fn().mockResolvedValue({ _id: 'test-id' });

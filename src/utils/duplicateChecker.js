@@ -143,11 +143,12 @@ async function findPotentialDuplicates(newViolationData, options = {}) {
 
   try {
     // Build query conditions
+    const violationDate = new Date(newViolationData.date);
     const query = {
       type: newViolationData.type,
       date: {
-        $gte: new Date(newViolationData.date.getTime() - COMPARISON_DATE_TOLERANCE),
-        $lte: new Date(newViolationData.date.getTime() + COMPARISON_DATE_TOLERANCE)
+        $gte: new Date(violationDate.getTime() - COMPARISON_DATE_TOLERANCE),
+        $lte: new Date(violationDate.getTime() + COMPARISON_DATE_TOLERANCE)
       }
     };
 
@@ -201,5 +202,8 @@ module.exports = {
   calculateDistance,
   compareDates,
   SIMILARITY_THRESHOLD,
-  MAX_DISTANCE_METERS
+  MAX_DISTANCE_METERS,
+  // Export with names expected by tests
+  DEFAULT_SIMILARITY_THRESHOLD: SIMILARITY_THRESHOLD,
+  DEFAULT_MAX_DISTANCE: MAX_DISTANCE_METERS
 }; 

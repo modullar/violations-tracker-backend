@@ -1,13 +1,13 @@
 const Violation = require('../../models/Violation');
 const mongoose = require('mongoose');
-const { geocodeLocation } = require('../../utils/geocoder');
+const { getCachedOrFreshGeocode } = require('../../utils/geocoder');
 const { checkForDuplicates } = require('../../utils/duplicateChecker');
 const { mergeWithExistingViolation } = require('./merge');
 const logger = require('../../config/logger');
 const ErrorResponse = require('../../utils/errorResponse');
 
 /**
- * Geocode a location based on Arabic and English names
+ * Geocode a location based on Arabic and English names with caching optimization
  * @param {Object} location - Location object with name and administrative_division
  * @returns {Promise<Array>} - Coordinates [longitude, latitude] or null if failed
  */
@@ -25,11 +25,17 @@ const geocodeLocationData = async (location) => {
     const adminDivisionEn = location.administrative_division ? 
       (location.administrative_division.en || '') : '';
     
-    // Try Arabic first
-    let geoDataAr = await geocodeLocation(locationNameAr, adminDivisionAr);
+    // Try Arabic first with caching
+    let geoDataAr = null;
+    if (locationNameAr) {
+      geoDataAr = await getCachedOrFreshGeocode(locationNameAr, adminDivisionAr, 'ar');
+    }
     
-    // Try English
-    let geoDataEn = await geocodeLocation(locationNameEn, adminDivisionEn);
+    // Try English with caching
+    let geoDataEn = null;
+    if (locationNameEn) {
+      geoDataEn = await getCachedOrFreshGeocode(locationNameEn, adminDivisionEn, 'en');
+    }
     
     // Use the best result based on quality score
     let geoData;
@@ -58,11 +64,12 @@ const geocodeLocationData = async (location) => {
  * Process a single violation data (geocode and add user info)
  * @param {Object} violationData - Violation data
  * @param {String} userId - User ID creating the violation
+ * @param {Object} options - Processing options
  * @returns {Promise<Object>} - Processed violation data
  */
-const processViolationData = async (violationData, userId) => {
-  // Geocode location if provided
-  if (violationData.location && violationData.location.name) {
+const processViolationData = async (violationData, userId, options = {}) => {
+  // Geocode location if provided and not skipped
+  if (violationData.location && violationData.location.name && !options.skipGeocoding) {
     const coordinates = await geocodeLocationData(violationData.location);
     violationData.location.coordinates = coordinates;
   }
@@ -171,7 +178,7 @@ const createSingleViolation = async (violationData, userId, options = {}) => {
   }
 
   // 3. Process data (geocode and add user info)
-  const processedData = await processViolationData(sanitizedData, userId);
+  const processedData = await processViolationData(sanitizedData, userId, options);
   
   // 4. Create violation with additional race condition protection
   try {
@@ -219,6 +226,73 @@ const createSingleViolation = async (violationData, userId, options = {}) => {
 };
 
 /**
+ * Optimized batch geocoding - deduplicates locations to minimize API calls
+ * @param {Array} violations - Array of violation data
+ * @returns {Promise<Array>} - Array of violations with coordinates added
+ */
+const batchGeocodeLocations = async (violations) => {
+  // Extract unique locations to avoid duplicate API calls
+  const locationMap = new Map();
+  const violationLocationMap = new Map();
+  
+  violations.forEach((violation, index) => {
+    if (violation.location && violation.location.name) {
+      // Create a unique key based on location names and admin division
+      const locationKey = JSON.stringify({
+        nameEn: violation.location.name.en || '',
+        nameAr: violation.location.name.ar || '',
+        adminEn: violation.location.administrative_division?.en || '',
+        adminAr: violation.location.administrative_division?.ar || ''
+      });
+      
+      if (!locationMap.has(locationKey)) {
+        locationMap.set(locationKey, violation.location);
+      }
+      violationLocationMap.set(index, locationKey);
+    }
+  });
+  
+  logger.info(`Batch geocoding: ${violations.length} violations, ${locationMap.size} unique locations`);
+  
+  // Geocode unique locations only
+  const geocodedResults = new Map();
+  let totalApiCalls = 0;
+  
+  for (const [locationKey, location] of locationMap) {
+    try {
+      const startTime = Date.now();
+      const coordinates = await geocodeLocationData(location);
+      const endTime = Date.now();
+      
+      geocodedResults.set(locationKey, coordinates);
+      totalApiCalls += 1; // Track API usage
+      
+      logger.info(`Geocoded unique location in ${endTime - startTime}ms: ${location.name?.en || location.name?.ar}`);
+    } catch (error) {
+      logger.error(`Failed to geocode location ${location.name?.en || location.name?.ar}: ${error.message}`);
+      geocodedResults.set(locationKey, null);
+    }
+  }
+  
+  // Apply results back to violations
+  let successCount = 0;
+  violations.forEach((violation, index) => {
+    const locationKey = violationLocationMap.get(index);
+    if (locationKey && geocodedResults.has(locationKey)) {
+      const coordinates = geocodedResults.get(locationKey);
+      if (coordinates) {
+        violation.location.coordinates = coordinates;
+        successCount++;
+      }
+    }
+  });
+  
+  logger.info(`Batch geocoding complete: ${successCount}/${violations.length} violations geocoded with ${totalApiCalls} unique API calls`);
+  
+  return violations;
+};
+
+/**
  * Create multiple violations in batch with duplicate checking
  * @param {Array} violationsData - Array of violation data
  * @param {String} userId - User ID creating the violations
@@ -249,7 +323,18 @@ const createBatchViolations = async (violationsData, userId, options = {}) => {
     throw new ErrorResponse('All violations failed validation', 400, { errors: invalid });
   }
 
-  // 2. Process valid violations with duplicate checking
+  // 2. Batch geocode all locations at once to minimize API calls
+  if (options.useBatchGeocoding !== false) {
+    try {
+      await batchGeocodeLocations(valid);
+      logger.info('Batch geocoding completed successfully');
+    } catch (error) {
+      logger.error(`Batch geocoding failed: ${error.message}`);
+      // Continue with individual geocoding fallback
+    }
+  }
+
+  // 3. Process valid violations with duplicate checking
   const processedResults = [];
   
   for (const data of valid) {
@@ -258,7 +343,8 @@ const createBatchViolations = async (violationsData, userId, options = {}) => {
       const result = await createSingleViolation(violationData, userId, {
         checkDuplicates,
         mergeDuplicates,
-        duplicateThreshold
+        duplicateThreshold,
+        skipGeocoding: options.useBatchGeocoding !== false // Skip individual geocoding if batch geocoding was used
       });
       
       processedResults.push({
@@ -297,5 +383,6 @@ const createBatchViolations = async (violationsData, userId, options = {}) => {
 module.exports = {
   createSingleViolation,
   createBatchViolations,
-  geocodeLocationData
+  geocodeLocationData,
+  batchGeocodeLocations
 };

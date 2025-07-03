@@ -7,7 +7,7 @@
  */
 
 // Create operations
-const { createSingleViolation, createBatchViolations, geocodeLocationData } = require('./create');
+const { createSingleViolation, createBatchViolations, geocodeLocationData, batchGeocodeLocations } = require('./create');
 
 // Update operations
 const { updateViolation, hasLocationChanged } = require('./update');
@@ -47,6 +47,7 @@ module.exports = {
   createSingleViolation,
   createBatchViolations,
   geocodeLocationData,
+  batchGeocodeLocations,
   
   // Update
   updateViolation,

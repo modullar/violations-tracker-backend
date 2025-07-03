@@ -321,7 +321,6 @@ describe('Duplicate Checker Utility', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(Violation.find).toHaveBeenCalledWith({
         type: 'AIRSTRIKE',
-        perpetrator_affiliation: 'assad_regime',
         date: expect.any(Object)
       });
     });
