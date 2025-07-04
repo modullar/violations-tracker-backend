@@ -12,35 +12,47 @@ const addJob = jest.fn().mockResolvedValue(undefined);
 
 const cleanup = jest.fn().mockResolvedValue(undefined);
 
-// New methods for Telegram scraping
+// Methods for Telegram scraping
 const triggerTelegramScraping = jest.fn().mockResolvedValue({
   jobId: 'mock-scraping-job-id',
   status: 'queued'
 });
 
-const startRecurringTelegramScraping = jest.fn().mockResolvedValue({
+const startTelegramScraping = jest.fn().mockResolvedValue({
   success: true,
-  message: 'Recurring scraping started'
+  message: 'Telegram scraping started'
 });
 
-const stopRecurringTelegramScraping = jest.fn().mockResolvedValue({
+const stopTelegramScraping = jest.fn().mockResolvedValue({
   success: true,
-  message: 'Recurring scraping stopped'
+  message: 'Telegram scraping stopped'
 });
 
-const getTelegramScrapingStatus = jest.fn().mockResolvedValue({
-  isRunning: false,
-  lastRun: null,
-  nextRun: null
+const triggerManualScraping = jest.fn().mockResolvedValue({
+  id: 'mock-manual-scraping-job-id'
+});
+
+// Methods for batch report processing
+const startBatchReportProcessing = jest.fn().mockResolvedValue({
+  success: true,
+  message: 'Batch report processing started'
+});
+
+const stopBatchReportProcessing = jest.fn().mockResolvedValue({
+  success: true,
+  message: 'Batch report processing stopped'
 });
 
 module.exports = {
   addJob,
   reportParsingQueue: mockQueue,
   telegramScrapingQueue: mockQueue,
+  reportProcessingQueue: mockQueue,
   cleanup,
   triggerTelegramScraping,
-  startRecurringTelegramScraping,
-  stopRecurringTelegramScraping,
-  getTelegramScrapingStatus
+  startTelegramScraping,
+  stopTelegramScraping,
+  startBatchReportProcessing,
+  stopBatchReportProcessing,
+  triggerManualScraping
 }; 

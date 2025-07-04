@@ -1106,4 +1106,122 @@ describe('Source URL Validation', () => {
     const violation = new Violation(violationData);
     await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
   });
+});
+
+describe('Report Linking', () => {
+  let violation;
+  let reportId;
+
+  beforeEach(async () => {
+    reportId = new mongoose.Types.ObjectId();
+    
+    violation = new Violation({
+      type: 'AIRSTRIKE',
+      date: new Date('2023-01-15'),
+      location: {
+        name: { en: 'Damascus', ar: 'دمشق' },
+        administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
+      },
+      description: {
+        en: 'Test violation for report linking',
+        ar: 'انتهاك تجريبي لربط التقارير'
+      },
+      perpetrator_affiliation: 'unknown',
+      certainty_level: 'probable',
+      verified: false
+    });
+
+    await violation.save();
+  });
+
+  it('should link violation to a report', async () => {
+    expect(violation.report_id).toBeNull();
+
+    await violation.linkToReport(reportId);
+
+    expect(violation.report_id).toEqual(reportId);
+  });
+
+  it('should save the violation after linking to report', async () => {
+    await violation.linkToReport(reportId);
+
+    const savedViolation = await Violation.findById(violation._id);
+    expect(savedViolation.report_id).toEqual(reportId);
+  });
+
+  it('should allow querying violations by report_id', async () => {
+    await violation.linkToReport(reportId);
+
+    const violationsForReport = await Violation.find({ report_id: reportId });
+    expect(violationsForReport).toHaveLength(1);
+    expect(violationsForReport[0]._id).toEqual(violation._id);
+  });
+
+  it('should allow multiple violations to link to the same report', async () => {
+    // Create another violation
+    const violation2 = new Violation({
+      type: 'MURDER',
+      date: new Date('2023-01-15'),
+      location: {
+        name: { en: 'Damascus', ar: 'دمشق' },
+        administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
+      },
+      description: {
+        en: 'Second violation for same report',
+        ar: 'انتهاك ثاني لنفس التقرير'
+      },
+      perpetrator_affiliation: 'unknown',
+      certainty_level: 'probable',
+      verified: false
+    });
+
+    await violation2.save();
+
+    // Link both violations to the same report
+    await violation.linkToReport(reportId);
+    await violation2.linkToReport(reportId);
+
+    const violationsForReport = await Violation.find({ report_id: reportId });
+    expect(violationsForReport).toHaveLength(2);
+  });
+
+  it('should handle null report_id gracefully', async () => {
+    await violation.linkToReport(null);
+    expect(violation.report_id).toBeNull();
+  });
+});
+
+describe('Schema Updates', () => {
+  it('should have report_id field in schema', () => {
+    const violationSchema = Violation.schema;
+    expect(violationSchema.paths.report_id).toBeDefined();
+    expect(violationSchema.paths.report_id.instance).toBe('ObjectID');
+  });
+
+  it('should have default null for report_id', async () => {
+    const violation = new Violation({
+      type: 'AIRSTRIKE',
+      date: new Date('2023-01-15'),
+      location: {
+        name: { en: 'Damascus', ar: 'دمشق' }
+      },
+      description: {
+        en: 'Test violation without report link'
+      },
+      perpetrator_affiliation: 'unknown',
+      certainty_level: 'probable',
+      verified: false
+    });
+
+    await violation.save();
+    expect(violation.report_id).toBeNull();
+  });
+
+  it('should have proper index for report_id', async () => {
+    const indexes = await Violation.collection.getIndexes();
+    
+    // Check if report_id index exists
+    const reportIndex = Object.keys(indexes).find(key => key.includes('report_id'));
+    expect(reportIndex).toBeDefined();
+  });
 }); 

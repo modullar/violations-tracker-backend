@@ -3,11 +3,14 @@ const logger = require('../config/logger');
 const claudeParser = require('./claudeParser');
 const ReportParsingJob = require('../models/jobs/ReportParsingJob');
 const { createSingleViolation } = require('../commands/violations/create');
+const Report = require('../models/Report');
+const { processReport } = require('../commands/violations/process');
 
 // Check if Redis is available
 let redisAvailable = true;
 let reportParsingQueue;
 let telegramScrapingQueue;
+let reportProcessingQueue;
 
 try {
   logger.info('Attempting to initialize queues with Redis...');
@@ -61,6 +64,23 @@ try {
     }
   });
 
+  // Create Report processing queue for batch processing
+  reportProcessingQueue = new Queue('report-processing-queue', {
+    redis: redisConfig,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000
+      },
+      removeOnComplete: 100,  // Keep last 100 completed jobs
+      removeOnFail: 200,      // Keep last 200 failed jobs
+      repeat: {
+        cron: '*/10 * * * *'  // Every 10 minutes
+      }
+    }
+  });
+
   // Test Redis connection
   reportParsingQueue.on('error', (error) => {
     logger.error('Queue error - Redis may not be available:', error);
@@ -69,6 +89,11 @@ try {
 
   telegramScrapingQueue.on('error', (error) => {
     logger.error('Telegram queue error - Redis may not be available:', error);
+    redisAvailable = false;
+  });
+
+  reportProcessingQueue.on('error', (error) => {
+    logger.error('Report processing queue error - Redis may not be available:', error);
     redisAvailable = false;
   });
 
@@ -87,6 +112,14 @@ try {
   };
   
   telegramScrapingQueue = {
+    process: () => {},
+    add: () => Promise.resolve({ id: 'mock' }),
+    removeRepeatable: () => Promise.resolve(),
+    on: () => {},
+    close: () => Promise.resolve()
+  };
+
+  reportProcessingQueue = {
     process: () => {},
     add: () => Promise.resolve({ id: 'mock' }),
     removeRepeatable: () => Promise.resolve(),
@@ -283,6 +316,109 @@ reportParsingQueue.on('failed', (job, error) => {
   logger.error(`Job ${job.id} failed: ${error.message}`);
 });
 
+// Process batch report processing jobs
+reportProcessingQueue.process('batch-process-reports', async (job) => {
+  try {
+    logger.info(`Starting batch report processing job ${job.id}`);
+    job.progress(5);
+    
+    // Get up to 15 reports ready for processing
+    const reports = await Report.findReadyForProcessing(15);
+    
+    if (reports.length === 0) {
+      logger.info('No reports ready for processing');
+      job.progress(100);
+      return {
+        success: true,
+        reportsProcessed: 0,
+        violationsCreated: 0,
+        message: 'No reports ready for processing'
+      };
+    }
+
+    logger.info(`Found ${reports.length} reports ready for processing`);
+    job.progress(10);
+
+    // Process reports in chunks of 3 for rate limiting
+    const chunkSize = 3;
+    const chunks = [];
+    for (let i = 0; i < reports.length; i += chunkSize) {
+      chunks.push(reports.slice(i, i + chunkSize));
+    }
+
+    let totalViolationsCreated = 0;
+    let successfulReports = 0;
+    let failedReports = 0;
+
+    // Process each chunk with delay between chunks
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
+      const progressBase = 10 + (chunkIndex * 80 / chunks.length);
+      
+      logger.info(`Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} reports)`);
+      
+      // Process chunk concurrently (max 3 concurrent Claude API calls)
+      const chunkPromises = chunk.map(async (report) => {
+        try {
+          const result = await processReport(report);
+          totalViolationsCreated += result.violationsCreated;
+          successfulReports++;
+          return result;
+        } catch (error) {
+          logger.error(`Failed to process report ${report._id}:`, error);
+          failedReports++;
+          return { error: error.message, reportId: report._id };
+        }
+      });
+
+      await Promise.all(chunkPromises);
+      
+      // Update progress
+      job.progress(Math.min(90, progressBase + (80 / chunks.length)));
+      
+      // Add 1-second delay between chunks for rate limiting
+      if (chunkIndex < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    job.progress(100);
+    
+    const result = {
+      success: true,
+      reportsProcessed: successfulReports,
+      violationsCreated: totalViolationsCreated,
+      failedReports: failedReports,
+      totalReports: reports.length,
+      completedAt: new Date()
+    };
+
+    logger.info(`Batch report processing completed:`, result);
+    return result;
+    
+  } catch (error) {
+    logger.error(`Batch report processing job ${job.id} failed:`, error);
+    throw error;
+  }
+});
+
+// Handle batch report processing job events
+reportProcessingQueue.on('completed', (job, result) => {
+  logger.info(`Batch report processing job ${job.id} completed:`, {
+    reportsProcessed: result.reportsProcessed,
+    violationsCreated: result.violationsCreated,
+    failedReports: result.failedReports
+  });
+});
+
+reportProcessingQueue.on('failed', (job, error) => {
+  logger.error(`Batch report processing job ${job.id} failed:`, error);
+});
+
+reportProcessingQueue.on('stalled', (job) => {
+  logger.warn(`Batch report processing job ${job.id} stalled`);
+});
+
 // Process Telegram scraping jobs
 telegramScrapingQueue.process('telegram-scraping', async (job) => {
   const TelegramScraper = require('./TelegramScraper');
@@ -395,6 +531,95 @@ const startTelegramScraping = async () => {
   }
 };
 
+// Add function to start batch report processing
+const startBatchReportProcessing = async () => {
+  try {
+    if (redisAvailable) {
+      // Add a repeating job for batch report processing
+      await reportProcessingQueue.add('batch-process-reports', {
+        startedAt: new Date(),
+        description: 'Automated batch report processing'
+      }, {
+        repeat: { cron: '*/10 * * * *' },
+        jobId: 'batch-report-processing-recurring' // Use fixed ID to prevent duplicates
+      });
+      
+      logger.info('Batch report processing recurring job added to queue (every 10 minutes)');
+    } else {
+      // Fallback: Use setInterval for processing when Redis is not available
+      logger.warn('Redis not available - using fallback timer for batch report processing');
+      
+      const runProcessing = async () => {
+        try {
+          const reports = await Report.findReadyForProcessing(15);
+          
+          if (reports.length === 0) {
+            logger.debug('No reports ready for processing');
+            return;
+          }
+
+          logger.info(`Processing ${reports.length} reports in fallback mode`);
+          
+          // Process reports in chunks of 3 for rate limiting
+          const chunkSize = 3;
+          const chunks = [];
+          for (let i = 0; i < reports.length; i += chunkSize) {
+            chunks.push(reports.slice(i, i + chunkSize));
+          }
+
+          let totalViolationsCreated = 0;
+          let successfulReports = 0;
+          let failedReports = 0;
+
+          // Process each chunk with delay between chunks
+          for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+            const chunk = chunks[chunkIndex];
+            
+            const chunkPromises = chunk.map(async (report) => {
+              try {
+                const result = await processReport(report);
+                totalViolationsCreated += result.violationsCreated;
+                successfulReports++;
+                return result;
+              } catch (error) {
+                logger.error(`Failed to process report ${report._id}:`, error);
+                failedReports++;
+                return { error: error.message, reportId: report._id };
+              }
+            });
+
+            await Promise.all(chunkPromises);
+            
+            // Add 1-second delay between chunks for rate limiting
+            if (chunkIndex < chunks.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+
+          logger.info('Fallback batch report processing completed:', {
+            reportsProcessed: successfulReports,
+            violationsCreated: totalViolationsCreated,
+            failedReports: failedReports,
+            totalReports: reports.length
+          });
+        } catch (error) {
+          logger.error('Fallback batch report processing failed:', error);
+        }
+      };
+      
+      // Run immediately
+      runProcessing();
+      
+      // Then every 10 minutes
+      setInterval(runProcessing, 10 * 60 * 1000);
+      
+      logger.info('Batch report processing fallback timer started (every 10 minutes)');
+    }
+  } catch (error) {
+    logger.error('Error starting batch report processing job:', error);
+  }
+};
+
 // Add function to stop Telegram scraping
 const stopTelegramScraping = async () => {
   try {
@@ -405,6 +630,19 @@ const stopTelegramScraping = async () => {
     logger.info('Telegram scraping recurring job removed from queue');
   } catch (error) {
     logger.error('Error stopping Telegram scraping job:', error);
+  }
+};
+
+// Add function to stop batch report processing
+const stopBatchReportProcessing = async () => {
+  try {
+    await reportProcessingQueue.removeRepeatable('batch-process-reports', {
+      cron: '*/10 * * * *',
+      jobId: 'batch-report-processing-recurring'
+    });
+    logger.info('Batch report processing recurring job removed from queue');
+  } catch (error) {
+    logger.error('Error stopping batch report processing job:', error);
   }
 };
 
@@ -430,6 +668,7 @@ const cleanup = async () => {
   try {
     await reportParsingQueue.close();
     await telegramScrapingQueue.close();
+    await reportProcessingQueue.close();
     logger.info('Queue service cleanup completed');
   } catch (error) {
     logger.error('Error during queue service cleanup:', error);
@@ -440,8 +679,11 @@ module.exports = {
   addJob,
   reportParsingQueue,
   telegramScrapingQueue,
+  reportProcessingQueue,
   startTelegramScraping,
   stopTelegramScraping,
+  startBatchReportProcessing,
+  stopBatchReportProcessing,
   triggerManualScraping,
   cleanup
 };
