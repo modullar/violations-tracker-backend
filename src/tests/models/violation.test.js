@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Violation = require('../../models/Violation');
 const { fail } = require('expect');
+const { connectDB, closeDB } = require('../setup');
 
 // Mock external dependencies
 jest.mock('../../config/logger', () => ({
@@ -8,25 +9,24 @@ jest.mock('../../config/logger', () => ({
   error: jest.fn()
 }));
 
-// Mock mongoose connection
-jest.mock('../../config/db', () => jest.fn().mockImplementation(() => {
-  return Promise.resolve();
-}));
-
 describe('Violation Model', () => {
   beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/test_db', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await connectDB();
   });
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await closeDB();
   });
 
   beforeEach(async () => {
-    await Violation.deleteMany({});
+    // Clear all test data between tests
+    if (mongoose.connection.readyState !== 0) {
+      const collections = mongoose.connection.collections;
+      for (const key in collections) {
+        const collection = collections[key];
+        await collection.deleteMany();
+      }
+    }
   });
 
   it('should create a violation with valid data', async () => {
@@ -1104,7 +1104,7 @@ describe('Source URL Validation', () => {
     };
 
     const violation = new Violation(violationData);
-    await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
+        await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
   });
 });
 
@@ -1112,13 +1112,32 @@ describe('Report Linking', () => {
   let violation;
   let reportId;
 
+  beforeAll(async () => {
+    await connectDB();
+  });
+
+  afterAll(async () => {
+    await closeDB();
+  });
+
   beforeEach(async () => {
+    // Clear all test data between tests
+    if (mongoose.connection.readyState !== 0) {
+      const collections = mongoose.connection.collections;
+      for (const key in collections) {
+        const collection = collections[key];
+        await collection.deleteMany();
+      }
+    }
+    
+    // Setup test data
     reportId = new mongoose.Types.ObjectId();
     
     violation = new Violation({
       type: 'AIRSTRIKE',
       date: new Date('2023-01-15'),
       location: {
+        coordinates: [37.1, 36.2],
         name: { en: 'Damascus', ar: 'دمشق' },
         administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
       },
@@ -1126,6 +1145,8 @@ describe('Report Linking', () => {
         en: 'Test violation for report linking',
         ar: 'انتهاك تجريبي لربط التقارير'
       },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com/test', ar: 'https://example.com/test' },
       perpetrator_affiliation: 'unknown',
       certainty_level: 'probable',
       verified: false
@@ -1163,6 +1184,7 @@ describe('Report Linking', () => {
       type: 'MURDER',
       date: new Date('2023-01-15'),
       location: {
+        coordinates: [37.1, 36.2],
         name: { en: 'Damascus', ar: 'دمشق' },
         administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
       },
@@ -1170,6 +1192,8 @@ describe('Report Linking', () => {
         en: 'Second violation for same report',
         ar: 'انتهاك ثاني لنفس التقرير'
       },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com/test', ar: 'https://example.com/test' },
       perpetrator_affiliation: 'unknown',
       certainty_level: 'probable',
       verified: false
@@ -1187,15 +1211,34 @@ describe('Report Linking', () => {
 
   it('should handle null report_id gracefully', async () => {
     await violation.linkToReport(null);
-    expect(violation.report_id).toBeNull();
+        expect(violation.report_id).toBeNull();
   });
 });
 
 describe('Schema Updates', () => {
+  beforeAll(async () => {
+    await connectDB();
+  });
+
+  afterAll(async () => {
+    await closeDB();
+  });
+
+  beforeEach(async () => {
+    // Clear all test data between tests
+    if (mongoose.connection.readyState !== 0) {
+      const collections = mongoose.connection.collections;
+      for (const key in collections) {
+        const collection = collections[key];
+        await collection.deleteMany();
+      }
+    }
+  });
+
   it('should have report_id field in schema', () => {
     const violationSchema = Violation.schema;
     expect(violationSchema.paths.report_id).toBeDefined();
-    expect(violationSchema.paths.report_id.instance).toBe('ObjectID');
+    expect(violationSchema.paths.report_id.instance).toBe('ObjectId');
   });
 
   it('should have default null for report_id', async () => {
@@ -1203,11 +1246,16 @@ describe('Schema Updates', () => {
       type: 'AIRSTRIKE',
       date: new Date('2023-01-15'),
       location: {
-        name: { en: 'Damascus', ar: 'دمشق' }
+        coordinates: [37.1, 36.2],
+        name: { en: 'Damascus', ar: 'دمشق' },
+        administrative_division: { en: 'Damascus Governorate', ar: 'محافظة دمشق' }
       },
       description: {
-        en: 'Test violation without report link'
+        en: 'Test violation without report link',
+        ar: 'انتهاك تجريبي بدون رابط التقرير'
       },
+      source: { en: 'Test Source', ar: 'مصدر الاختبار' },
+      source_url: { en: 'https://example.com/test', ar: 'https://example.com/test' },
       perpetrator_affiliation: 'unknown',
       certainty_level: 'probable',
       verified: false
@@ -1217,11 +1265,14 @@ describe('Schema Updates', () => {
     expect(violation.report_id).toBeNull();
   });
 
-  it('should have proper index for report_id', async () => {
+    it('should have proper index for report_id', async () => {
+    // Ensure indexes are created
+    await Violation.ensureIndexes();
+    
     const indexes = await Violation.collection.getIndexes();
     
     // Check if report_id index exists
     const reportIndex = Object.keys(indexes).find(key => key.includes('report_id'));
     expect(reportIndex).toBeDefined();
   });
-}); 
+});  

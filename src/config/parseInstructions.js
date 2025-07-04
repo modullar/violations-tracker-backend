@@ -6,7 +6,7 @@
 // Simplified system prompt focused on JSON extraction
 const SYSTEM_PROMPT = `You are a human rights violations extraction expert. Your task is to parse reports and extract structured violation data as a JSON array.
 
-EXTRACT ONLY violations with victim counts (killed, injured, kidnapped, detained, displaced). Skip general news, infrastructure reports, weather updates, and reports without victim counts.
+EXTRACT ONLY violations with victim counts (killed, injured, kidnapped, detained, displaced, incursions). Skip general news, infrastructure reports, weather updates, and reports without victim counts.
 
 RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations, no additional text.
 

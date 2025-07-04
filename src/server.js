@@ -69,7 +69,7 @@ const { BullAdapter } = require('@bull-board/api/bullAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 
 // Import the queues
-const { reportParsingQueue, telegramScrapingQueue, startTelegramScraping } = require('./services/queueService');
+const { reportParsingQueue, telegramScrapingQueue, reportProcessingQueue, startTelegramScraping, startBatchReportProcessing } = require('./services/queueService');
 
 // Setup Bull Board
 const serverAdapter = new ExpressAdapter();
@@ -78,7 +78,8 @@ serverAdapter.setBasePath('/admin/queues');
 createBullBoard({
   queues: [
     new BullAdapter(reportParsingQueue),
-    new BullAdapter(telegramScrapingQueue)
+    new BullAdapter(telegramScrapingQueue),
+    new BullAdapter(reportProcessingQueue)
   ],
   serverAdapter
 });
@@ -126,13 +127,20 @@ process.on('uncaughtException', (err) => {
   server.close(() => process.exit(1));
 });
 
-// Start Telegram scraping job in production, staging, and development
-if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development') {
+// Start Telegram scraping and batch report processing jobs in production, staging, and development
+if (process.env.NODE_ENV === 'development') {
   try {
     startTelegramScraping();
     logger.info('Telegram scraping job started and added to queue');
   } catch (error) {
     logger.error('Failed to start Telegram scraping job:', error);
+  }
+
+  try {
+    startBatchReportProcessing();
+    logger.info('Batch report processing job started and added to queue');
+  } catch (error) {
+    logger.error('Failed to start batch report processing job:', error);
   }
 }
 

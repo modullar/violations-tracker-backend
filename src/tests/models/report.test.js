@@ -1,18 +1,25 @@
 const mongoose = require('mongoose');
 const Report = require('../../models/Report');
-const { connectTestDatabase, clearTestDatabase, closeTestDatabase } = require('../setup');
+const { connectDB, closeDB } = require('../setup');
 
 describe('Report Model', () => {
   beforeAll(async () => {
-    await connectTestDatabase();
+    await connectDB();
   });
 
   beforeEach(async () => {
-    await clearTestDatabase();
+    // Clear all test data between tests
+    if (mongoose.connection.readyState !== 0) {
+      const collections = mongoose.connection.collections;
+      for (const key in collections) {
+        const collection = collections[key];
+        await collection.deleteMany();
+      }
+    }
   });
 
   afterAll(async () => {
-    await closeTestDatabase();
+    await closeDB();
   });
 
   describe('Schema and Validation', () => {
@@ -224,7 +231,7 @@ describe('Report Model', () => {
         const now = new Date();
         const thirtyMinutesAgo = new Date(now.getTime() - 31 * 60 * 1000);
         const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
-        const fiveMinutesAgo = new Date(now.getTime() - 6 * 60 * 1000);
+        const fourMinutesAgo = new Date(now.getTime() - 4 * 60 * 1000); // Less than 5 minutes, not stuck yet
 
         const reports = [
           // Fresh unprocessed report
@@ -280,7 +287,7 @@ describe('Report Model', () => {
             },
             metadata: { channel: 'test', messageId: '5', scrapedAt: now }
           },
-          // Processing but not stuck yet
+          // Processing but not stuck yet (less than 5 minutes)
           {
             source_url: 'https://t.me/test/6',
             text: 'Recent processing report text with enough characters',
@@ -288,7 +295,7 @@ describe('Report Model', () => {
             status: 'processing',
             processing_metadata: {
               attempts: 1,
-              started_at: fiveMinutesAgo
+              started_at: fourMinutesAgo
             },
             metadata: { channel: 'test', messageId: '6', scrapedAt: now }
           },
