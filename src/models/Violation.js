@@ -336,8 +336,11 @@ const ViolationSchema = new mongoose.Schema({
     type: String,
     unique: true,
     default: function() {
-      // Generate hash on creation if not provided
-      return this.generateContentHash();
+      // Only generate if this is a regular save operation (not bulkWrite)
+      if (this.constructor.name === 'model') {
+        return this.generateContentHash();
+      }
+      return undefined; // Let the script handle it for bulk operations
     }
   }
 }, {
