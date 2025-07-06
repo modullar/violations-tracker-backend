@@ -55,6 +55,12 @@ const createTelegramScrapingQueue = (redisConfig) => {
     }
   });
 
+  // Generic handler for unknown job types - logs and removes them
+  queue.process('*', async (job) => {
+    logger.warn(`Unknown job type "${job.name}" received in telegram scraping queue. Removing job ${job.id}`);
+    return { removed: true, reason: 'unknown_job_type' };
+  });
+
   // Handle Telegram scraping job events
   queue.on('completed', (job, result) => {
     logger.info(`Telegram scraping job ${job.id} completed successfully:`, {

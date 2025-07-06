@@ -87,7 +87,7 @@ const createReportParsingQueue = (redisConfig) => {
         progress: 50
       });
 
-      const { valid, invalid } = claudeParser.validateViolations(parsedViolations);
+      const { valid, invalid } = await claudeParser.validateViolations(parsedViolations);
       
       logger.info(`Job ${jobId}: Validation complete. Valid: ${valid.length}, Invalid: ${invalid.length}`);
       
@@ -204,6 +204,12 @@ const createReportParsingQueue = (redisConfig) => {
   // Handle job failure
   queue.on('failed', (job, error) => {
     logger.error(`Job ${job.id} failed: ${error.message}`);
+  });
+
+  // Generic handler for unknown job types - logs and removes them
+  queue.process('*', async (job) => {
+    logger.warn(`Unknown job type "${job.name}" received in report parsing queue. Removing job ${job.id}`);
+    return { removed: true, reason: 'unknown_job_type' };
   });
 
   return queue;

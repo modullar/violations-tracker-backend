@@ -172,7 +172,28 @@ const processReport = async (report) => {
     }
 
     // Validate violations using the model's validation
-    const { valid, invalid } = claudeParser.validateViolations(parsedViolations);
+    logger.debug(`Starting validation for ${parsedViolations.length} violations in report ${report._id}`);
+    const validationResult = await claudeParser.validateViolations(parsedViolations);
+    
+    // Ensure validationResult has the expected structure
+    if (!validationResult || typeof validationResult !== 'object') {
+      const errorMessage = 'Validation returned invalid result structure';
+      logger.error(`Validation error for report ${report._id}: ${errorMessage}`, validationResult);
+      
+      await report.markAsFailed(errorMessage);
+      
+      return {
+        success: false,
+        reportId: report._id,
+        violationsCreated: 0,
+        error: errorMessage,
+        processingTimeMs: Date.now() - startTime
+      };
+    }
+    
+    const { valid = [], invalid = [] } = validationResult;
+    
+    logger.debug(`Validation completed for report ${report._id}: ${valid.length} valid, ${invalid.length} invalid violations`);
     
     if (valid.length === 0) {
       const errorMessage = `All ${parsedViolations.length} parsed violations failed validation`;

@@ -3,6 +3,133 @@ const logger = require('../config/logger');
 const parseInstructions = require('../config/parseInstructions');
 
 /**
+ * Extracts a JSON array from Claude API response content.
+ * Handles code block and raw array responses.
+ * @param {string} content - Claude API response content
+ * @returns {Array} - Parsed JSON array
+ * @throws {Error} - If no valid JSON array is found
+ */
+function extractViolationsJson(content) {
+  logger.debug('Extracting JSON from Claude response:', { contentLength: content.length });
+  
+  // Try multiple patterns to extract JSON
+  let jsonText = null;
+  
+  // Pattern 1: JSON code block with language specification
+  let jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n```/);
+  if (jsonMatch) {
+    jsonText = jsonMatch[1];
+    logger.debug('Found JSON in code block with json language spec');
+  }
+  
+  // Pattern 2: Generic code block
+  if (!jsonText) {
+    jsonMatch = content.match(/```\s*\n([\s\S]*?)\n```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+      logger.debug('Found JSON in generic code block');
+    }
+  }
+  
+  // Pattern 3: Code block without newlines
+  if (!jsonText) {
+    jsonMatch = content.match(/```([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+      logger.debug('Found JSON in code block without newlines');
+    }
+  }
+  
+  // Pattern 4: Raw JSON array at the beginning or end
+  if (!jsonText) {
+    const trimmed = content.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      jsonText = trimmed;
+      logger.debug('Found raw JSON array');
+    }
+  }
+  
+  // Pattern 5: Look for JSON array anywhere in the content
+  if (!jsonText) {
+    const arrayMatch = content.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+    if (arrayMatch) {
+      jsonText = arrayMatch[0];
+      logger.debug('Found JSON array embedded in text');
+    }
+  }
+  
+  // Pattern 6: Try to find any JSON-like structure
+  if (!jsonText) {
+    const jsonLikeMatch = content.match(/\{[\s\S]*?\}/g);
+    if (jsonLikeMatch && jsonLikeMatch.length > 0) {
+      // Try to parse as array of objects
+      try {
+        const potentialArray = `[${jsonLikeMatch.join(',')}]`;
+        JSON.parse(potentialArray); // Test if valid
+        jsonText = potentialArray;
+        logger.debug('Found JSON-like structures and combined into array');
+      } catch (e) {
+        // Not valid JSON, continue
+      }
+    }
+  }
+
+  if (!jsonText) {
+    logger.error('No JSON found in Claude response. Content preview:', content.substring(0, 500));
+    throw new Error('Failed to extract structured data from the response. Claude may have returned an explanation instead of JSON.');
+  }
+
+  let violations;
+  try {
+    violations = JSON.parse(jsonText);
+    
+    // Handle case where response is an object with an array property
+    if (!Array.isArray(violations)) {
+      if (typeof violations === 'object' && violations !== null) {
+        // Look for array properties
+        const possibleArrayProps = Object.values(violations).filter(v => Array.isArray(v));
+        if (possibleArrayProps.length > 0) {
+          violations = possibleArrayProps[0];
+          logger.debug('Extracted array from object property');
+        } else {
+          // If it's a single violation object, wrap it in an array
+          if (violations.type && violations.date) {
+            violations = [violations];
+            logger.debug('Wrapped single violation object in array');
+          } else {
+            throw new Error('Response is not an array and does not contain valid violation data');
+          }
+        }
+      } else {
+        throw new Error('Response is not an array');
+      }
+    }
+    
+    // Validate that we have at least one violation with required fields
+    if (violations.length === 0) {
+      logger.debug('Empty violations array found');
+      return [];
+    }
+    
+    // Basic validation of violation structure
+    const validViolations = violations.filter(v => v && typeof v === 'object' && v.type && v.date);
+    if (validViolations.length === 0) {
+      throw new Error('No valid violations found in response');
+    }
+    
+    logger.debug(`Successfully extracted ${validViolations.length} violations from JSON`);
+    return validViolations;
+    
+  } catch (error) {
+    logger.error(`JSON parse error: ${error.message}`, { 
+      jsonText: jsonText ? jsonText.substring(0, 200) + '...' : 'null',
+      contentPreview: content.substring(0, 200) + '...'
+    });
+    throw new Error(`Failed to parse JSON from Claude response: ${error.message}`);
+  }
+}
+
+/**
  * Service to parse human rights violation reports using Claude API
  */
 class ClaudeParserService {
@@ -57,35 +184,7 @@ class ClaudeParserService {
       );
 
       const content = response.data.content[0].text;
-      
-      // Extract JSON array from response
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                        content.match(/```\n([\s\S]*?)\n```/) || 
-                        content.match(/```([\s\S]*?)```/);
-      
-      if (!jsonMatch) {
-        logger.error('No JSON found in Claude response');
-        throw new Error('Failed to extract structured data from the response');
-      }
-
-      let violations;
-      try {
-        violations = JSON.parse(jsonMatch[1]);
-        
-        if (!Array.isArray(violations)) {
-          // Try to extract array if the response is an object with an array property
-          const possibleArrayProps = Object.values(violations).filter(v => Array.isArray(v));
-          if (possibleArrayProps.length > 0) {
-            violations = possibleArrayProps[0];
-          } else {
-            throw new Error('Response is not an array');
-          }
-        }
-      } catch (error) {
-        logger.error(`JSON parse error: ${error.message}`);
-        throw new Error(`Failed to parse JSON from Claude response: ${error.message}`);
-      }
-
+      const violations = extractViolationsJson(content);
       logger.info(`Successfully parsed ${violations.length} violations from report`);
       return violations;
     } catch (error) {
@@ -130,13 +229,16 @@ class ClaudeParserService {
   /**
    * Validate parsed violations against the Violation schema
    * @param {Array} violations - Array of parsed violations
-   * @returns {Object} - Object containing valid and invalid violations
+   * @returns {Promise<Object>} - Object containing valid and invalid violations
    */
-  validateViolations(violations) {
+  async validateViolations(violations) {
     // Use the model's batch validation method
     const Violation = require('../models/Violation');
-    return Violation.validateBatch(violations, { requiresGeocoding: false });
+    return await Violation.validateBatch(violations, { requiresGeocoding: false });
   }
 }
 
-module.exports = new ClaudeParserService();
+const claudeParserService = new ClaudeParserService();
+claudeParserService.extractViolationsJson = extractViolationsJson;
+
+module.exports = claudeParserService;

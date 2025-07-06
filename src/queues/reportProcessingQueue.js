@@ -123,6 +123,12 @@ const createReportProcessingQueue = (redisConfig) => {
     logger.warn(`Batch report processing job ${job.id} stalled`);
   });
 
+  // Generic handler for unknown job types - logs and removes them
+  queue.process('*', async (job) => {
+    logger.warn(`Unknown job type "${job.name}" received in report processing queue. Removing job ${job.id}`);
+    return { removed: true, reason: 'unknown_job_type' };
+  });
+
   return queue;
 };
 
