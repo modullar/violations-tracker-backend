@@ -111,8 +111,8 @@ function extractViolationsJson(content) {
       return [];
     }
     
-    // Basic validation of violation structure
-    const validViolations = violations.filter(v => v && typeof v === 'object' && v.type && v.date);
+    // Basic validation that we have an array of objects
+    const validViolations = violations.filter(v => v && typeof v === 'object');
     if (validViolations.length === 0) {
       throw new Error('No valid violations found in response');
     }
