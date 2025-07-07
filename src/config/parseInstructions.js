@@ -267,6 +267,29 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 6. Do not include coordinates unless explicitly provided in the report
 7. Flag any potentially duplicate violations based on date, location, and type matching
 
+# DUPLICATE DETECTION AND PREVENTION
+
+When processing multiple violations from the same report, check for potential duplicates within the batch:
+
+1. **Same Incident Detection**: If multiple violations describe the same incident (same date, same location, same casualty count, same perpetrator), combine them into a single comprehensive violation
+2. **Location Variations**: Treat slight location name variations (e.g., "Athria" vs "Ithria") as the same location if they refer to the same place
+3. **Type Consolidation**: When the same incident is described with different violation types (e.g., "Ambush" vs "Murder"), use the most specific and accurate type
+4. **Description Merging**: Combine descriptions from multiple sources to create the most comprehensive account
+5. **Casualty Count**: Use the highest casualty count if there are discrepancies between reports
+6. **Source Consolidation**: Combine all source information into a single comprehensive source field
+
+**Examples of duplicates to combine:**
+- Same date, same location, same casualty count, different violation types
+- Same incident described with slightly different location spellings
+- Same event with different casualty counts (use the higher count)
+- Same incident with different perpetrator affiliations (use the most specific)
+
+**Do NOT create separate violations for the same incident just because:**
+- Different violation types are mentioned
+- Slight location name variations exist
+- Different casualty counts are reported (use the highest)
+- Different sources report the same incident
+
 OUTPUT FORMAT: Raw JSON array only, no markdown, no explanations, no code blocks.`;
 
 // Streamlined user prompt for efficiency
