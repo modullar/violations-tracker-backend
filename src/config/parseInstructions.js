@@ -59,6 +59,8 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 - Classify the violation using ONLY the allowed types
 - Use the most specific type that applies to the violation
 - For complex incidents with multiple violation types, create separate violation objects
+- Use "OTHER" for violations that don't fit specific categories, such as:
+- When in doubt about classification, use "OTHER" rather than inventing new violation types
 
 ## PEOPLE INFORMATION
 - Extract victim details when available (age, gender, status)
@@ -256,6 +258,7 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 - Default perpetrator_affiliation: "unknown" if unclear
 - Description must be at least 10 characters in English
 - Location name must be at least 2 characters in English
+- **IMPORTANT**: Only use the exact violation types listed above. For grave desecration, cultural destruction, religious violations, or any other violations not fitting specific categories, use "OTHER"
 
 # IMPORTANT PROCESSING RULES
 
