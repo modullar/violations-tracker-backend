@@ -44,6 +44,19 @@ class TelegramScraper {
         this.allKeywords.push(...this.keywordsConfig.location_keywords);
       }
 
+      // Load filtering configuration
+      this.filteringConfig = this.channelsConfig.filtering || {
+        global: {
+          min_keyword_matches: 2,
+          require_context_keywords: true,
+          min_text_length: 50,
+          max_emoji_ratio: 0.1,
+          max_punctuation_ratio: 0.2,
+          max_number_ratio: 0.3
+        },
+        exclude_patterns: []
+      };
+
       logger.info(`Loaded ${this.activeChannels.length} active channels and ${this.allKeywords.length} keywords`);
     } catch (error) {
       logger.error('Error loading configuration:', error);
@@ -77,6 +90,7 @@ class TelegramScraper {
       failed: 0,
       newReports: 0,
       duplicates: 0,
+      filtered: 0, // New metric for filtered content
       channels: []
     };
 
@@ -88,13 +102,14 @@ class TelegramScraper {
         results.success++;
         results.newReports += channelResult.newReports;
         results.duplicates += channelResult.duplicates;
+        results.filtered += channelResult.filtered;
         results.channels.push({
           name: channel.name,
           status: 'success',
           ...channelResult
         });
         
-        logger.info(`Scraped ${channel.name}: ${channelResult.newReports} new reports, ${channelResult.duplicates} duplicates`);
+        logger.info(`Scraped ${channel.name}: ${channelResult.newReports} new reports, ${channelResult.duplicates} duplicates, ${channelResult.filtered} filtered`);
       } catch (error) {
         results.failed++;
         results.channels.push({
@@ -110,7 +125,7 @@ class TelegramScraper {
       await this.delay(2000);
     }
 
-    logger.info(`Scraping completed: ${results.success} successful, ${results.failed} failed, ${results.newReports} new reports`);
+    logger.info(`Scraping completed: ${results.success} successful, ${results.failed} failed, ${results.newReports} new reports, ${results.filtered} filtered`);
     return results;
   }
 
@@ -121,6 +136,7 @@ class TelegramScraper {
     const result = {
       newReports: 0,
       duplicates: 0,
+      filtered: 0, // New metric
       processed: 0,
       errors: []
     };
@@ -161,14 +177,16 @@ class TelegramScraper {
             continue;
           }
 
-          // Check for keywords
-          const matchedKeywords = this.findMatchingKeywords(messageData.text);
-          if (matchedKeywords.length === 0) {
-            logger.debug(`No keywords matched for message ${messageData.metadata.messageId}`);
+          // Enhanced filtering with content quality checks
+          const filteringResult = this.applyEnhancedFiltering(messageData.text, channel);
+          
+          if (!filteringResult.shouldImport) {
+            result.filtered++;
+            logger.debug(`Message filtered out: ${messageData.metadata.messageId} - ${filteringResult.reason}`);
             continue;
           }
 
-          messageData.metadata.matchedKeywords = matchedKeywords;
+          messageData.metadata.matchedKeywords = filteringResult.matchedKeywords;
 
           // Check if report already exists
           const existingReport = await Report.exists(channel.name, messageData.metadata.messageId);
@@ -285,19 +303,116 @@ class TelegramScraper {
   }
 
   /**
-   * Find matching keywords in text
+   * Enhanced filtering with content quality checks
    */
-  findMatchingKeywords(text) {
+  applyEnhancedFiltering(text, channel) {
+    // Get channel-specific filtering settings or use global defaults
+    const channelFiltering = channel.filtering || this.filteringConfig.global;
+    const globalFiltering = this.filteringConfig.global;
+    
+    // Use channel-specific settings if available, otherwise use global
+    const minKeywordMatches = channelFiltering.min_keyword_matches || globalFiltering.min_keyword_matches;
+    const requireContextKeywords = channelFiltering.require_context_keywords !== undefined ? 
+      channelFiltering.require_context_keywords : globalFiltering.require_context_keywords;
+    const minTextLength = channelFiltering.min_text_length || globalFiltering.min_text_length;
+    const maxEmojiRatio = globalFiltering.max_emoji_ratio;
+    const maxPunctuationRatio = globalFiltering.max_punctuation_ratio;
+    const maxNumberRatio = globalFiltering.max_number_ratio;
+
+    // Check text length
+    if (text.length < minTextLength) {
+      return { shouldImport: false, reason: `Text too short (${text.length} < ${minTextLength})` };
+    }
+
+    // Check content quality
+    if (!this.isQualityContent(text, maxEmojiRatio, maxPunctuationRatio, maxNumberRatio)) {
+      return { shouldImport: false, reason: 'Failed content quality checks' };
+    }
+
+    // Check for exclude patterns
+    const excludePatterns = channelFiltering.exclude_patterns || this.filteringConfig.exclude_patterns || [];
+    if (this.containsExcludePatterns(text, excludePatterns)) {
+      return { shouldImport: false, reason: 'Contains excluded patterns' };
+    }
+
+    // Enhanced keyword matching
+    const keywordResult = this.findMatchingKeywordsWithContext(text, requireContextKeywords);
+    
+    if (keywordResult.matchedKeywords.length < minKeywordMatches) {
+      return { 
+        shouldImport: false, 
+        reason: `Insufficient keyword matches (${keywordResult.matchedKeywords.length} < ${minKeywordMatches})` 
+      };
+    }
+
+    return {
+      shouldImport: true,
+      matchedKeywords: keywordResult.matchedKeywords,
+      reason: 'Passed all filters'
+    };
+  }
+
+  /**
+   * Check content quality based on various metrics
+   */
+  isQualityContent(text, maxEmojiRatio, maxPunctuationRatio, maxNumberRatio) {
+    // Check emoji ratio
+    const emojiCount = (text.match(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu) || []).length;
+    if (emojiCount > text.length * maxEmojiRatio) {
+      return false;
+    }
+
+    // Check punctuation ratio
+    const punctuationCount = (text.match(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/g) || []).length;
+    if (punctuationCount > text.length * maxPunctuationRatio) {
+      return false;
+    }
+
+    // Check number ratio
+    const numberCount = (text.match(/\d/g) || []).length;
+    if (numberCount > text.length * maxNumberRatio) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if text contains exclude patterns
+   */
+  containsExcludePatterns(text, excludePatterns) {
+    const lowerText = text.toLowerCase();
+    return excludePatterns.some(pattern => lowerText.includes(pattern.toLowerCase()));
+  }
+
+  /**
+   * Enhanced keyword matching with context requirements
+   */
+  findMatchingKeywordsWithContext(text, requireContextKeywords) {
     const lowerText = text.toLowerCase();
     const matched = [];
-
+    const contextKeywords = this.keywordsConfig.context_keywords || [];
+    const locationKeywords = this.keywordsConfig.location_keywords || [];
+    
+    // Find all matching keywords
     for (const keyword of this.allKeywords) {
       if (lowerText.includes(keyword.toLowerCase())) {
         matched.push(keyword);
       }
     }
 
-    return matched;
+    // If context keywords are required, check if at least one context keyword is present
+    if (requireContextKeywords) {
+      const hasContextKeyword = matched.some(keyword => 
+        contextKeywords.includes(keyword) || locationKeywords.includes(keyword)
+      );
+      
+      if (!hasContextKeyword) {
+        return { matchedKeywords: [], reason: 'No context keywords found' };
+      }
+    }
+
+    return { matchedKeywords: matched };
   }
 
   /**

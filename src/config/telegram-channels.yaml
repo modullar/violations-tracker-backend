@@ -9,6 +9,52 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
+
+  - name: "Halab Today"
+    url: "https://t.me/HalabTodayTV"
+    description: "Halab Today"
+    active: true
+    priority: "high"
+    language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: true
+      min_text_length: 30
+      exclude_patterns: []
+
+  - name: "صوت العاصمة"
+    url: "https://t.me/damascusv011"
+    description: "صوت العاصمة"
+    active: true
+    priority: "high"
+    language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: true
+
+  - name: "سوريا لحظة بلحظة"
+    url: "https://t.me/Almohrar"
+    description: "سوريا لحظة بلحظة"
+    active: true
+    priority: "high"
+    language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: true
+
+  - name: "Nawras Studies"
+    url: "https://t.me/NORSFS2" 
+    description: "Nawras Studies"
+    active: true
+    priority: "high"
+    language: "ar"
+    filtering:
+      min_keyword_matches: 1
 
   - name: "SNN"
     url: "https://t.me/ShaamNetwork"
@@ -16,6 +62,11 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
 
   - name: "NEDAAPOST"
     url: "https://t.me/NEDAAPOST"
@@ -23,6 +74,11 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
 
   - name: "Reporters_sy"
     url: "https://t.me/Reporters_sy"
@@ -30,6 +86,11 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
 
   - name: "sham_plus3"
     url: "https://t.me/sham_plus3"
@@ -37,6 +98,11 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
 
   - name: "مراسل الشرقية"
     url: "https://t.me/AbomosaabSharkea"
@@ -44,20 +110,35 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    filtering:
+      min_keyword_matches: 1
+      require_context_keywords: false
+      min_text_length: 30
+      exclude_patterns: []
 
   - name: "alkhabour"
     url: "https://t.me/alkhabour"
     description: "alkhabour"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
+    filtering:
+      min_keyword_matches: 2
+      require_context_keywords: true
+      min_text_length: 50
+      exclude_patterns: ["طقس", "أحوال جوية", "اقتصاد", "سياسة"]
 
   - name: "D24net"
     url: "https://t.me/D24net"
     description: "D24net"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
+    filtering:
+      min_keyword_matches: 2
+      require_context_keywords: true
+      min_text_length: 50
+      exclude_patterns: ["طقس", "أحوال جوية", "اقتصاد", "سياسة"]
 
 # Scraping configuration
 scraping:
@@ -65,7 +146,7 @@ scraping:
   interval: 5
   
   # How far back to look for messages (in minutes)
-  lookback_window: 120
+  lookback_window: 60
   
   # Maximum number of messages to process per channel per run
   max_messages_per_channel: 50
@@ -79,3 +160,68 @@ scraping:
   
   # User agent for web scraping
   user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Enhanced filtering configuration
+filtering:
+  # Global filtering settings
+  global:
+    min_keyword_matches: 2
+    require_context_keywords: true
+    min_text_length: 50
+    max_emoji_ratio: 0.1  # Maximum 10% emojis
+    max_punctuation_ratio: 0.2  # Maximum 20% punctuation
+    max_number_ratio: 0.3  # Maximum 30% numbers
+    
+  # Common exclude patterns for non-violation content
+  exclude_patterns:
+    - "طقس"
+    - "أحوال جوية"
+    - "اقتصاد"
+    - "سياسة"
+    - "رياضة"
+    - "ترفيه"
+    - "تكنولوجيا"
+    - "تسويق"
+    - "إعلان"
+    - "عرض"
+    - "خصم"
+    - "تخفيض"
+    - "سعر"
+    - "بيع"
+    - "شراء"
+    - "تداول"
+    - "بورصة"
+    - "أسهم"
+    - "عملة"
+    - "دولار"
+    - "يورو"
+    - "ذهب"
+    - "نفط"
+    - "غاز"
+    - "كهرباء"
+    - "ماء"
+    - "إنترنت"
+    - "هاتف"
+    - "كمبيوتر"
+    - "برنامج"
+    - "تطبيق"
+    - "موقع"
+    - "صفحة"
+    - "فيديو"
+    - "صورة"
+    - "موسيقى"
+    - "أغنية"
+    - "فيلم"
+    - "مسلسل"
+    - "مباراة"
+    - "فريق"
+    - "لاعب"
+    - "مدرب"
+    - "ملعب"
+    - "كأس"
+    - "بطولة"
+    - "دوري"
+    - "نتيجة"
+    - "فوز"
+    - "خسارة"
+    - "تعادل"

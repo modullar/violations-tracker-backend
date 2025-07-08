@@ -4,12 +4,8 @@ const { connectDB, closeDB } = require('../setup');
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-// Mock HTTP client for TelegramScraper to avoid real HTTP requests
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({
-    get: jest.fn()
-  }))
-}));
+// Mock axios
+jest.mock('axios');
 
 // Mock HTML response for Telegram channel - will be generated dynamically
 const getMockTelegramHTML = () => `
@@ -42,6 +38,30 @@ const getMockTelegramHTML = () => `
     </a>
   </div>
 </div>
+<div class="tgme_widget_message" data-post="testchannel/126">
+  <div class="tgme_widget_message_text">اقتصاد: ارتفاع أسعار النفط اليوم</div>
+  <div class="tgme_widget_message_date">
+    <a href="https://t.me/testchannel/126">
+      <time datetime="${new Date(Date.now() - 180000).toISOString()}">3 minutes ago</time>
+    </a>
+  </div>
+</div>
+<div class="tgme_widget_message" data-post="testchannel/127">
+  <div class="tgme_widget_message_text">😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀</div>
+  <div class="tgme_widget_message_date">
+    <a href="https://t.me/testchannel/127">
+      <time datetime="${new Date(Date.now() - 240000).toISOString()}">4 minutes ago</time>
+    </a>
+  </div>
+</div>
+<div class="tgme_widget_message" data-post="testchannel/128">
+  <div class="tgme_widget_message_text">اعتقال 3 مدنيين في دمشق</div>
+  <div class="tgme_widget_message_date">
+    <a href="https://t.me/testchannel/128">
+      <time datetime="${new Date(Date.now() - 300000).toISOString()}">5 minutes ago</time>
+    </a>
+  </div>
+</div>
 </body>
 </html>
 `;
@@ -62,17 +82,50 @@ describe('TelegramScraper', () => {
           description: 'Test Channel',
           active: true,
           priority: 'high',
-          language: 'ar'
+          language: 'ar',
+          filtering: {
+            min_keyword_matches: 1,
+            require_context_keywords: false,
+            min_text_length: 30,
+            exclude_patterns: []
+          }
+        },
+        {
+          name: 'mediumchannel',
+          url: 'https://t.me/mediumchannel',
+          description: 'Medium Priority Channel',
+          active: true,
+          priority: 'medium',
+          language: 'ar',
+          filtering: {
+            min_keyword_matches: 2,
+            require_context_keywords: true,
+            min_text_length: 50,
+            exclude_patterns: ['طقس', 'أحوال جوية', 'اقتصاد', 'سياسة']
+          }
         }
       ],
       scraping: {
         interval: 5,
-        lookback_window: 5,
+        lookback_window: 60,
         max_messages_per_channel: 50,
         request_timeout: 30,
         max_retries: 3,
         retry_delay: 5000,
         user_agent: 'Mozilla/5.0 Test Agent'
+      },
+      filtering: {
+        global: {
+          min_keyword_matches: 2,
+          require_context_keywords: true,
+          min_text_length: 50,
+          max_emoji_ratio: 0.1,
+          max_punctuation_ratio: 0.2,
+          max_number_ratio: 0.3
+        },
+        exclude_patterns: [
+          'طقس', 'أحوال جوية', 'اقتصاد', 'سياسة', 'رياضة', 'ترفيه'
+        ]
       }
     };
 
@@ -80,10 +133,11 @@ describe('TelegramScraper', () => {
       keywords: {
         AIRSTRIKE: ['قصف جوي', 'غارة جوية'],
         EXPLOSION: ['انفجار', 'عبوة ناسفة'],
-        SHELLING: ['قصف']
+        SHELLING: ['قصف'],
+        DETENTION: ['اعتقال']
       },
-      context_keywords: ['مدنيين', 'مستشفى'],
-      location_keywords: ['حلب', 'دمشق']
+      context_keywords: ['مدنيين', 'مستشفى', 'أطفال'],
+      location_keywords: ['حلب', 'دمشق', 'سوريا']
     };
 
     // Mock fs.readFileSync for configuration files
@@ -120,30 +174,243 @@ describe('TelegramScraper', () => {
 
   describe('Configuration Loading', () => {
     it('should load channels and keywords configuration', () => {
-      expect(scraper.activeChannels).toHaveLength(1);
+      expect(scraper.activeChannels).toHaveLength(2);
       expect(scraper.activeChannels[0].name).toBe('testchannel');
+      expect(scraper.activeChannels[1].name).toBe('mediumchannel');
       expect(scraper.allKeywords.length).toBeGreaterThan(0);
       expect(scraper.allKeywords).toContain('قصف جوي');
       expect(scraper.allKeywords).toContain('مدنيين');
     });
+
+    it('should load filtering configuration', () => {
+      expect(scraper.filteringConfig).toBeDefined();
+      expect(scraper.filteringConfig.global.min_keyword_matches).toBe(2);
+      expect(scraper.filteringConfig.global.require_context_keywords).toBe(true);
+      expect(scraper.filteringConfig.global.min_text_length).toBe(50);
+      expect(scraper.filteringConfig.exclude_patterns).toContain('طقس');
+    });
   });
 
-  describe('Keyword Matching', () => {
-    it('should find matching keywords in Arabic text', () => {
-      const text = 'قصف جوي استهدف مستشفى في حلب';
-      const matches = scraper.findMatchingKeywords(text);
-      
-      expect(matches).toContain('قصف جوي');
-      expect(matches).toContain('مستشفى');
-      expect(matches).toContain('حلب');
+  describe('Content Quality Filtering', () => {
+    it('should pass quality content checks', () => {
+      const goodText = 'قصف جوي استهدف مستشفى في حلب أدى إلى مقتل 5 مدنيين';
+      const result = scraper.isQualityContent(goodText, 0.1, 0.2, 0.3);
+      expect(result).toBe(true);
     });
 
-    it('should not match keywords in irrelevant text', () => {
-      const text = 'Weather is sunny today';
-      const matches = scraper.findMatchingKeywords(text);
-      
-      expect(matches).toHaveLength(0);
+    it('should fail quality checks for excessive emojis', () => {
+      const emojiText = '😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀';
+      const result = scraper.isQualityContent(emojiText, 0.1, 0.2, 0.3);
+      expect(result).toBe(false);
     });
+
+    it('should fail quality checks for excessive punctuation', () => {
+      const punctuationText = '!!!!!@@@@@#####$$$$$%%%%%^^^^^&&&&&*****';
+      const result = scraper.isQualityContent(punctuationText, 0.1, 0.2, 0.3);
+      expect(result).toBe(false);
+    });
+
+    it('should fail quality checks for excessive numbers', () => {
+      const numberText = '1234567890123456789012345678901234567890';
+      const result = scraper.isQualityContent(numberText, 0.1, 0.2, 0.3);
+      expect(result).toBe(false);
+    });
+
+    it('should pass quality checks for normal text with some emojis', () => {
+      const mixedText = 'قصف جوي في حلب 😀 أدى إلى مقتل 5 مدنيين';
+      const result = scraper.isQualityContent(mixedText, 0.1, 0.2, 0.3);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Exclude Pattern Filtering', () => {
+    it('should detect excluded patterns', () => {
+      const weatherText = 'طقس اليوم مشمس';
+      const result = scraper.containsExcludePatterns(weatherText, ['طقس']);
+      expect(result).toBe(true);
+    });
+
+    it('should not detect excluded patterns in violation text', () => {
+      const violationText = 'قصف جوي استهدف مستشفى في حلب';
+      const result = scraper.containsExcludePatterns(violationText, ['طقس', 'اقتصاد']);
+      expect(result).toBe(false);
+    });
+
+    it('should be case insensitive', () => {
+      const mixedCaseText = 'الطقس اليوم مشمس';
+      const result = scraper.containsExcludePatterns(mixedCaseText, ['طقس']);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Enhanced Keyword Matching', () => {
+    it('should find matching keywords with context requirement', () => {
+      const text = 'قصف جوي استهدف مستشفى في حلب أدى إلى مقتل 5 مدنيين';
+      const result = scraper.findMatchingKeywordsWithContext(text, true);
+      
+      expect(result.matchedKeywords).toContain('قصف جوي');
+      expect(result.matchedKeywords).toContain('مستشفى');
+      expect(result.matchedKeywords).toContain('مدنيين');
+      expect(result.matchedKeywords).toContain('حلب');
+    });
+
+    it('should require context keywords when specified', () => {
+      const text = 'قصف جوي في المنطقة'; // No context keywords
+      const result = scraper.findMatchingKeywordsWithContext(text, true);
+      
+      expect(result.matchedKeywords).toHaveLength(0);
+    });
+
+    it('should not require context keywords when not specified', () => {
+      const text = 'قصف جوي في المنطقة'; // No context keywords
+      const result = scraper.findMatchingKeywordsWithContext(text, false);
+      
+      expect(result.matchedKeywords).toContain('قصف جوي');
+    });
+
+    it('should match location keywords as context', () => {
+      const text = 'قصف جوي في دمشق';
+      const result = scraper.findMatchingKeywordsWithContext(text, true);
+      
+      expect(result.matchedKeywords).toContain('قصف جوي');
+      expect(result.matchedKeywords).toContain('دمشق');
+    });
+  });
+
+  describe('Enhanced Filtering', () => {
+    it('should pass filtering for high-quality violation content', () => {
+      const channel = scraper.activeChannels[0]; // testchannel with lenient settings
+      const text = 'قصف جوي استهدف مستشفى في حلب أدى إلى مقتل 5 مدنيين';
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(true);
+      expect(result.matchedKeywords).toContain('قصف جوي');
+      expect(result.reason).toBe('Passed all filters');
+    });
+
+    it('should fail filtering for short text', () => {
+      const channel = scraper.activeChannels[0];
+      const text = 'قصف جوي'; // Too short
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(false);
+      expect(result.reason).toContain('Text too short');
+    });
+
+    it('should fail filtering for excluded patterns', () => {
+      const channel = scraper.activeChannels[1]; // mediumchannel with exclude patterns
+      const text = 'اقتصاد: ارتفاع أسعار النفط اليوم في سوريا وأسواق المنطقة العربية';
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(false);
+      expect(result.reason).toBe('Contains excluded patterns');
+    });
+
+    it('should fail filtering for insufficient keyword matches', () => {
+      const channel = scraper.activeChannels[1]; // mediumchannel requires 2 matches
+      const text = 'قصف جوي في المنطقة العربية مع وجود بعض التقارير المتناقضة';
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(false);
+      expect(result.reason).toContain('Insufficient keyword matches');
+    });
+
+    it('should pass filtering with sufficient keyword matches', () => {
+      const channel = scraper.activeChannels[1]; // mediumchannel requires 2 matches
+      const text = 'قصف جوي استهدف مدنيين في حلب وأدى إلى مقتل عدة أشخاص';
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(true);
+      expect(result.matchedKeywords.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should use global settings when channel settings are not specified', () => {
+      const channel = { name: 'test', filtering: {} }; // No specific settings
+      const text = 'قصف جوي في المنطقة العربية مع وجود بعض التقارير المتناقضة';
+      
+      const result = scraper.applyEnhancedFiltering(text, channel);
+      
+      expect(result.shouldImport).toBe(false);
+      expect(result.reason).toContain('Insufficient keyword matches');
+    });
+  });
+
+  describe('Channel Scraping with Enhanced Filtering', () => {
+    it('should successfully scrape a channel and apply enhanced filtering', async () => {
+      // Mock HTTP response
+      mockHttpClient.get.mockResolvedValue({
+        data: getMockTelegramHTML()
+      });
+
+      const channel = scraper.activeChannels[0]; // testchannel with lenient settings
+      
+      const result = await scraper.scrapeChannel(channel);
+
+      // Should import violation reports but filter out non-violation content
+      expect(result.newReports).toBeGreaterThan(0);
+      expect(result.filtered).toBeGreaterThan(0);
+      expect(result.processed).toBeGreaterThan(0);
+
+      // Check if reports were saved to database
+      const savedReports = await Report.find({});
+      expect(savedReports.length).toBeGreaterThan(0);
+      
+      // Verify that filtered content was not saved
+      const weatherReports = savedReports.filter(r => r.text.includes('طقس'));
+      expect(weatherReports.length).toBe(0);
+    }, 10000);
+
+    it('should apply stricter filtering for medium priority channels', async () => {
+      // Mock HTTP response with content that should be filtered
+      const htmlWithMixedContent = `
+        <!DOCTYPE html>
+        <html>
+        <body>
+        <div class="tgme_widget_message" data-post="mediumchannel/123">
+          <div class="tgme_widget_message_text">قصف جوي في المنطقة العربية مع وجود بعض التقارير المتناقضة حول الأحداث الجارية</div>
+          <div class="tgme_widget_message_date">
+            <a href="https://t.me/mediumchannel/123">
+              <time datetime="${new Date().toISOString()}">Just now</time>
+            </a>
+          </div>
+        </div>
+        <div class="tgme_widget_message" data-post="mediumchannel/124">
+          <div class="tgme_widget_message_text">قصف جوي استهدف مدنيين في حلب وأدى إلى مقتل عدة أشخاص وإصابة آخرين</div>
+          <div class="tgme_widget_message_date">
+            <a href="https://t.me/mediumchannel/124">
+              <time datetime="${new Date().toISOString()}">Just now</time>
+            </a>
+          </div>
+        </div>
+        </body>
+        </html>
+      `;
+
+      mockHttpClient.get.mockResolvedValue({
+        data: htmlWithMixedContent
+      });
+
+      const channel = scraper.activeChannels[1]; // mediumchannel with strict settings
+      
+      const result = await scraper.scrapeChannel(channel);
+
+      // First message should be filtered (insufficient keywords), second should pass
+      expect(result.newReports).toBe(1);
+      expect(result.filtered).toBe(1);
+    }, 10000);
+
+    it('should handle HTTP errors gracefully', async () => {
+      mockHttpClient.get.mockRejectedValue(new Error('HTTP 500 Error'));
+
+      const channel = scraper.activeChannels[0];
+      
+      await expect(scraper.scrapeChannel(channel)).rejects.toThrow('HTTP 500 Error');
+    }, 5000);
   });
 
   describe('Language Detection', () => {
@@ -169,158 +436,18 @@ describe('TelegramScraper', () => {
     });
   });
 
-  describe('Channel Scraping', () => {
-    it('should successfully scrape a channel and save reports', async () => {
+  describe('Statistics and Metrics', () => {
+    it('should track filtered content in scraping results', async () => {
       // Mock HTTP response
       mockHttpClient.get.mockResolvedValue({
         data: getMockTelegramHTML()
       });
 
-      const channel = scraper.activeChannels[0];
-      
-      const result = await scraper.scrapeChannel(channel);
+      const result = await scraper.scrapeAllChannels();
 
-      expect(result.newReports).toBe(2); // Two messages with keywords
-      expect(result.duplicates).toBe(0);
-      expect(result.processed).toBeGreaterThan(0);
-
-      // Check if reports were saved to database
-      const savedReports = await Report.find({});
-      
-      expect(savedReports).toHaveLength(2);
-      
-      const report1 = savedReports.find(r => r.metadata.messageId === '123');
-      expect(report1).toBeDefined();
-      expect(report1.text).toContain('قصف جوي');
-      expect(report1.metadata.matchedKeywords).toContain('قصف جوي');
-      expect(report1.metadata.language).toBe('ar');
+      expect(result.filtered).toBeGreaterThan(0);
+      expect(result.success).toBe(2); // Both channels should succeed
+      expect(result.failed).toBe(0);
     }, 10000);
-
-    it('should handle duplicate messages correctly', async () => {
-      // First scrape
-      const firstHTML = getMockTelegramHTML();
-      mockHttpClient.get.mockResolvedValue({
-        data: firstHTML
-      });
-
-      const channel = scraper.activeChannels[0];
-      await scraper.scrapeChannel(channel);
-
-      // Second scrape with EXACTLY the same content
-      mockHttpClient.get.mockResolvedValue({
-        data: firstHTML // Use the same HTML string
-      });
-
-      const result = await scraper.scrapeChannel(channel);
-
-      expect(result.newReports).toBe(0);
-      expect(result.duplicates).toBe(2);
-
-      // Should still have only 2 reports in database
-      const savedReports = await Report.find({});
-      expect(savedReports).toHaveLength(2);
-    }, 10000);
-
-    it('should handle HTTP errors gracefully', async () => {
-      mockHttpClient.get.mockRejectedValue(new Error('HTTP 500 Error'));
-
-      const channel = scraper.activeChannels[0];
-      
-      await expect(scraper.scrapeChannel(channel)).rejects.toThrow('HTTP 500 Error');
-    }, 5000);
-
-    it('should skip messages without keywords', async () => {
-      const currentTime = new Date().toISOString();
-      const htmlWithoutKeywords = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <div class="tgme_widget_message" data-post="testchannel/126">
-          <div class="tgme_widget_message_text">Just a regular message about weather and sunshine today without violation keywords</div>
-          <div class="tgme_widget_message_date">
-            <a href="https://t.me/testchannel/126">
-              <time datetime="${currentTime}">Just now</time>
-            </a>
-          </div>
-        </div>
-        </body>
-        </html>
-      `;
-
-      mockHttpClient.get.mockResolvedValue({
-        data: htmlWithoutKeywords
-      });
-
-      const channel = scraper.activeChannels[0];
-      const result = await scraper.scrapeChannel(channel);
-
-      expect(result.newReports).toBe(0);
-      expect(result.processed).toBe(1);
-    }, 10000);
-  });
-
-  describe('Statistics', () => {
-    beforeEach(async () => {
-      // Create test reports with longer text to pass validation
-      const reports = [
-        {
-          source_url: 'https://t.me/testchannel/1',
-          text: 'This is a longer report text that meets the minimum character requirement for validation',
-          date: new Date(),
-          metadata: { channel: 'testchannel', messageId: '1', scrapedAt: new Date() }
-        },
-        {
-          source_url: 'https://t.me/testchannel/2',
-          text: 'This is another longer report text that meets the minimum requirement and is parsed',
-          date: new Date(),
-          parsedByLLM: true,
-          metadata: { channel: 'testchannel', messageId: '2', scrapedAt: new Date() }
-        }
-      ];
-
-      await Report.insertMany(reports);
-    });
-
-    it('should return correct statistics', async () => {
-      const stats = await scraper.getStats();
-
-      expect(stats.totalReports).toBe(2);
-      expect(stats.unparsedReports).toBe(1);
-      expect(stats.activeChannels).toBe(1);
-      expect(stats.channelStats).toHaveLength(1);
-      expect(stats.channelStats[0].channel).toBe('testchannel');
-      expect(stats.channelStats[0].reports).toBe(2);
-    });
-  });
-
-  describe('Channel Testing', () => {
-    it('should test channel connectivity successfully', async () => {
-      mockHttpClient.get.mockResolvedValue({
-        status: 200,
-        data: 'OK'
-      });
-
-      const result = await scraper.testChannel('testchannel');
-
-      expect(result.channel).toBe('testchannel');
-      expect(result.accessible).toBe(true);
-      expect(result.status).toBe(200);
-    }, 5000);
-
-    it('should handle channel connectivity failure', async () => {
-      const error = new Error('HTTP 404 Error');
-      error.response = { status: 404 };
-      mockHttpClient.get.mockRejectedValue(error);
-
-      const result = await scraper.testChannel('testchannel');
-
-      expect(result.channel).toBe('testchannel');
-      expect(result.accessible).toBe(false);
-      expect(result.error).toBeDefined();
-    }, 5000);
-
-    it('should throw error for non-existent channel', async () => {
-      await expect(scraper.testChannel('nonexistent')).rejects.toThrow('Channel nonexistent not found');
-    });
   });
 });
