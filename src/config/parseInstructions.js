@@ -69,6 +69,14 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 - If the report mentions "Southern Quneitra Countryside" use "Quneitra Governorate, Syria" for administrative_division
 - Location name must be at least 2 characters in English
 
+### IMPORTANT LOCATION CLASSIFICATIONS:
+- **"Southwest Syria"** = Quneitra Governorate (location: "Quneitra", administrative_division: "Quneitra Governorate")
+- **"Southern Syria"** = Daraa Governorate (location: "Daraa", administrative_division: "Daraa Governorate")
+- **"Northern Syria"** = Aleppo Governorate or Idlib Governorate (use most specific location mentioned)
+- **"Eastern Syria"** = Deir ez-Zor Governorate or Al-Hasakah Governorate (use most specific location mentioned)
+- **"Western Syria"** = Latakia Governorate or Tartus Governorate (use most specific location mentioned)
+- **"Central Syria"** = Homs Governorate or Hama Governorate (use most specific location mentioned)
+
 ## BILINGUAL CONTENT HANDLING
 - **If the original report is in Arabic**: 
   - ALWAYS include the Arabic description in the "ar" field
@@ -90,6 +98,26 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 - Use "OTHER" for violations that don't fit specific categories, such as:
 - When in doubt about classification, use "OTHER" rather than inventing new violation types
 
+### VIOLATION TYPE DEFINITIONS:
+- **SHELLING**: Artillery fire, mortar attacks, or explosive projectiles fired at targets
+- **AIRSTRIKE**: Aerial bombardment or missile attacks from aircraft
+- **DETENTION**: Arrest, imprisonment, or forced confinement of individuals
+- **KIDNAPPING**: Abduction or forced disappearance of individuals
+- **MURDER**: Intentional killing of individuals
+- **EXECUTION**: Extrajudicial killing or capital punishment
+- **TORTURE**: Physical or psychological abuse during interrogation or detention
+- **DISPLACEMENT**: Forced movement of populations from their homes
+- **HOME_INVASION**: Breaking into and occupying civilian homes
+- **EXPLOSION**: Bomb blasts, IEDs, or other explosive devices
+- **AMBUSH**: Surprise attacks on military or civilian targets
+- **LANDMINE**: Explosive devices placed in the ground
+- **CHEMICAL_ATTACK**: Use of chemical weapons or toxic substances
+- **SIEGE**: Blockade or encirclement of areas
+- **SHOOTING**: Gunfire incidents targeting individuals
+- **OTHER**: Any other human rights violation not fitting the above categories
+
+**IMPORTANT**: Only classify as these types if there is actual physical violence, harm, or detention. Verbal actions like "mocking", "insults", or "monitoring" without physical harm are NOT violations.
+
 ## WHAT CONSTITUTES A VALID VIOLATION
 A report must describe an ACTUAL human rights violation or armed conflict incident:
 
@@ -108,6 +136,11 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 ❌ INVALID: "Policy changes discussed"
 ❌ INVALID: "Infrastructure project launched"
 ❌ INVALID: "Business agreement signed"
+❌ INVALID: "Mocking" or "taunting" (verbal actions without physical violence)
+❌ INVALID: "Insults" or "verbal abuse" (without physical harm)
+❌ INVALID: "Political statements" or "rhetoric" (without actual violations)
+❌ INVALID: "Monitoring" or "surveillance" (without detention or harm)
+❌ INVALID: "Propaganda" or "media reports" (without actual incidents)
 
 ## PEOPLE INFORMATION
 - Extract victim details when available (age, gender, status)
