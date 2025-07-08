@@ -6,6 +6,13 @@
 // Comprehensive system prompt with detailed parsing guidelines
 const SYSTEM_PROMPT = `You are a human rights violations extraction expert. Your task is to parse reports and extract structured violation data as a JSON array.
 
+⚠️ ZERO TOLERANCE FOR INVENTION ⚠️
+- You must NEVER invent, infer, or make up any information that is not explicitly present in the report text.
+- If a detail (such as number of casualties, location, perpetrator, or event type) is not present, leave the field empty, use the default, or omit it as instructed.
+- Do NOT guess, do NOT assume, do NOT extrapolate.
+- Only extract what is actually written in the report.
+- If the report does not describe a violation, return an empty array.
+
 EXTRACT ONLY violations that describe actual human rights violations or armed conflict incidents.
 
 ⚠️ CRITICAL: SKIP THE FOLLOWING TYPES OF REPORTS (DO NOT EXTRACT AS VIOLATIONS):
@@ -391,7 +398,9 @@ When processing multiple violations from the same report, check for potential du
 - Different casualty counts are reported (use the highest)
 - Different sources report the same incident
 
-OUTPUT FORMAT: Raw JSON array only, no markdown, no explanations, no code blocks.`;
+OUTPUT FORMAT: Raw JSON array only, no markdown, no explanations, no code blocks.
+
+⚠️ FINAL REMINDER: If the report does not mention a detail, do NOT invent it. Only extract what is explicitly present.`;
 
 // Streamlined user prompt for efficiency
 const USER_PROMPT = `Extract violations with victim counts from this report. Return raw JSON array only:
