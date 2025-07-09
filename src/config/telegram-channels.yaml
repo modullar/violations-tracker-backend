@@ -2,12 +2,24 @@
 # List of public Telegram channels to monitor for violations reports
 
 channels:
-  # Syrian Civil Defense (White Helmets)
+
+  - name: "Dama Post"
+    url: "https://t.me/dama_post_syria"
+    description: "Dama Post"
+    active: true
+    priority: "medium"
+    language: "ar"
+    filtering:
+      min_keyword_matches: 2
+      require_context_keywords: true
+      min_text_length: 30
+      exclude_patterns: []
+
   - name: "Naher Media"
     url: "https://t.me/nahermedia"
     description: "Naher Media"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
     filtering:
       min_keyword_matches: 2
@@ -41,7 +53,7 @@ channels:
     url: "https://t.me/Almohrar"
     description: "سوريا لحظة بلحظة"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
     filtering:
       min_keyword_matches: 1
@@ -51,7 +63,7 @@ channels:
     url: "https://t.me/NORSFS2" 
     description: "Nawras Studies"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
     filtering:
       min_keyword_matches: 2
@@ -69,23 +81,11 @@ channels:
       min_text_length: 30
       exclude_patterns: []
 
-  - name: "NEDAAPOST"
-    url: "https://t.me/NEDAAPOST"
-    description: "NEDAAPOST"
-    active: true
-    priority: "high"
-    language: "ar"
-    filtering:
-      min_keyword_matches: 2
-      require_context_keywords: true
-      min_text_length: 30
-      exclude_patterns: []
-
   - name: "Reporters_sy"
     url: "https://t.me/Reporters_sy"
     description: "Reporters_sy"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
     filtering:
       min_keyword_matches: 2
@@ -97,26 +97,14 @@ channels:
     url: "https://t.me/sham_plus3"
     description: "sham_plus3"
     active: true
-    priority: "high"
+    priority: "medium"
     language: "ar"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
       min_text_length: 30
       exclude_patterns: []
-
-  - name: "مراسل الشرقية"
-    url: "https://t.me/AbomosaabSharkea"
-    description: "AbomosaabSharkea"
-    active: true
-    priority: "high"
-    language: "ar"
-    filtering:
-      min_keyword_matches: 2
-      require_context_keywords: true
-      min_text_length: 30
-      exclude_patterns: []
-
+      
   - name: "alkhabour"
     url: "https://t.me/alkhabour"
     description: "alkhabour"
