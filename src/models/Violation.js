@@ -29,9 +29,17 @@ const LocalizedStringSchema = new mongoose.Schema({
   },
   ar: {
     type: String,
-    required: [false, 'Arabic text is optional']
+    required: [true, 'Arabic text is required']
   }
-}, { _id: false });
+}, { 
+  _id: false,
+  validate: {
+    validator: function(value) {
+      return value && value.en && value.en.trim() && value.ar && value.ar.trim();
+    },
+    message: 'Both English and Arabic text are required and cannot be empty'
+  }
+});
 
 // Schema for optional localized string
 const OptionalLocalizedStringSchema = new mongoose.Schema({
@@ -43,7 +51,40 @@ const OptionalLocalizedStringSchema = new mongoose.Schema({
     type: String,
     required: false
   }
-}, { _id: false });
+}, { 
+  _id: false,
+  validate: {
+    validator: function(value) {
+      // If either language is provided, both must be provided
+      if (!value) return true;
+      const hasEn = value.en && value.en.trim();
+      const hasAr = value.ar && value.ar.trim();
+      return (!hasEn && !hasAr) || (hasEn && hasAr);
+    },
+    message: 'If one language is provided, both English and Arabic must be provided'
+  }
+});
+
+// Schema for at least one localized string (for URLs, etc.)
+const AtLeastOneLocalizedStringSchema = new mongoose.Schema({
+  en: {
+    type: String,
+    required: false
+  },
+  ar: {
+    type: String,
+    required: false
+  }
+}, {
+  _id: false,
+  validate: {
+    validator: function(value) {
+      // At least one of en or ar must be present and non-empty
+      return (value && ((value.en && value.en.trim()) || (value.ar && value.ar.trim())));
+    },
+    message: 'At least one of English or Arabic text is required'
+  }
+});
 
 // Schema for victim information
 const VictimSchema = new mongoose.Schema({
@@ -188,7 +229,7 @@ const ViolationSchema = new mongoose.Schema({
     }
   },
   source_url: {
-    type: LocalizedStringSchema,
+    type: AtLeastOneLocalizedStringSchema,
     default: { en: '', ar: '' },
     validate: {
       validator: function(value) {

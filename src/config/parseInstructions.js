@@ -93,19 +93,25 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 - **"Western Syria"** = Latakia Governorate or Tartus Governorate (use most specific location mentioned)
 - **"Central Syria"** = Homs Governorate or Hama Governorate (use most specific location mentioned)
 
-## BILINGUAL CONTENT HANDLING
+## ⚠️ CRITICAL BILINGUAL CONTENT REQUIREMENTS ⚠️
+
+**MANDATORY: ALL FIELDS MUST HAVE BOTH ENGLISH AND ARABIC VERSIONS**
+
 - **If the original report is in Arabic**: 
   - ALWAYS include the Arabic description in the "ar" field
-  - Translate the Arabic content to English for the "en" field
+  - TRANSLATE the Arabic content to English for the "en" field
   - Preserve the original Arabic text exactly as provided
 - **If the original report is in English**:
   - ALWAYS include the English description in the "en" field
-  - Translate the English content to Arabic for the "ar" field
+  - TRANSLATE the English content to Arabic for the "ar" field
   - Preserve the original English text exactly as provided
-- **For location names**: Always provide both Arabic and English versions
-- **For perpetrator names**: Include both Arabic and English versions when available
+- **For location names**: ALWAYS provide both Arabic and English versions
+- **For perpetrator names**: ALWAYS provide both Arabic and English versions
+- **For source information**: ALWAYS provide both Arabic and English versions
+- **For all descriptions**: ALWAYS provide both Arabic and English versions
 - **Do not lose or omit any original content** from the source report
-- **Always provide both languages** regardless of the original language
+- **ALWAYS provide both languages** regardless of the original language
+- **NEVER leave any field with only one language** - this will cause validation failure
 
 ## TYPE CLASSIFICATION
 - Classify the violation using ONLY the allowed types
@@ -233,9 +239,10 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 - Kata'eb al-Ba'ath (Ba'ath Battalions) - for incidents BEFORE December 8, 2024
 - Al-Assad regime government security forces - for incidents BEFORE December 8, 2024
 - Syrian Air Force - for incidents BEFORE December 8, 2024
-- Assad loyalists or remnants (for incidents AFTER December 8, 2024, only if explicitly identified as such)
-- Any forces explicitly identified as "regime forces" or "government forces" for incidents/violations that occur BEFORE December 8, 2024
-- Any forces explicitly identified as Assad loyalists, Assad remnants, or forces specifically fighting for the Assad regime for incidents AFTER December 8, 2024
+- **CRITICAL**: Assad loyalists or remnants (for incidents AFTER December 8, 2024, only if explicitly identified as such)
+- **CRITICAL**: Any forces explicitly identified as "regime forces" or "government forces" for incidents/violations that occur BEFORE December 8, 2024
+- **CRITICAL**: Any forces explicitly identified as Assad loyalists, Assad remnants, or forces specifically fighting for the Assad regime for incidents AFTER December 8, 2024
+- **CRITICAL**: Syrian intelligence apparatus, security forces, or government forces for incidents AFTER December 8, 2024 should be classified as "post_8th_december_government" unless explicitly identified as Assad loyalists or remnants
 
 ### Iranian Forces and Proxies ("iran_shia_militias")
 - Islamic Revolutionary Guard Corps (IRGC)
@@ -290,6 +297,7 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 - Syrian National Army (SNA) - for incidents BEFORE December 8, 2024
 - Any forces explicitly identified as "opposition forces" or "rebel groups" for incidents BEFORE December 8, 2024
 - **DEFAULT CLASSIFICATION**: Any government forces, interim forces, or pro-government forces for incidents AFTER December 8, 2024 (unless explicitly identified as Assad loyalists or remnants)
+- **CRITICAL**: Syrian intelligence apparatus, security forces, government forces, or any official Syrian government entities for incidents AFTER December 8, 2024 (unless explicitly identified as Assad loyalists or remnants)
 - Any forces explicitly identified as Alsharaa government forces, interim forces, government forces, or pro-government auxiliary or allies for incidents/violations that occur AFTER December 8, 2024
 
 ### SDF and Affiliated Groups ("sdf")
@@ -379,6 +387,7 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 - DISPLACEMENT violations require displaced_count > 0
 - **CRITICAL**: For incidents BEFORE December 8, 2024: use "assad_regime" for government forces
 - **CRITICAL**: For incidents AFTER December 8, 2024: use "post_8th_december_government" for government forces by default, only use "assad_regime" for explicitly identified Assad loyalists or remnants
+- **CRITICAL**: Syrian intelligence apparatus, security forces, and government entities for incidents AFTER December 8, 2024 should be classified as "post_8th_december_government" unless explicitly identified as Assad loyalists or remnants
 - Default perpetrator_affiliation: "unknown" if unclear
 - Description must be at least 10 characters in English
 - Location name must be at least 2 characters in English
@@ -420,7 +429,8 @@ When processing multiple violations from the same report, check for potential du
 OUTPUT FORMAT: Raw JSON array only, no markdown, no explanations, no code blocks.
 
 ⚠️ FINAL REMINDER: If the report does not mention a detail, do NOT invent it. Only extract what is explicitly present.
-⚠️ CRITICAL: Only extract violations that occur IN SYRIA. Skip all events in Gaza, Lebanon, Iraq, Turkey, or any other countries.`;
+⚠️ CRITICAL: Only extract violations that occur IN SYRIA. Skip all events in Gaza, Lebanon, Iraq, Turkey, or any other countries.
+⚠️ CRITICAL: ALWAYS provide BOTH English and Arabic versions for ALL fields (description, location, source, perpetrator, etc.) - NEVER leave any field with only one language.`;
 
 // Streamlined user prompt for efficiency
 const USER_PROMPT = `Extract violations with victim counts from this report. Return raw JSON array only:
@@ -446,14 +456,21 @@ Required format:
   }
 ]
 
-IMPORTANT: 
+⚠️ CRITICAL BILINGUAL REQUIREMENTS ⚠️
 - Always fill administrative_division.en with the governorate name (e.g., "Damascus Governorate", "Aleppo Governorate"). Never leave it empty.
-- **ALWAYS provide both English and Arabic content** regardless of the original language
-- If the original report is in Arabic: preserve Arabic text in "ar" field, translate to English for "en" field
-- If the original report is in English: preserve English text in "en" field, translate to Arabic for "ar" field
+- **MANDATORY: ALL FIELDS MUST HAVE BOTH ENGLISH AND ARABIC VERSIONS**
+- **If the original report is in Arabic**: preserve Arabic text in "ar" field, TRANSLATE to English for "en" field
+- **If the original report is in English**: preserve English text in "en" field, TRANSLATE to Arabic for "ar" field
+- **NEVER leave any field with only one language** - this will cause validation failure
+- **ALWAYS provide both languages** regardless of the original language
 - Preserve the original text exactly as provided in the appropriate language field
 
 CRITICAL: Return ONLY the raw JSON array. Do not use markdown code blocks, do not add explanations, do not add any text before or after the JSON array.
+
+⚠️ EXAMPLE: If original report is in Arabic, your JSON should have:
+- "description": {"en": "English translation", "ar": "Original Arabic text"}
+- "location": {"name": {"en": "English location", "ar": "Arabic location"}}
+- "source": {"en": "English source", "ar": "Arabic source"}}
 
 Extract only violations with victim counts. Skip general news. Return raw JSON array:`;
 

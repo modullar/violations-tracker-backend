@@ -105,18 +105,6 @@ channels:
       min_text_length: 30
       exclude_patterns: []
       
-  - name: "alkhabour"
-    url: "https://t.me/alkhabour"
-    description: "alkhabour"
-    active: true
-    priority: "medium"
-    language: "ar"
-    filtering:
-      min_keyword_matches: 2
-      require_context_keywords: true
-      min_text_length: 50
-      exclude_patterns: ["طقس", "أحوال جوية", "اقتصاد", "سياسة"]
-
   - name: "D24net"
     url: "https://t.me/D24net"
     description: "D24net"

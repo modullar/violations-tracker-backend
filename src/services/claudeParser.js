@@ -74,6 +74,51 @@ function extractViolationsJson(content) {
     }
   }
 
+  // Pattern 7: Handle character-by-character indexed object responses
+  if (!jsonText) {
+    try {
+      const parsedContent = JSON.parse(content);
+      // Check if this is a character-by-character indexed object
+      if (typeof parsedContent === 'object' && parsedContent !== null) {
+        const keys = Object.keys(parsedContent);
+        const numericKeys = keys.filter(key => !isNaN(parseInt(key)) && parseInt(key) >= 0);
+        
+        if (numericKeys.length > 0 && numericKeys.length === keys.length - 2) { // -2 for service and timestamp
+          // This looks like a character-by-character indexed object
+          logger.debug('Detected character-by-character indexed response, attempting to reconstruct');
+          
+          // Reconstruct the original text from the indexed characters
+          const maxIndex = Math.max(...numericKeys.map(k => parseInt(k)));
+          let reconstructedText = '';
+          
+          for (let i = 0; i <= maxIndex; i++) {
+            if (parsedContent[i.toString()] !== undefined) {
+              reconstructedText += parsedContent[i.toString()];
+            }
+          }
+          
+          logger.debug('Reconstructed text from indexed response:', reconstructedText.substring(0, 200) + '...');
+          
+          // Now try to extract JSON from the reconstructed text
+          const reconstructedJsonMatch = reconstructedText.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+          if (reconstructedJsonMatch) {
+            jsonText = reconstructedJsonMatch[0];
+            logger.debug('Found JSON array in reconstructed text');
+          } else {
+            // If no JSON array found, check if the reconstructed text itself is a JSON array
+            const trimmed = reconstructedText.trim();
+            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+              jsonText = trimmed;
+              logger.debug('Reconstructed text is a JSON array');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Not valid JSON, continue
+    }
+  }
+
   if (!jsonText) {
     logger.error('No JSON found in Claude response. Content preview:', content.substring(0, 500));
     throw new Error('Failed to extract structured data from the response. Claude may have returned an explanation instead of JSON.');
