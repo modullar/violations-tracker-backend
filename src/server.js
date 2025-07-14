@@ -26,6 +26,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const violationRoutes = require('./routes/violationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const territoryControlRoutes = require('./routes/territoryControlRoutes');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/violations', violationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/territory-control', territoryControlRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

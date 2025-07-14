@@ -31,13 +31,12 @@ channels:
     url: "https://t.me/HalabTodayTV"
     description: "Halab Today"
     active: true
-    priority: "high"
+    priority: "low"
     language: "ar"
     filtering:
       min_keyword_matches: 1
       require_context_keywords: true
-      min_text_length: 30
-      exclude_patterns: []
+      min_text_length: 40
 
   - name: "صوت العاصمة"
     url: "https://t.me/damascusv011"
@@ -57,16 +56,6 @@ channels:
     language: "ar"
     filtering:
       min_keyword_matches: 1
-      require_context_keywords: true
-
-  - name: "Nawras Studies"
-    url: "https://t.me/NORSFS2" 
-    description: "Nawras Studies"
-    active: true
-    priority: "medium"
-    language: "ar"
-    filtering:
-      min_keyword_matches: 2
       require_context_keywords: true
 
   - name: "SNN"
