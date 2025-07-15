@@ -138,7 +138,9 @@ const TerritoryControlSchema = new mongoose.Schema({
     required: [true, 'Territory control date is required'],
     validate: {
       validator: function(value) {
-        return value <= new Date();
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set to end of current day
+        return value <= today;
       },
       message: 'Territory control date cannot be in the future'
     }
