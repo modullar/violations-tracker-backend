@@ -1,5 +1,6 @@
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const { addColorsToTerritoryControl } = require('../config/territorColorMapping');
 const {
   // Create operations
   createTerritoryControl,
@@ -39,11 +40,16 @@ exports.getTerritoryControls = asyncHandler(async (req, res, next) => {
 
   const result = await getTerritoryControls(req.query, paginationOptions);
 
+  // Add color attributes to features for each territory control
+  const territoryControlsWithColors = result.territoryControls.map(territoryControl => 
+    addColorsToTerritoryControl(territoryControl)
+  );
+
   res.status(200).json({
     success: true,
     count: result.totalDocs,
     pagination: result.pagination,
-    data: result.territoryControls
+    data: territoryControlsWithColors
   });
 });
 
@@ -61,9 +67,12 @@ exports.getTerritoryControl = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // Add color attributes to features
+  const territoryControlWithColors = addColorsToTerritoryControl(territoryControl);
+
   res.status(200).json({
     success: true,
-    data: territoryControl
+    data: territoryControlWithColors
   });
 });
 
@@ -88,16 +97,22 @@ exports.getTerritoryControlByDate = asyncHandler(async (req, res, next) => {
       );
     }
 
+    // Add color attributes to features
+    const closestControlWithColors = addColorsToTerritoryControl(closestControl);
+
     return res.status(200).json({
       success: true,
-      data: closestControl,
+      data: closestControlWithColors,
       note: `No data found for ${date}. Returning closest available data from ${new Date(closestControl.date).toISOString().split('T')[0]}`
     });
   }
 
+  // Add color attributes to features
+  const territoryControlWithColors = addColorsToTerritoryControl(territoryControl);
+
   res.status(200).json({
     success: true,
-    data: territoryControl
+    data: territoryControlWithColors
   });
 });
 
@@ -398,9 +413,12 @@ exports.getCurrentTerritoryControl = asyncHandler(async (req, res, next) => {
   const mostRecentDate = dates[0];
   const territoryControl = await getTerritoryControlByDate(mostRecentDate, { controlledBy });
 
+  // Add color attributes to features
+  const territoryControlWithColors = addColorsToTerritoryControl(territoryControl);
+
   res.status(200).json({
     success: true,
-    data: territoryControl,
+    data: territoryControlWithColors,
     isCurrent: true
   });
 });
@@ -419,9 +437,12 @@ exports.getClosestTerritoryControl = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('No territory control data available', 404));
   }
 
+  // Add color attributes to features
+  const territoryControlWithColors = addColorsToTerritoryControl(territoryControl);
+
   res.status(200).json({
     success: true,
-    data: territoryControl,
+    data: territoryControlWithColors,
     requestedDate: date,
     actualDate: new Date(territoryControl.date).toISOString().split('T')[0]
   });

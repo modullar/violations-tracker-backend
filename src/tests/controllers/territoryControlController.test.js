@@ -773,4 +773,230 @@ describe('Territory Control Controller', () => {
       });
     });
   });
+
+  describe('Color Mapping Integration', () => {
+    it('should add colors to territory control features in getTerritoryControl', async () => {
+      // Create test territory control without colors
+      const territoryControl = await TerritoryControl.create({
+        type: 'FeatureCollection',
+        date: '2025-01-01',
+        features: [{
+          type: 'Feature',
+          properties: {
+            name: 'Test Territory',
+            controlledBy: 'assad_regime',
+            controlledSince: '2020-01-01'
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[35.0, 36.0], [36.0, 36.0], [36.0, 37.0], [35.0, 37.0], [35.0, 36.0]]]
+          }
+        }],
+        created_by: testUserId
+      });
+
+      req.params.id = territoryControl._id.toString();
+      await territoryControlController.getTerritoryControl(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
+          features: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                name: 'Test Territory',
+                controlledBy: 'assad_regime',
+                color: '#ff0000' // assad_regime color
+              })
+            })
+          ])
+        })
+      });
+    });
+
+    it('should add colors to territory control features in getTerritoryControlByDate', async () => {
+      // Create test territory control without colors
+      await TerritoryControl.create({
+        type: 'FeatureCollection',
+        date: '2025-01-01',
+        features: [
+          {
+            type: 'Feature',
+            properties: {
+              name: 'SDF Territory',
+              controlledBy: 'sdf',
+              controlledSince: '2019-01-01'
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[[35.0, 36.0], [36.0, 36.0], [36.0, 37.0], [35.0, 37.0], [35.0, 36.0]]]
+            }
+          },
+          {
+            type: 'Feature',
+            properties: {
+              name: 'Turkey Territory',
+              controlledBy: 'turkey',
+              controlledSince: '2020-01-01'
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[[36.0, 36.0], [37.0, 36.0], [37.0, 37.0], [36.0, 37.0], [36.0, 36.0]]]
+            }
+          }
+        ],
+        created_by: testUserId
+      });
+
+      req.params.date = '2025-01-01';
+      await territoryControlController.getTerritoryControlByDate(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
+          features: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                name: 'SDF Territory',
+                controlledBy: 'sdf',
+                color: '#FFFF00' // sdf color
+              })
+            }),
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                name: 'Turkey Territory',
+                controlledBy: 'turkey',
+                color: '#00FF00' // turkey color
+              })
+            })
+          ])
+        })
+      });
+    });
+
+    it('should add colors to territory control features in getCurrentTerritoryControl', async () => {
+      // Create test territory control without colors
+      await TerritoryControl.create({
+        type: 'FeatureCollection',
+        date: '2025-01-01',
+        features: [{
+          type: 'Feature',
+          properties: {
+            name: 'Israel Territory',
+            controlledBy: 'israel',
+            controlledSince: '2018-01-01'
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[35.0, 36.0], [36.0, 36.0], [36.0, 37.0], [35.0, 37.0], [35.0, 36.0]]]
+          }
+        }],
+        created_by: testUserId
+      });
+
+      await territoryControlController.getCurrentTerritoryControl(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
+          features: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                name: 'Israel Territory',
+                controlledBy: 'israel',
+                color: '#0000FF' // israel color
+              })
+            })
+          ])
+        }),
+        isCurrent: true
+      });
+    });
+
+    it('should add colors to territory control features in getTerritoryControls', async () => {
+      // Create test territory control without colors
+      await TerritoryControl.create({
+        type: 'FeatureCollection',
+        date: '2025-01-01',
+        features: [{
+          type: 'Feature',
+          properties: {
+            name: 'Russia Territory',
+            controlledBy: 'russia',
+            controlledSince: '2020-01-01'
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[35.0, 36.0], [36.0, 36.0], [36.0, 37.0], [35.0, 37.0], [35.0, 36.0]]]
+          }
+        }],
+        created_by: testUserId
+      });
+
+      await territoryControlController.getTerritoryControls(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        count: 1,
+        pagination: expect.any(Object),
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            features: expect.arrayContaining([
+              expect.objectContaining({
+                properties: expect.objectContaining({
+                  name: 'Russia Territory',
+                  controlledBy: 'russia',
+                  color: '#FF4500' // russia color
+                })
+              })
+            ])
+          })
+        ])
+      });
+    });
+
+    it('should handle unknown controllers with default color', async () => {
+      // Create test territory control with unknown controller
+      const territoryControl = await TerritoryControl.create({
+        type: 'FeatureCollection',
+        date: '2025-01-01',
+        features: [{
+          type: 'Feature',
+          properties: {
+            name: 'Unknown Territory',
+            controlledBy: 'unknown',
+            controlledSince: '2020-01-01'
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[35.0, 36.0], [36.0, 36.0], [36.0, 37.0], [35.0, 37.0], [35.0, 36.0]]]
+          }
+        }],
+        created_by: testUserId
+      });
+
+      req.params.id = territoryControl._id.toString();
+      await territoryControlController.getTerritoryControl(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
+          features: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                name: 'Unknown Territory',
+                controlledBy: 'unknown',
+                color: '#800080' // unknown color
+              })
+            })
+          ])
+        })
+      });
+    });
+  });
 }); 
