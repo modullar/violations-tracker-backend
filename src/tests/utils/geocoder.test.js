@@ -207,8 +207,16 @@ describe('Geocoder Tests with Google Maps API', () => {
         // Try to load Google Maps specific fixtures
         const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
 
-        if (!loadFixture(fixturePath)) {
+        const fixtureLoaded = loadFixture(fixturePath);
+        
+        if (!fixtureLoaded) {
           console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
+          
+          // If we're in CI and no API key is available, skip this test
+          if (process.env.CI && !config.googleApiKey) {
+            console.log(`Skipping test in CI: ${testName} - no fixture and no API key`);
+            return; // Skip this test
+          }
         }
       }
 
@@ -238,10 +246,12 @@ describe('Geocoder Tests with Google Maps API', () => {
           console.log(`${location.description} - Coordinates: [${bestResult.longitude}, ${bestResult.latitude}] - Quality: ${bestResult.quality || 'N/A'}`);
         }
       } else {
+        // No expected coordinates, so expect empty results
         expect(arabicResult).toEqual([]);
         expect(englishResult).toEqual([]);
+        console.log('No coordinates found for invalid location as expected');
       }
-    });
+    }, 60000); // 60 second timeout for geocoding tests
   });
 
   // Test Aleppo city center specifically
