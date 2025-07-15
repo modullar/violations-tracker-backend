@@ -43,10 +43,15 @@ const addColorsToTerritoryControl = (territoryControl) => {
     return territoryControl;
   }
 
-  const updatedTerritoryControl = { ...territoryControl };
+  // Convert Mongoose document to plain object if needed
+  const plainTerritoryControl = territoryControl.toObject ? territoryControl.toObject() : territoryControl;
   
-  updatedTerritoryControl.features = territoryControl.features.map(feature => {
-    const updatedFeature = { ...feature };
+  const updatedTerritoryControl = { ...plainTerritoryControl };
+  
+  updatedTerritoryControl.features = plainTerritoryControl.features.map(feature => {
+    // Convert Mongoose subdocument to plain object if needed
+    const plainFeature = feature.toObject ? feature.toObject() : feature;
+    const updatedFeature = { ...plainFeature };
     
     if (updatedFeature.properties) {
       updatedFeature.properties = {
