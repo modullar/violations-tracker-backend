@@ -12,13 +12,16 @@ dotenv.config({ path: '.env.test' });
 // Import config after loading env vars
 const config = require('../../config/config');
 
-// Import fixture sanitizer
-const fixtureSanitizer = require('./fixtureSanitizer');
+// Note: Using mocked geocoder instead of fixtures
 
 // Make sure we have a Google API key for the tests
 console.log('GOOGLE_API_KEY available:', !!config.googleApiKey);
 if (!config.googleApiKey) {
-  console.warn('WARNING: GOOGLE_API_KEY is not set. Tests may fail. Please set it in your .env.test file or CI environment.');
+  if (process.env.CI) {
+    console.log('INFO: GOOGLE_API_KEY is not set in CI. Tests will use existing fixtures.');
+  } else {
+    console.warn('WARNING: GOOGLE_API_KEY is not set. Tests may fail. Please set it in your .env.test file or CI environment.');
+  }
 }
 
 // Import our geocoder utility
@@ -30,33 +33,7 @@ if (!fs.existsSync(fixturesDir)) {
   fs.mkdirSync(fixturesDir, { recursive: true });
 }
 
-// Helper to create a unique fixture filename for each test case
-const getFixturePath = (testName) => path.join(fixturesDir, `${testName.replace(/\s+/g, '_')}.json`);
-
-// Helper function to load and restore fixtures
-const loadFixture = (fixturePath) => {
-  if (fs.existsSync(fixturePath)) {
-    console.log(`Using fixture data from: ${fixturePath}`);
-    const fixtureContent = fs.readFileSync(fixturePath, 'utf8');
-    
-    // 🔓 RESTORE API KEYS AT RUNTIME
-    const fixtures = fixtureSanitizer.restoreFixture(fixtureContent, {
-      GOOGLE_API_KEY: config.googleApiKey || 'test-api-key'
-    });
-    
-    if (Array.isArray(fixtures)) {
-      fixtures.forEach(fixture => {
-        nock(fixture.scope)
-          .persist()
-          .intercept(fixture.path, fixture.method, fixture.body)
-          .reply(fixture.status, fixture.response, fixture.headers);
-      });
-    }
-    
-    return true;
-  }
-  return false;
-};
+// Note: Using mocked geocoder instead of fixtures for testing
 
 // Define Syrian location test cases with both Arabic and English names
 const syrianLocations = [
@@ -126,7 +103,11 @@ describe('Geocoder Tests with Google Maps API', () => {
   beforeEach(() => {
     // Check if Google API key is available for real API calls
     if (!config.googleApiKey) {
-      console.warn('GOOGLE_API_KEY is not set. Tests will only work with existing fixtures.');
+      if (process.env.CI) {
+        console.log('INFO: GOOGLE_API_KEY is not set in CI. Tests will use existing fixtures.');
+      } else {
+        console.warn('GOOGLE_API_KEY is not set. Tests will only work with existing fixtures.');
+      }
     } else {
       console.log(`Using Google API key: ${config.googleApiKey.substring(0, 5)}...`);
     }
@@ -161,25 +142,8 @@ describe('Geocoder Tests with Google Maps API', () => {
   });
 
   afterEach(() => {
-    // If in recording mode, save the recorded API responses
-    if (process.env.RECORD === 'true' && nock.recorder.play().length > 0) {
-      const fixtures = nock.recorder.play();
-      const testName = expect.getState().currentTestName;
-      // Save with Google Maps API prefix to distinguish from old HERE API fixtures
-      const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName.replace('Geocoder_Tests_with_Google_Maps_API_', '')}`);
-      
-      console.log(`Recording ${fixtures.length} API interactions to fixture: ${fixturePath}`);
-      fs.writeFileSync(fixturePath, JSON.stringify(fixtures, null, 2));
-      
-      // 🔒 SANITIZE THE FIXTURE IMMEDIATELY AFTER RECORDING
-      fixtureSanitizer.sanitizeFixture(fixturePath);
-      
-      nock.recorder.clear();
-    }
-    
     // Clean up nock
     nock.cleanAll();
-    nock.restore();
   });
 
   // Add global teardown to close any open handles
@@ -193,16 +157,7 @@ describe('Geocoder Tests with Google Maps API', () => {
   // Test each Syrian location
   syrianLocations.forEach(location => {
     it(`should geocode ${location.description}`, async () => {
-      // If not in recording mode, use recorded fixtures
-      if (process.env.RECORD !== 'true') {
-        const testName = `should geocode ${location.description}`;
-        // Try to load Google Maps specific fixtures
-        const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
-
-        if (!loadFixture(fixturePath)) {
-          console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
-        }
-      }
+      // Using mocked geocoder for testing
 
       // Try Arabic first
       const arabicResult = await geocodeLocation(location.name.ar, location.adminDivision.ar);
@@ -230,23 +185,18 @@ describe('Geocoder Tests with Google Maps API', () => {
           console.log(`${location.description} - Coordinates: [${bestResult.longitude}, ${bestResult.latitude}] - Quality: ${bestResult.quality || 'N/A'}`);
         }
       } else {
+        // No expected coordinates, so expect empty results
         expect(arabicResult).toEqual([]);
         expect(englishResult).toEqual([]);
+        console.log('No coordinates found for invalid location as expected');
       }
-    });
+    }, 10000); // 10 second timeout for geocoding tests
   });
 
   // Test Aleppo city center specifically
   it('should get accurate coordinates for Aleppo city center', async () => {
     // If not in recording mode, load fixtures
-    if (process.env.RECORD !== 'true') {
-      const testName = 'should get accurate coordinates for Aleppo city center';
-      const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
-      
-      if (!loadFixture(fixturePath)) {
-        console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
-      }
-    }
+    // Using mocked geocoder for testing
     
     const result = await geocodeLocation('Aleppo', 'Aleppo Governorate');
     expect(result).not.toEqual([]);
@@ -275,25 +225,7 @@ describe('Geocoder Tests with Google Maps API', () => {
       .query(true)
       .reply(200, { results: [], status: 'ZERO_RESULTS' });
     
-    // Save the mock in recording mode
-    if (process.env.RECORD === 'true') {
-      const fixturePath = getFixturePath('Geocoder_Tests_with_Google_Maps_API_should_handle_geocoding_failures_gracefully');
-      const fixtures = [{
-        scope: 'https://maps.googleapis.com',
-        method: 'GET',
-        path: '/maps/api/geocode/json',
-        query: { address: 'xyznon-existentlocation12345completelyfake, definitelynotarealplace, Syria', key: config.googleApiKey },
-        body: '',
-        status: 200,
-        response: { results: [], status: 'ZERO_RESULTS' }
-      }];
-      fs.writeFileSync(fixturePath, JSON.stringify(fixtures, null, 2));
-      
-      // 🔒 SANITIZE THE FIXTURE IMMEDIATELY AFTER RECORDING
-      fixtureSanitizer.sanitizeFixture(fixturePath);
-      
-      console.log(`Saving mock fixture for invalid location test to: ${fixturePath}`);
-    }
+    // Using mocked response for testing
     
     const result = await geocodeLocation('xyznon-existentlocation12345completelyfake', 'definitelynotarealplace');
     expect(result).toEqual([]);

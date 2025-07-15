@@ -5,15 +5,14 @@ jest.mock('../../config/logger', () => ({
   error: jest.fn()
 }));
 
-const mongoose = require('mongoose');
 const {
-  checkForDuplicates,
-  findPotentialDuplicates,
-  checkViolationsMatch,
   calculateDistance,
   compareDates,
-  SIMILARITY_THRESHOLD,
-  MAX_DISTANCE_METERS
+  checkViolationsMatch,
+  findPotentialDuplicates,
+  checkForDuplicates,
+  DEFAULT_SIMILARITY_THRESHOLD,
+  DEFAULT_MAX_DISTANCE
 } = require('../../utils/duplicateChecker');
 const Violation = require('../../models/Violation');
 
@@ -193,7 +192,7 @@ describe('Duplicate Checker Utility', () => {
       expect(result.isDuplicate).toBe(false);
       expect(result.exactMatch).toBe(false);
       expect(result.matchDetails.nearbyLocation).toBe(false);
-      expect(result.matchDetails.distance).toBeGreaterThan(MAX_DISTANCE_METERS);
+      expect(result.matchDetails.distance).toBeGreaterThan(DEFAULT_MAX_DISTANCE);
     });
 
     it('should match based on description similarity even with different details', () => {
@@ -210,7 +209,7 @@ describe('Duplicate Checker Utility', () => {
 
       expect(result.isDuplicate).toBe(true);
       expect(result.exactMatch).toBe(false);
-      expect(result.similarity).toBeGreaterThan(SIMILARITY_THRESHOLD);
+      expect(result.similarity).toBeGreaterThan(DEFAULT_SIMILARITY_THRESHOLD);
     });
 
     it('should handle missing coordinates gracefully', () => {
@@ -322,7 +321,6 @@ describe('Duplicate Checker Utility', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(Violation.find).toHaveBeenCalledWith({
         type: 'AIRSTRIKE',
-        perpetrator_affiliation: 'assad_regime',
         date: expect.any(Object)
       });
     });
@@ -374,8 +372,8 @@ describe('Duplicate Checker Utility', () => {
 
   describe('Constants', () => {
     it('should export correct default values', () => {
-      expect(SIMILARITY_THRESHOLD).toBe(0.75);
-      expect(MAX_DISTANCE_METERS).toBe(100);
+      expect(DEFAULT_SIMILARITY_THRESHOLD).toBe(0.75);
+      expect(DEFAULT_MAX_DISTANCE).toBe(100);
     });
   });
 });

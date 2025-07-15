@@ -19,6 +19,8 @@ tags:
     description: Operations for user management (admin only)
   - name: Reports
     description: Operations for processing and parsing human rights reports
+  - name: Territory Control
+    description: Operations for managing territory control data
 
 components:
   securitySchemes:
@@ -422,6 +424,134 @@ components:
           type: boolean
         token:
           type: string
+
+    TerritoryControlFeature:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [Feature]
+        geometry:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [Polygon, MultiPolygon]
+            coordinates:
+              type: array
+        properties:
+          type: object
+          properties:
+            controller:
+              type: string
+              enum: 
+                - assad_regime
+                - post_8th_december_government
+                - various_armed_groups
+                - isis
+                - sdf
+                - israel
+                - turkey
+                - druze_militias
+                - russia
+                - iran_shia_militias
+                - international_coalition
+                - unknown
+                - FOREIGN_MILITARY
+                - REBEL_GROUP
+            color:
+              type: string
+              description: 'Optional color field. Accepts hex colors (with or without #, 3 or 6 digits) or CSS color names like red, blue, green, etc.'
+              example: '#FF0000 or red'
+            name:
+              type: object
+              properties:
+                en:
+                  type: string
+                ar:
+                  type: string
+
+    TerritoryControl:
+      type: object
+      properties:
+        _id:
+          type: string
+        type:
+          type: string
+          enum: [FeatureCollection]
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/TerritoryControlFeature'
+        date:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          properties:
+            source:
+              type: string
+            description:
+              type: string
+            version:
+              type: string
+
+    TerritoryControlResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/TerritoryControl'
+
+    TerritoryControlListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TerritoryControl'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: number
+            limit:
+              type: number
+            total:
+              type: number
+            totalPages:
+              type: number
+
+    TerritoryControlStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            totalRecords:
+              type: number
+            dateRange:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date
+                end:
+                  type: string
+                  format: date
+            controllerDistribution:
+              type: object
 
 paths:
   /violations:
@@ -1307,6 +1437,557 @@ paths:
                 $ref: '#/components/schemas/JobListResponse'
         '401':
           description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control:
+    get:
+      tags:
+        - Territory Control
+      summary: Get all territory control records
+      description: Return territory control records with filtering, pagination and sorting options
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: controller
+          in: query
+          schema:
+            type: string
+            enum: [assad_regime, sdf, opposition, ypg, other]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlListResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Territory Control
+      summary: Create new territory control record
+      description: Create a new territory control record with GeoJSON data
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - features
+                - date
+              properties:
+                type:
+                  type: string
+                  enum: [FeatureCollection]
+                features:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TerritoryControlFeature'
+                date:
+                  type: string
+                  format: date
+                metadata:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                    description:
+                      type: string
+                    version:
+                      type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/{id}:
+    get:
+      tags:
+        - Territory Control
+      summary: Get territory control by ID
+      description: Get a specific territory control record by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Territory Control
+      summary: Update territory control record
+      description: Update a territory control record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [FeatureCollection]
+                features:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TerritoryControlFeature'
+                date:
+                  type: string
+                  format: date
+                metadata:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                    description:
+                      type: string
+                    version:
+                      type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Territory Control
+      summary: Delete territory control record
+      description: Delete a territory control record (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/date/{date}:
+    get:
+      tags:
+        - Territory Control
+      summary: Get territory control by date
+      description: Get territory control data for a specific date
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Date in YYYY-MM-DD format
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/closest/{date}:
+    get:
+      tags:
+        - Territory Control
+      summary: Get closest territory control to date
+      description: Get territory control data closest to a specific date
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Date in YYYY-MM-DD format
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/current:
+    get:
+      tags:
+        - Territory Control
+      summary: Get current territory control
+      description: Get the most recent territory control data
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/dates:
+    get:
+      tags:
+        - Territory Control
+      summary: Get available dates
+      description: Get all available dates for territory control data
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: string
+                      format: date
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/stats:
+    get:
+      tags:
+        - Territory Control
+      summary: Get territory control statistics
+      description: Get statistical information about territory control data
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: controller
+          in: query
+          schema:
+            type: string
+            enum: [assad_regime, sdf, opposition, ypg, other]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerritoryControlStatsResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/timeline:
+    get:
+      tags:
+        - Territory Control
+      summary: Get territory control timeline
+      description: Get timeline analysis of territory control changes
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: controller
+          in: query
+          schema:
+            type: string
+            enum: [assad_regime, sdf, opposition, ypg, other]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        changes:
+                          type: array
+                          items:
+                            type: object
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /territory-control/import:
+    post:
+      tags:
+        - Territory Control
+      summary: Import territory control data
+      description: Import territory control data from external source
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [FeatureCollection]
+                      features:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TerritoryControlFeature'
+                      date:
+                        type: string
+                        format: date
+                      metadata:
+                        type: object
+                options:
+                  type: object
+                  properties:
+                    overwrite:
+                      type: boolean
+                      default: false
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      imported:
+                        type: number
+                      skipped:
+                        type: number
+                      errors:
+                        type: array
+                        items:
+                          type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:

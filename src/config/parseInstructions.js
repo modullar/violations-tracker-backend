@@ -47,7 +47,11 @@ IMPORTANT GUIDELINES:
 - Only include actual violations like: Killings/murders, Shootings, Explosions/bombings, Kidnappings, Detentions/arrests, Torture, Landmine explosions causing casualties, Attacks on civilians
 - Skip reports and updates that include like: Administrative announcements, Government service updates, Economic/infrastructure news, General news without human rights violations, Weather reports or general updates
 - skip News/reports about violations (investigations, connections, observations)
-- skip reports that do not mention the number of the victims whether they are kidnapped, killed, injured, displaced, etc.`;
+- skip reports that do not mention the number of the victims whether they are kidnapped, killed, injured, displaced, etc.
+-Business logic validation:
+  - DETENTION violations require detained_count > 0
+  - KIDNAPPING violations require kidnapped_count > 0
+  - DISPLACEMENT violations require displaced_count > 0`;
 
 // User prompt with detailed schema and examples
 const USER_PROMPT = `Please parse the following human rights report and extract all violations mentioned in a structured format. Use the following schema:

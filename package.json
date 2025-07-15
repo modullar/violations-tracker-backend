@@ -24,6 +24,7 @@
     "migrate:up": "migrate-mongo up",
     "migrate:down": "migrate-mongo down",
     "migrate:create": "migrate-mongo create",
+    "import:violations": "node src/scripts/importViolationsToProduction.js",
     "postinstall": "[ \"$NODE_ENV\" != \"production\" ] && husky || echo \"Skipping husky installation in production\""
   },
   "keywords": [
@@ -37,8 +38,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@bull-board/api": "^6.9.6",
-    "@bull-board/express": "^6.9.6",
+    "@bull-board/api": "^6.10.0",
+    "@bull-board/express": "^6.10.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "bull": "^4.16.5",

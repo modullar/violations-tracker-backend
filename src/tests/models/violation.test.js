@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
 const Violation = require('../../models/Violation');
 const { fail } = require('expect');
+const { connectDB, closeDB } = require('../setup');
 
 // Mock external dependencies
 jest.mock('../../config/logger', () => ({
@@ -15,14 +15,11 @@ jest.mock('../../config/db', () => jest.fn().mockImplementation(() => {
 
 describe('Violation Model', () => {
   beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/test_db', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await connectDB();
   });
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await closeDB();
   });
 
   beforeEach(async () => {
