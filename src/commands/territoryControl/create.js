@@ -107,70 +107,6 @@ const convertExternalData = (externalData) => {
 };
 
 /**
- * Validate territory control data structure
- * @param {Object} territoryData - Territory control data to validate
- * @returns {Object} - Validation result
- */
-const validateTerritoryControlData = (territoryData) => {
-  const errors = [];
-  
-  // Check required fields
-  if (!territoryData.type || territoryData.type !== 'FeatureCollection') {
-    errors.push('Type must be "FeatureCollection"');
-  }
-  
-  if (!territoryData.date) {
-    errors.push('Date is required');
-  }
-  
-  if (!territoryData.features || !Array.isArray(territoryData.features)) {
-    errors.push('Features array is required');
-  } else if (territoryData.features.length === 0) {
-    errors.push('At least one feature is required');
-  } else {
-    // Validate each feature
-    territoryData.features.forEach((feature, index) => {
-      if (!feature.type || feature.type !== 'Feature') {
-        errors.push(`Feature ${index + 1}: type must be "Feature"`);
-      }
-      
-      if (!feature.properties) {
-        errors.push(`Feature ${index + 1}: properties are required`);
-      } else {
-        if (!feature.properties.name) {
-          errors.push(`Feature ${index + 1}: name is required`);
-        }
-        if (!feature.properties.controlledBy) {
-          errors.push(`Feature ${index + 1}: controlledBy is required`);
-        }
-        if (!feature.properties.color) {
-          errors.push(`Feature ${index + 1}: color is required`);
-        }
-        if (!feature.properties.controlledSince) {
-          errors.push(`Feature ${index + 1}: controlledSince is required`);
-        }
-      }
-      
-      if (!feature.geometry) {
-        errors.push(`Feature ${index + 1}: geometry is required`);
-      } else {
-        if (!feature.geometry.type || !['Polygon', 'MultiPolygon'].includes(feature.geometry.type)) {
-          errors.push(`Feature ${index + 1}: geometry type must be "Polygon" or "MultiPolygon"`);
-        }
-        if (!feature.geometry.coordinates || !Array.isArray(feature.geometry.coordinates)) {
-          errors.push(`Feature ${index + 1}: geometry coordinates are required`);
-        }
-      }
-    });
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-/**
  * Create multiple territory control records in batch
  * @param {Array} territoryDataArray - Array of territory control data
  * @param {String} userId - User ID creating the records
@@ -232,7 +168,6 @@ const createBatchTerritoryControls = async (territoryDataArray, userId, options 
 module.exports = {
   createTerritoryControl,
   createTerritoryControlFromData,
-  validateTerritoryControlData,
   createBatchTerritoryControls,
   convertExternalData
 }; 

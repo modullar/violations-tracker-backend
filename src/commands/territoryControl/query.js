@@ -169,16 +169,8 @@ const getTerritoryTimeline = async (options = {}) => {
  * @returns {Promise<Array>} - Matching territory controls
  */
 const searchTerritoryControls = async (searchText, options = {}) => {
-  const searchRegex = new RegExp(searchText, 'i');
-  
   const query = {
-    $or: [
-      { 'features.properties.name': searchRegex },
-      { 'metadata.description.en': searchRegex },
-      { 'metadata.description.ar': searchRegex },
-      { 'features.properties.description.en': searchRegex },
-      { 'features.properties.description.ar': searchRegex }
-    ]
+    $text: { $search: searchText }
   };
 
   // Add date filter if provided
@@ -191,7 +183,7 @@ const searchTerritoryControls = async (searchText, options = {}) => {
   const territoryControls = await TerritoryControl.find(query)
     .populate('created_by', 'name')
     .populate('updated_by', 'name')
-    .sort({ date: -1 })
+    .sort({ score: { $meta: 'textScore' }, date: -1 }) // Sort by relevance first, then date
     .limit(options.limit || 50);
 
   return territoryControls;

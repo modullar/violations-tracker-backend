@@ -6,6 +6,9 @@ const dotenv = require('dotenv');
 // Load environment variables from test config
 dotenv.config({ path: '.env.test' });
 
+// Unmock node-geocoder for this specific test file since we want to test real API calls
+jest.unmock('node-geocoder');
+
 // We'll use a VCR-like approach for geocoding tests
 // RECORD=true environment variable can be used to record new fixtures
 
@@ -49,16 +52,28 @@ const loadFixture = (fixturePath) => {
     });
     
     if (Array.isArray(fixtures)) {
-      fixtures.forEach(fixture => {
+      console.log(`Setting up ${fixtures.length} nock interceptors`);
+      fixtures.forEach((fixture, index) => {
+        console.log(`  Interceptor ${index + 1}: ${fixture.method} ${fixture.scope}${fixture.path}`);
+        
+        // Parse the URL to separate path and query parameters
+        const url = new URL(fixture.scope + fixture.path);
+        const basePath = url.pathname;
+        const queryParams = Object.fromEntries(url.searchParams);
+        
         nock(fixture.scope)
           .persist()
-          .intercept(fixture.path, fixture.method, fixture.body)
+          .get(basePath)
+          .query(queryParams)
           .reply(fixture.status, fixture.response, fixture.headers);
       });
+    } else {
+      console.log('Fixture data is not an array, skipping nock setup');
     }
     
     return true;
   }
+  console.log(`Fixture file not found: ${fixturePath}`);
   return false;
 };
 
@@ -217,6 +232,12 @@ describe('Geocoder Tests with Google Maps API', () => {
             console.log(`Skipping test in CI: ${testName} - no fixture and no API key`);
             return; // Skip this test
           }
+          
+          // If no API key is available anywhere, skip this test
+          if (!config.googleApiKey) {
+            console.log(`Skipping test: ${testName} - no fixture and no API key`);
+            return; // Skip this test
+          }
         }
       }
 
@@ -251,7 +272,7 @@ describe('Geocoder Tests with Google Maps API', () => {
         expect(englishResult).toEqual([]);
         console.log('No coordinates found for invalid location as expected');
       }
-    }, 60000); // 60 second timeout for geocoding tests
+    }, 10000); // 10 second timeout for geocoding tests
   });
 
   // Test Aleppo city center specifically
@@ -261,8 +282,22 @@ describe('Geocoder Tests with Google Maps API', () => {
       const testName = 'should get accurate coordinates for Aleppo city center';
       const fixturePath = getFixturePath(`Geocoder_Tests_with_Google_Maps_API_${testName}`);
       
-      if (!loadFixture(fixturePath)) {
+      const fixtureLoaded = loadFixture(fixturePath);
+      
+      if (!fixtureLoaded) {
         console.log(`No fixture found for: ${testName}, will make real API call if key is available`);
+        
+        // If we're in CI and no API key is available, skip this test
+        if (process.env.CI && !config.googleApiKey) {
+          console.log(`Skipping test in CI: ${testName} - no fixture and no API key`);
+          return; // Skip this test
+        }
+        
+        // If no API key is available anywhere, skip this test
+        if (!config.googleApiKey) {
+          console.log(`Skipping test: ${testName} - no fixture and no API key`);
+          return; // Skip this test
+        }
       }
     }
     
