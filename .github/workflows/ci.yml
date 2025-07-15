@@ -44,10 +44,12 @@ jobs:
         run: npm run test:coverage
         env:
           NODE_ENV: test
+          CI: true
           MONGO_URI: mongodb://localhost:27017/violations-tracker-test
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_key' }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # Optional for geocoding tests
+          # Set GOOGLE_API_KEY - will be empty if secret is not set
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY || '' }}
 
   build:
     name: Build

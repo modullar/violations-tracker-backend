@@ -18,7 +18,11 @@ const fixtureSanitizer = require('./fixtureSanitizer');
 // Make sure we have a Google API key for the tests
 console.log('GOOGLE_API_KEY available:', !!config.googleApiKey);
 if (!config.googleApiKey) {
-  console.warn('WARNING: GOOGLE_API_KEY is not set. Tests may fail. Please set it in your .env.test file or CI environment.');
+  if (process.env.CI) {
+    console.log('INFO: GOOGLE_API_KEY is not set in CI. Tests will use existing fixtures.');
+  } else {
+    console.warn('WARNING: GOOGLE_API_KEY is not set. Tests may fail. Please set it in your .env.test file or CI environment.');
+  }
 }
 
 // Import our geocoder utility
@@ -126,7 +130,11 @@ describe('Geocoder Tests with Google Maps API', () => {
   beforeEach(() => {
     // Check if Google API key is available for real API calls
     if (!config.googleApiKey) {
-      console.warn('GOOGLE_API_KEY is not set. Tests will only work with existing fixtures.');
+      if (process.env.CI) {
+        console.log('INFO: GOOGLE_API_KEY is not set in CI. Tests will use existing fixtures.');
+      } else {
+        console.warn('GOOGLE_API_KEY is not set. Tests will only work with existing fixtures.');
+      }
     } else {
       console.log(`Using Google API key: ${config.googleApiKey.substring(0, 5)}...`);
     }
