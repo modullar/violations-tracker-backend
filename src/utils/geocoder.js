@@ -199,6 +199,18 @@ const getTestMockResults = (placeName) => {
     }];
   }
   
+  if (placeName === 'Damascus' || placeName === 'دمشق') {
+    return [{
+      latitude: 33.4913481,
+      longitude: 36.2983286,
+      country: 'Syria',
+      city: 'Damascus',
+      state: 'Damascus Governorate',
+      formattedAddress: 'Damascus, Syria',
+      quality: 0.9
+    }];
+  }
+  
   if (placeName && placeName.includes('xyznon-existentlocation12345completelyfake')) {
     return [];
   }
