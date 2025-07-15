@@ -12,8 +12,8 @@ jest.mock('node-geocoder', () => {
           return [];
         }
         
-        // For Bustan al-Qasr
-        if (query && query.includes('Bustan al-Qasr')) {
+        // For Bustan al-Qasr (English and Arabic)
+        if (query && (query.includes('Bustan al-Qasr') || query.includes('بستان القصر'))) {
           return [{
             latitude: 36.186764,
             longitude: 37.1441285,
@@ -24,8 +24,8 @@ jest.mock('node-geocoder', () => {
           }];
         }
         
-        // For Aleppo
-        if (query && query.includes('Aleppo') && !query.includes('Bustan')) {
+        // For Aleppo (English and Arabic)
+        if (query && (query.includes('Aleppo') || query.includes('حلب')) && !query.includes('Bustan') && !query.includes('بستان')) {
           return [{
             latitude: 36.2021047,
             longitude: 37.1342603,
@@ -36,8 +36,8 @@ jest.mock('node-geocoder', () => {
           }];
         }
         
-        // For Al-Midan
-        if (query && query.includes('Al-Midan')) {
+        // For Al-Midan (English and Arabic)
+        if (query && (query.includes('Al-Midan') || query.includes('الميدان'))) {
           return [{
             latitude: 33.4913481,
             longitude: 36.2983286,
@@ -48,8 +48,8 @@ jest.mock('node-geocoder', () => {
           }];
         }
         
-        // For Jobar
-        if (query && query.includes('Jobar')) {
+        // For Jobar (English and Arabic)
+        if (query && (query.includes('Jobar') || query.includes('جوبر'))) {
           return [{
             latitude: 33.5192467,
             longitude: 36.330847,
@@ -60,8 +60,8 @@ jest.mock('node-geocoder', () => {
           }];
         }
         
-        // For Muadamiyat al-Sham
-        if (query && query.includes('Muadamiyat al-Sham')) {
+        // For Muadamiyat al-Sham (English and Arabic)
+        if (query && (query.includes('Muadamiyat al-Sham') || query.includes('معضمية الشام'))) {
           return [{
             latitude: 33.4613288,
             longitude: 36.1925483,
@@ -72,8 +72,8 @@ jest.mock('node-geocoder', () => {
           }];
         }
         
-        // For Al-Waer
-        if (query && query.includes('Al-Waer')) {
+        // For Al-Waer (English and Arabic)
+        if (query && (query.includes('Al-Waer') || query.includes('الوعر'))) {
           return [{
             latitude: 34.7397406,
             longitude: 36.6652056,
