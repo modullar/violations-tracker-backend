@@ -138,7 +138,9 @@ const TerritoryControlSchema = new mongoose.Schema({
     required: [true, 'Territory control date is required'],
     validate: {
       validator: function(value) {
-        return value <= new Date();
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set to end of current day
+        return value <= today;
       },
       message: 'Territory control date cannot be in the future'
     }
@@ -193,6 +195,25 @@ TerritoryControlSchema.index({ 'features.properties.controlledBy': 1, date: -1 }
 TerritoryControlSchema.index({ 'features.properties.controlledSince': -1 }); // Query by control establishment date
 TerritoryControlSchema.index({ 'features.geometry': '2dsphere' }); // Geospatial queries
 TerritoryControlSchema.index({ createdAt: -1 }); // Sort by creation time
+
+// Text index for efficient searching
+TerritoryControlSchema.index(
+  {
+    'features.properties.name': 'text',
+    'metadata.description.en': 'text',
+    'metadata.description.ar': 'text',
+    'features.properties.description.en': 'text',
+    'features.properties.description.ar': 'text'
+  },
+  {
+    weights: {
+      'features.properties.name': 10,
+      'metadata.description.en': 5,
+      'metadata.description.ar': 5
+    },
+    name: 'TerritoryControlTextIndex'
+  }
+);
 
 // Add pagination plugin
 TerritoryControlSchema.plugin(mongoosePaginate);

@@ -54,7 +54,7 @@ const updateTerritoryControl = async (territoryControlId, updateData, userId, op
   delete sanitizedData.__v;
 
   try {
-        // Update the territory control
+    // Update the territory control
     const updatedTerritoryControl = await TerritoryControl.findByIdAndUpdate(
       territoryControlId,
       sanitizedData,
@@ -93,30 +93,33 @@ const updateTerritoryControl = async (territoryControlId, updateData, userId, op
  * @returns {Promise<Object>} - Updated territory control
  */
 const updateTerritoryControlFeatures = async (territoryControlId, featureUpdates, userId) => {
-  const territoryControl = await TerritoryControl.findById(territoryControlId);
+  // Build atomic update operations
+  const updateOperations = {
+    $set: {
+      updated_by: userId,
+      updatedAt: new Date()
+    }
+  };
 
-  if (!territoryControl) {
-    throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
-  }
-
-  // Apply feature updates
+  // Apply feature updates atomically
   featureUpdates.forEach(update => {
     const { index, data } = update;
     
-    if (index >= 0 && index < territoryControl.features.length) {
-      // Update specific feature
-      territoryControl.features[index] = {
-        ...territoryControl.features[index].toObject(),
-        ...data
-      };
-    }
+    // Create set operations for each field in the feature data
+    Object.keys(data).forEach(key => {
+      updateOperations.$set[`features.${index}.${key}`] = data[key];
+    });
   });
 
-  // Update the updated_by field
-  territoryControl.updated_by = userId;
-
   try {
-    const updatedTerritoryControl = await territoryControl.save();
+    const result = await TerritoryControl.updateOne(
+      { _id: territoryControlId },
+      updateOperations
+    );
+
+    if (result.matchedCount === 0) {
+      throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
+    }
 
     logger.info('Territory control features updated successfully', {
       territoryControlId,
@@ -124,7 +127,8 @@ const updateTerritoryControlFeatures = async (territoryControlId, featureUpdates
       updatedBy: userId
     });
 
-    return updatedTerritoryControl;
+    // Return the updated document
+    return await TerritoryControl.findById(territoryControlId);
   } catch (error) {
     logger.error('Failed to update territory control features', {
       error: error.message,
@@ -144,31 +148,37 @@ const updateTerritoryControlFeatures = async (territoryControlId, featureUpdates
  * @returns {Promise<Object>} - Updated territory control
  */
 const updateTerritoryControlMetadata = async (territoryControlId, metadataUpdate, userId) => {
-  const territoryControl = await TerritoryControl.findById(territoryControlId);
-
-  if (!territoryControl) {
-    throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
-  }
-
-  // Update metadata
-  territoryControl.metadata = {
-    ...territoryControl.metadata.toObject(),
-    ...metadataUpdate,
-    lastVerified: new Date() // Always update last verified when metadata changes
+  // Build atomic update operations
+  const updateOperations = {
+    $set: {
+      updated_by: userId,
+      updatedAt: new Date(),
+      'metadata.lastVerified': new Date() // Always update last verified when metadata changes
+    }
   };
 
-  // Update the updated_by field
-  territoryControl.updated_by = userId;
+  // Apply metadata updates atomically
+  Object.keys(metadataUpdate).forEach(key => {
+    updateOperations.$set[`metadata.${key}`] = metadataUpdate[key];
+  });
 
   try {
-    const updatedTerritoryControl = await territoryControl.save();
+    const result = await TerritoryControl.updateOne(
+      { _id: territoryControlId },
+      updateOperations
+    );
+
+    if (result.matchedCount === 0) {
+      throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
+    }
 
     logger.info('Territory control metadata updated successfully', {
       territoryControlId,
       updatedBy: userId
     });
 
-    return updatedTerritoryControl;
+    // Return the updated document
+    return await TerritoryControl.findById(territoryControlId);
   } catch (error) {
     logger.error('Failed to update territory control metadata', {
       error: error.message,
@@ -188,12 +198,6 @@ const updateTerritoryControlMetadata = async (territoryControlId, metadataUpdate
  * @returns {Promise<Object>} - Updated territory control
  */
 const addFeatureToTerritoryControl = async (territoryControlId, newFeature, userId) => {
-  const territoryControl = await TerritoryControl.findById(territoryControlId);
-
-  if (!territoryControl) {
-    throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
-  }
-
   // Validate the new feature
   if (!newFeature.properties || !newFeature.properties.name) {
     throw new ErrorResponse('Feature must have properties with a name', 400);
@@ -203,6 +207,12 @@ const addFeatureToTerritoryControl = async (territoryControlId, newFeature, user
     throw new ErrorResponse('Feature must have valid geometry', 400);
   }
 
+  // First, get the current territory control to access its date for defaults
+  const currentTerritoryControl = await TerritoryControl.findById(territoryControlId);
+  if (!currentTerritoryControl) {
+    throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
+  }
+
   // Set defaults for the new feature
   const feature = {
     type: 'Feature',
@@ -210,27 +220,33 @@ const addFeatureToTerritoryControl = async (territoryControlId, newFeature, user
       name: newFeature.properties.name,
       controlledBy: newFeature.properties.controlledBy || 'unknown',
       color: newFeature.properties.color || '#808080',
-      controlledSince: newFeature.properties.controlledSince || territoryControl.date,
+      controlledSince: newFeature.properties.controlledSince || currentTerritoryControl.date,
       description: newFeature.properties.description || { en: '', ar: '' }
     },
     geometry: newFeature.geometry
   };
 
-  // Add the new feature
-  territoryControl.features.push(feature);
-  territoryControl.updated_by = userId;
-
   try {
-    const updatedTerritoryControl = await territoryControl.save();
+    const result = await TerritoryControl.updateOne(
+      { _id: territoryControlId },
+      {
+        $push: { features: feature },
+        $set: { updated_by: userId, updatedAt: new Date() }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
+    }
 
     logger.info('Feature added to territory control successfully', {
       territoryControlId,
       featureName: feature.properties.name,
-      totalFeatures: updatedTerritoryControl.features.length,
       updatedBy: userId
     });
 
-    return updatedTerritoryControl;
+    // Return the updated document
+    return await TerritoryControl.findById(territoryControlId);
   } catch (error) {
     logger.error('Failed to add feature to territory control', {
       error: error.message,
@@ -250,6 +266,7 @@ const addFeatureToTerritoryControl = async (territoryControlId, newFeature, user
  * @returns {Promise<Object>} - Updated territory control
  */
 const removeFeatureFromTerritoryControl = async (territoryControlId, featureIndex, userId) => {
+  // First, get the current territory control to validate the operation
   const territoryControl = await TerritoryControl.findById(territoryControlId);
 
   if (!territoryControl) {
@@ -264,22 +281,38 @@ const removeFeatureFromTerritoryControl = async (territoryControlId, featureInde
     throw new ErrorResponse('Cannot remove the last feature. Territory control must have at least one feature.', 400);
   }
 
-  // Remove the feature
-  const removedFeature = territoryControl.features[featureIndex];
-  territoryControl.features.splice(featureIndex, 1);
-  territoryControl.updated_by = userId;
+  // Get the feature name for logging before removal
+  const removedFeatureName = territoryControl.features[featureIndex].properties.name;
 
   try {
-    const updatedTerritoryControl = await territoryControl.save();
+    const result = await TerritoryControl.updateOne(
+      { _id: territoryControlId },
+      {
+        $unset: { [`features.${featureIndex}`]: 1 },
+        $set: { updated_by: userId, updatedAt: new Date() }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      throw new ErrorResponse(`Territory control not found with id of ${territoryControlId}`, 404);
+    }
+
+    // Clean up the sparse array created by $unset
+    await TerritoryControl.updateOne(
+      { _id: territoryControlId },
+      {
+        $pull: { features: null }
+      }
+    );
 
     logger.info('Feature removed from territory control successfully', {
       territoryControlId,
-      removedFeatureName: removedFeature.properties.name,
-      remainingFeatures: updatedTerritoryControl.features.length,
+      removedFeatureName,
       updatedBy: userId
     });
 
-    return updatedTerritoryControl;
+    // Return the updated document
+    return await TerritoryControl.findById(territoryControlId);
   } catch (error) {
     logger.error('Failed to remove feature from territory control', {
       error: error.message,

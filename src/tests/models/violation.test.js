@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Violation = require('../../models/Violation');
 const { fail } = require('expect');
 const { connectDB, closeDB } = require('../setup');

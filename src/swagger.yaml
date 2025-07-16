@@ -444,7 +444,21 @@ components:
           properties:
             controller:
               type: string
-              enum: [assad_regime, sdf, opposition, ypg, other]
+              enum: 
+                - assad_regime
+                - post_8th_december_government
+                - various_armed_groups
+                - isis
+                - sdf
+                - israel
+                - turkey
+                - druze_militias
+                - russia
+                - iran_shia_militias
+                - international_coalition
+                - unknown
+                - FOREIGN_MILITARY
+                - REBEL_GROUP
             color:
               type: string
               description: 'Optional color field. Accepts hex colors (with or without #, 3 or 6 digits) or CSS color names like red, blue, green, etc.'

@@ -293,6 +293,44 @@ describe('TerritoryControl Model', () => {
       
       await expect(territoryControl.save()).rejects.toThrow();
     });
+
+    it('should allow same-day dates', async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set to start of today
+
+      const territoryControlData = {
+        type: 'FeatureCollection',
+        date: today,
+        features: [
+          {
+            type: 'Feature',
+            properties: {
+              name: 'Test Territory Today',
+              controlledBy: 'sdf',
+              color: '#ffff00',
+              controlledSince: '2020-01-01'
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [35.0, 36.0],
+                  [36.0, 36.0],
+                  [36.0, 37.0],
+                  [35.0, 37.0],
+                  [35.0, 36.0]
+                ]
+              ]
+            }
+          }
+        ]
+      };
+
+      const territoryControl = new TerritoryControl(territoryControlData);
+      
+      // This should not throw an error
+      await expect(territoryControl.save()).resolves.toBeDefined();
+    });
   });
 
   describe('Static Methods', () => {
