@@ -455,6 +455,15 @@ IMPORTANT:
 
 CRITICAL: Return ONLY the raw JSON array. Do not use markdown code blocks, do not add explanations, do not add any text before or after the JSON array.
 
+EXCLUSION RULES - DO NOT EXTRACT:
+- Official statements, condemnations, or announcements by governments, ministries, or officials
+- Diplomatic statements or foreign ministry announcements
+- News about meetings, conferences, or diplomatic visits
+- General news without specific violations or victim counts
+- Economic, sports, entertainment, or weather reports
+- Administrative announcements or policy statements
+- Statements that only condemn or express concern about violations (without describing actual violations)
+
 Extract only violations with victim counts. Skip general news. Return raw JSON array:`;
 
 module.exports = {
