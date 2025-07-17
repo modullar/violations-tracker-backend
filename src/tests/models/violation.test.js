@@ -1,6 +1,7 @@
 const Violation = require('../../models/Violation');
 const { fail } = require('expect');
 const { connectDB, closeDB } = require('../setup');
+const mongoose = require('mongoose');
 
 // Mock external dependencies
 jest.mock('../../config/logger', () => ({
@@ -1103,7 +1104,7 @@ describe('Source URL Validation', () => {
     };
 
     const violation = new Violation(violationData);
-        await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
+    await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
   });
 });
 
@@ -1210,7 +1211,7 @@ describe('Report Linking', () => {
 
   it('should handle null report_id gracefully', async () => {
     await violation.linkToReport(null);
-        expect(violation.report_id).toBeNull();
+    expect(violation.report_id).toBeNull();
   });
 });
 
