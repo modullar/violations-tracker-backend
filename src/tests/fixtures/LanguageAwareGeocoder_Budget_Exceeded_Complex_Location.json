@@ -1,0 +1,72 @@
+{
+  "request": {
+    "query": "Presidential Palace, Damascus, Syria",
+    "language": "en",
+    "complexity": "complex",
+    "apiUsed": "geocoding_api",
+    "budgetExceeded": true
+  },
+  "budgetStatus": {
+    "used": 1000,
+    "limit": 1000,
+    "remaining": 0
+  },
+  "geocodingApiResponse": {
+    "status": "OK",
+    "results": [
+      {
+        "address_components": [
+          {
+            "long_name": "Presidential Palace",
+            "short_name": "Presidential Palace",
+            "types": ["establishment", "point_of_interest"]
+          },
+          {
+            "long_name": "Damascus",
+            "short_name": "Damascus",
+            "types": ["locality", "political"]
+          },
+          {
+            "long_name": "Damascus Governorate",
+            "short_name": "Damascus Governorate",
+            "types": ["administrative_area_level_1", "political"]
+          },
+          {
+            "long_name": "Syria",
+            "short_name": "SY",
+            "types": ["country", "political"]
+          }
+        ],
+        "formatted_address": "Presidential Palace, Damascus, Syria",
+        "geometry": {
+          "location": {
+            "lat": 33.5138,
+            "lng": 36.2765
+          },
+          "location_type": "APPROXIMATE"
+        },
+        "place_id": "ChIJmVOEXzW-VhQRvHqLcaEgTDo",
+        "types": ["establishment", "point_of_interest"]
+      }
+    ]
+  },
+  "expectedResult": {
+    "latitude": 33.5138,
+    "longitude": 36.2765,
+    "country": "Syria",
+    "city": "Damascus",
+    "state": "Damascus Governorate",
+    "formattedAddress": "Presidential Palace, Damascus, Syria",
+    "quality": 0.8,
+    "fromPlacesAPI": false,
+    "apiCallsUsed": 1,
+    "complexity": "complex",
+    "detectedLanguage": "en",
+    "budgetStatus": {
+      "used": 1000,
+      "limit": 1000,
+      "remaining": 0
+    },
+    "fallbackReason": "Budget exceeded"
+  }
+}
