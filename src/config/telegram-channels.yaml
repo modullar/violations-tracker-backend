@@ -9,11 +9,17 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
+    assigned_regions:
+      - "دمشق"
+      - "ريف دمشق"
+      - "درعا"
+      - "السويداء"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
       min_text_length: 30
       exclude_patterns: []
+      enforce_region_filter: true
 
   - name: "Naher Media"
     url: "https://t.me/nahermedia"
@@ -21,11 +27,17 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
+    assigned_regions:
+      - "حلب"
+      - "إدلب"
+      - "حمص"
+      - "حماة"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
       min_text_length: 30
       exclude_patterns: []
+      enforce_region_filter: true
 
   - name: "Halab Today"
     url: "https://t.me/HalabTodayTV"
@@ -33,10 +45,16 @@ channels:
     active: true
     priority: "low"
     language: "ar"
+    assigned_regions:
+      - "حلب"
+      - "إدلب"
+      - "ريف إدلب"
+      - "ريف حلب"
     filtering:
       min_keyword_matches: 1
       require_context_keywords: true
       min_text_length: 40
+      enforce_region_filter: true
 
   - name: "صوت العاصمة"
     url: "https://t.me/damascusv011"
@@ -44,9 +62,13 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    assigned_regions:
+      - "دمشق"
+      - "ريف دمشق"
     filtering:
       min_keyword_matches: 1
       require_context_keywords: true
+      enforce_region_filter: true
 
   - name: "سوريا لحظة بلحظة"
     url: "https://t.me/Almohrar"
@@ -54,9 +76,16 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
+    assigned_regions:
+      - "حلب"
+      - "دمشق"
+      - "حمص"
+      - "درعا"
+      - "ريف دمشق"
     filtering:
       min_keyword_matches: 1
       require_context_keywords: true
+      enforce_region_filter: false
 
   - name: "SNN"
     url: "https://t.me/ShaamNetwork"
@@ -64,23 +93,19 @@ channels:
     active: true
     priority: "high"
     language: "ar"
+    assigned_regions:
+      - "دمشق"
+      - "ريف دمشق"
+      - "درعا"
+      - "السويداء"
+      - "القنيطرة"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
       min_text_length: 30
       exclude_patterns: []
+      enforce_region_filter: true
 
-  - name: "Reporters_sy"
-    url: "https://t.me/Reporters_sy"
-    description: "Reporters_sy"
-    active: true
-    priority: "medium"
-    language: "ar"
-    filtering:
-      min_keyword_matches: 2
-      require_context_keywords: true
-      min_text_length: 30
-      exclude_patterns: []
 
   - name: "sham_plus3"
     url: "https://t.me/sham_plus3"
@@ -149,6 +174,13 @@ filtering:
     max_emoji_ratio: 0.1  # Maximum 10% emojis
     max_punctuation_ratio: 0.2  # Maximum 20% punctuation
     max_number_ratio: 0.3  # Maximum 30% numbers
+    enforce_region_filter: false  # Default: can be overridden per channel
+    
+  # Regional filtering settings
+  regional:
+    strict_mode: false  # If true, only exact region matches
+    flexible_mode: true  # If true, check aliases and variations
+    log_filtered_reports: true  # Log region-filtered reports
     
   # Common exclude patterns for non-violation content
   exclude_patterns:

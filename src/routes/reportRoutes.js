@@ -12,7 +12,8 @@ const {
   triggerManualScraping,
   startTelegramScraping,
   stopTelegramScraping,
-  getScrapingJobStatus
+  getScrapingJobStatus,
+  getRegionalFilteringStats
 } = require('../controllers/reportController');
 const { protect, authorize } = require('../middleware/auth');
 const { validateRequest, idParamRules } = require('../middleware/validators');
@@ -36,6 +37,9 @@ router.post('/scraping/trigger', protect, authorize('admin'), triggerManualScrap
 router.post('/scraping/start', protect, authorize('admin'), startTelegramScraping);
 router.post('/scraping/stop', protect, authorize('admin'), stopTelegramScraping);
 router.get('/scraping/status', protect, authorize('admin'), getScrapingJobStatus);
+
+// Regional filtering statistics (Admin only)
+router.get('/regional-stats', protect, authorize('admin'), getRegionalFilteringStats);
 
 // PARAMETERIZED ROUTES LAST - these catch-all routes must be at the end
 router.get('/:id', idParamRules, validateRequest, getReport);

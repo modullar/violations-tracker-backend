@@ -137,6 +137,7 @@ class TelegramScraper {
       newReports: 0,
       duplicates: 0,
       filtered: 0, // New metric
+      regionFiltered: 0, // Regional filtering metric
       processed: 0,
       errors: []
     };
@@ -182,6 +183,12 @@ class TelegramScraper {
           
           if (!filteringResult.shouldImport) {
             result.filtered++;
+            
+            // Track region-based filtering specifically
+            if (filteringResult.filterType === 'region') {
+              result.regionFiltered++;
+            }
+            
             logger.debug(`Message filtered out: ${messageData.metadata.messageId} - ${filteringResult.reason}`);
             continue;
           }
@@ -310,6 +317,18 @@ class TelegramScraper {
     const channelFiltering = channel.filtering || this.filteringConfig.global;
     const globalFiltering = this.filteringConfig.global;
     
+    // Regional filtering - check FIRST before other expensive operations
+    if (channel.assigned_regions && channelFiltering.enforce_region_filter) {
+      const regionResult = this.checkRegionMatch(text, channel.assigned_regions);
+      if (!regionResult.hasMatch) {
+        return { 
+          shouldImport: false, 
+          reason: `No assigned region found. Channel covers: ${channel.assigned_regions.join(', ')}`,
+          filterType: 'region'
+        };
+      }
+    }
+    
     // Use channel-specific settings if available, otherwise use global
     const minKeywordMatches = channelFiltering.min_keyword_matches || globalFiltering.min_keyword_matches;
     const requireContextKeywords = channelFiltering.require_context_keywords !== undefined ? 
@@ -349,6 +368,64 @@ class TelegramScraper {
       shouldImport: true,
       matchedKeywords: keywordResult.matchedKeywords,
       reason: 'Passed all filters'
+    };
+  }
+
+  /**
+   * Check if text mentions any of the assigned regions
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Object} - Match result with details
+   */
+  checkRegionMatch(text, assignedRegions) {
+    const lowerText = text.toLowerCase();
+    const matchedRegions = [];
+
+    // Check for direct region mentions
+    for (const region of assignedRegions) {
+      if (lowerText.includes(region.toLowerCase())) {
+        matchedRegions.push(region);
+      }
+    }
+
+    // Check for region variations/aliases
+    const regionAliases = this.getRegionAliases();
+    for (const region of assignedRegions) {
+      const aliases = regionAliases[region] || [];
+      for (const alias of aliases) {
+        if (lowerText.includes(alias.toLowerCase())) {
+          matchedRegions.push(region);
+          break;
+        }
+      }
+    }
+
+    return {
+      hasMatch: matchedRegions.length > 0,
+      matchedRegions: [...new Set(matchedRegions)], // Remove duplicates
+      assignedRegions: assignedRegions
+    };
+  }
+
+  /**
+   * Get regional aliases and alternative names
+   */
+  getRegionAliases() {
+    return {
+      'دمشق': ['العاصمة', 'دمشق الشام', 'الشام', 'damascus'],
+      'حلب': ['حلب الشهباء', 'aleppo', 'alep'],
+      'حمص': ['حمص الأبية', 'homs'],
+      'حماة': ['حماة الأسود', 'hama', 'hamah'],
+      'درعا': ['درعا البلد', 'daraa', 'deraa'],
+      'دير الزور': ['دير الزور الفيحاء', 'deir ez-zor', 'deir ezzor'],
+      'السويداء': ['السويداء الكرامة', 'as-suwayda', 'sweida'],
+      'القنيطرة': ['quneitra', 'qunaytirah'],
+      'طرطوس': ['tartus', 'tartous'],
+      'اللاذقية': ['latakia', 'lattakia'],
+      'الرقة': ['raqqa', 'ar-raqqah'],
+      'إدلب': ['idlib', 'idleb'],
+      'الحسكة': ['al-hasakah', 'hasaka'],
+      'ريف دمشق': ['ريف الشام', 'rif dimashq', 'damascus countryside', 'غوطة']
     };
   }
 

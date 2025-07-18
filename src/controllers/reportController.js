@@ -482,3 +482,123 @@ exports.getScrapingJobStatus = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Error getting scraping job status', 500));
   }
 });
+
+/**
+ * @desc    Get regional filtering statistics
+ * @route   GET /api/reports/regional-stats
+ * @access  Private (Admin)
+ */
+exports.getRegionalFilteringStats = asyncHandler(async (req, res, next) => {
+  const hoursBack = Math.max(1, parseInt(req.query.hours, 10) || 24);
+  const startDate = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+
+  try {
+    // Get channel-based filtering stats
+    const channelStats = await Report.aggregate([
+      {
+        $match: {
+          'metadata.scrapedAt': { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$metadata.channel',
+          totalReports: { $sum: 1 },
+          regionFiltered: {
+            $sum: {
+              $cond: [
+                { $regexMatch: { input: '$error', regex: /No assigned region found/i } },
+                1,
+                0
+              ]
+            }
+          },
+          processed: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'processed'] }, 1, 0]
+            }
+          },
+          failed: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'failed'] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          regionFilterRate: {
+            $multiply: [
+              { $divide: ['$regionFiltered', '$totalReports'] },
+              100
+            ]
+          }
+        }
+      },
+      {
+        $sort: { totalReports: -1 }
+      }
+    ]);
+
+    // Get overall stats
+    const overallStats = await Report.aggregate([
+      {
+        $match: {
+          'metadata.scrapedAt': { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalReports: { $sum: 1 },
+          regionFiltered: {
+            $sum: {
+              $cond: [
+                { $regexMatch: { input: '$error', regex: /No assigned region found/i } },
+                1,
+                0
+              ]
+            }
+          },
+          processed: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'processed'] }, 1, 0]
+            }
+          },
+          sentToClaudeAPI: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['processed', 'failed']] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    const overall = overallStats[0] || {
+      totalReports: 0,
+      regionFiltered: 0,
+      processed: 0,
+      sentToClaudeAPI: 0
+    };
+
+    const costSavings = overall.totalReports > 0 ? 
+      ((overall.regionFiltered / overall.totalReports) * 100).toFixed(2) : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          totalReports: overall.totalReports,
+          regionFiltered: overall.regionFiltered,
+          processed: overall.processed,
+          sentToClaudeAPI: overall.sentToClaudeAPI,
+          costSavingsPercent: costSavings,
+          timeRange: `${hoursBack} hours`
+        },
+        channelBreakdown: channelStats
+      }
+    });
+  } catch (error) {
+    return next(new ErrorResponse('Error fetching regional filtering statistics', 500));
+  }
+});

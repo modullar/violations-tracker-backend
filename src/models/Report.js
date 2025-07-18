@@ -326,6 +326,34 @@ ReportSchema.methods.extractKeywords = function(keywordsList) {
   return matchedKeywords;
 };
 
+// Static method to get regional filtering statistics
+ReportSchema.statics.getRegionalFilteringStats = function(hoursBack = 24) {
+  const startDate = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  
+  return this.aggregate([
+    {
+      $match: {
+        'metadata.scrapedAt': { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: '$metadata.channel',
+        totalReports: { $sum: 1 },
+        regionFiltered: {
+          $sum: {
+            $cond: [
+              { $regexMatch: { input: '$error', regex: /No assigned region found/i } },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    }
+  ]);
+};
+
 const Report = mongoose.model('Report', ReportSchema);
 
 // Export the model and helper functions for testing
