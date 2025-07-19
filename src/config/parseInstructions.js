@@ -319,7 +319,7 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 - Al-Kafn al-Abyad (White Shroud) militia
 - Sheikh al-Aql Druze leadership militias
 - Druze Community Defense Forces
-- AlHijri militia / AlHijri militia (ميليشيا الهجري)
+- AlHijri militia / AlHijri/ Al-Hijri militia (ميليشيا الهجري)
 - Hekmat AlHijri militia / Hekmat AlHujri militia
 - Any forces explicitly identified as Druze community defense organizations
 - Any forces identified as Druze fighters or militias, gangs
