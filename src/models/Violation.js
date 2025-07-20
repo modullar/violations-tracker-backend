@@ -282,7 +282,7 @@ const ViolationSchema = new mongoose.Schema({
   },
   perpetrator_affiliation: {
     type: String,
-    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'international_coalition', 'unknown'],
+    enum: ['assad_regime', 'post_8th_december_government', 'various_armed_groups', 'isis', 'sdf', 'israel', 'turkey', 'druze_militias', 'russia', 'iran_shia_militias', 'international_coalition', 'bedouins', 'unknown'],
     required: [true, 'Perpetrator affiliation is required'],
     default: 'unknown'
   },

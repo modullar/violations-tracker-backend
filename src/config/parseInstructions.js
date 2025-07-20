@@ -47,7 +47,7 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
     administrative_division: {en: "English admin division (REQUIRED)", ar: "Arabic admin division (REQUIRED)"}
   }
 - description: {en: "English description (REQUIRED, 10-2000 chars)", ar: "Arabic description (REQUIRED, 10-2000 chars)"}
-- perpetrator_affiliation: assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, international_coalition, unknown
+- perpetrator_affiliation: assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, international_coalition, bedouins, unknown
 - certainty_level: confirmed, probable, possible
 - verified: false (default)
 - casualties: number (deaths, default 0)
@@ -348,6 +348,12 @@ A report must describe an ACTUAL human rights violation or armed conflict incide
 - U.S.-backed elements of SDF (when explicitly identified as such)
 - Maghawir al-Thawra / Revolutionary Commando Army (when identified as U.S.-backed)
 - Any forces explicitly identified as "U.S.-backed" or operating under U.S. direction
+
+### Bedouin Tribes ("bedouins")
+- Bedouin tribes
+- Bedouin tribesmen
+- Bedouin tribespeople
+- Bedouin tribespeople
 
 ## IMPORTANT CLASSIFICATION RULES
 
