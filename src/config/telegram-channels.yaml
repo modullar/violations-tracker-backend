@@ -86,26 +86,6 @@ channels:
       min_keyword_matches: 1
       require_context_keywords: true
       enforce_region_filter: false
-
-  - name: "SNN"
-    url: "https://t.me/ShaamNetwork"
-    description: "SNN"
-    active: true
-    priority: "high"
-    language: "ar"
-    assigned_regions:
-      - "دمشق"
-      - "ريف دمشق"
-      - "درعا"
-      - "السويداء"
-      - "القنيطرة"
-    filtering:
-      min_keyword_matches: 2
-      require_context_keywords: true
-      min_text_length: 30
-      exclude_patterns: []
-      enforce_region_filter: true
-
       
   - name: "alkhabour"
     url: "https://t.me/alkhabour"
@@ -113,6 +93,11 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
+    assigned_regions:
+      - "دير الزور"
+      - "الرقة"
+      - "الحسكة"
+      - "القامشلي"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
@@ -125,6 +110,7 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
+    
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
