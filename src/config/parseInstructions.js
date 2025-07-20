@@ -98,8 +98,30 @@ const USER_PROMPT = `Please parse the following human rights report and extract 
       }
     ]
   }
+<<<<<<< HEAD
 ]
 \`\`\`
+=======
+- description: {en: "English description (REQUIRED, 10-2000 chars)", ar: "Arabic description (REQUIRED, 10-2000 chars)"}
+- perpetrator_affiliation: assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, international_coalition, bedouins, unknown
+- certainty_level: confirmed, probable, possible
+- verified: false (default)
+- casualties: number (deaths, default 0)
+- injured_count: number (default 0)
+- kidnapped_count: number (default 0)
+- detained_count: number (default 0)
+- displaced_count: number (default 0)
+
+# OPTIONAL FIELDS:
+- reported_date: YYYY-MM-DD format (optional)
+- source: {en: "English source", ar: "Arabic source"} (optional, max 1500 chars)
+- source_url: {en: "English URL", ar: "Arabic URL"} (optional, max 1000 chars)
+- perpetrator: {en: "English perpetrator", ar: "Arabic perpetrator"} (optional, max 200 chars)
+- verification_method: {en: "English method", ar: "Arabic method"} (optional, max 500 chars)
+- victims: array of victim objects (optional)
+- media_links: array of URLs (optional)
+- tags: array of {en: "English tag", ar: "Arabic tag"} (optional, max 50 chars each)
+>>>>>>> 864bb26 (add bedouins as a separate perpetrator affiliation)
 
 # PARSING GUIDELINES
 
@@ -300,6 +322,12 @@ For found Mass graves, use "assad_regime" as the perpetrator_affiliation, unless
 - U.S.-backed elements of SDF (when explicitly identified as such)
 - Maghawir al-Thawra / Revolutionary Commando Army (when identified as U.S.-backed)
 - Any forces explicitly identified as "U.S.-backed" or operating under U.S. direction
+
+### Bedouin Tribes ("bedouins")
+- Bedouin tribes
+- Bedouin tribesmen
+- Bedouin tribespeople
+- Bedouin tribespeople
 
 ## IMPORTANT CLASSIFICATION RULES
 
