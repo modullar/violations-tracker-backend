@@ -110,7 +110,17 @@ channels:
     active: true
     priority: "medium"
     language: "ar"
-    
+
+  - name: "horanfree"
+    url: "https://t.me/HoranFreeMedia"
+    description: "horanfree"
+    active: true
+    priority: "medium"
+    language: "ar"
+    assigned_regions:
+      - "درعا"
+      - "القنيطرة"
+      - "السويداء"      
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
