@@ -198,6 +198,9 @@ keywords:
     - "قمع"
     - "انتهاكات"
     - "مذبحة"
+    - "وفاة"
+    - "موت"
+    - "موت غير طبيعي"
 
 # General context keywords that indicate potential violations
 context_keywords:
