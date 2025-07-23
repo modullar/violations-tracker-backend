@@ -188,6 +188,78 @@ describe('TelegramScraper - Regional Filtering', () => {
       expect(result.matchedRegions).toContain('دمشق');
     });
 
+    it('should match Damascus neighborhoods without explicit Damascus mention', () => {
+      const text = 'قصف جوي في حي المزة أدى إلى مقتل 3 مدنيين';
+      const assignedRegions = ['دمشق', 'ريف دمشق'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('دمشق');
+    });
+
+    it('should match Aleppo neighborhoods without explicit Aleppo mention', () => {
+      const text = 'انفجار في بستان القصر أدى إلى مقتل مدنيين';
+      const assignedRegions = ['حلب', 'ريف حلب'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('حلب');
+    });
+
+    it('should match countryside towns to their parent governorate', () => {
+      const text = 'قصف في دوما أدى إلى مقتل مدنيين';
+      const assignedRegions = ['دمشق', 'ريف دمشق'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('ريف دمشق');
+    });
+
+    it('should perform fuzzy matching for partial region names', () => {
+      const text = 'قصف في منطقة دمش'; // Partial "دمشق"
+      const assignedRegions = ['دمشق'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('دمشق');
+    });
+
+    it('should infer Damascus from government/ministry context', () => {
+      const text = 'اجتماع في وزارة الدفاع حول الأوضاع الأمنية';
+      const assignedRegions = ['دمشق'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('دمشق');
+    });
+
+    it('should match multiple regions when text mentions both', () => {
+      const text = 'قصف في دمشق وحلب أدى إلى مقتل مدنيين';
+      const assignedRegions = ['دمشق', 'حلب'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(true);
+      expect(result.matchedRegions).toContain('دمشق');
+      expect(result.matchedRegions).toContain('حلب');
+      expect(result.matchedRegions).toHaveLength(2);
+    });
+
+    it('should still reject completely unrelated regions', () => {
+      const text = 'قصف جوي في بغداد أدى إلى مقتل 5 مدنيين'; // Baghdad, Iraq
+      const assignedRegions = ['دمشق', 'ريف دمشق'];
+      
+      const result = scraper.checkRegionMatch(text, assignedRegions);
+      
+      expect(result.hasMatch).toBe(false);
+      expect(result.matchedRegions).toHaveLength(0);
+    });
+
     it('should return unique matches when multiple aliases match', () => {
       const text = 'قصف في دمشق العاصمة الشام';
       const assignedRegions = ['دمشق'];

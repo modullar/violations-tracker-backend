@@ -27,6 +27,11 @@ class TelegramScraper {
       const keywordsData = fs.readFileSync(keywordsPath, 'utf8');
       this.keywordsConfig = yaml.load(keywordsData);
 
+      // Load region aliases configuration
+      const regionAliasesPath = path.join(__dirname, '../config/region-aliases.yaml');
+      const regionAliasesData = fs.readFileSync(regionAliasesPath, 'utf8');
+      this.regionConfig = yaml.load(regionAliasesData);
+
       // Extract active channels
       this.activeChannels = this.channelsConfig.channels.filter(channel => channel.active);
       
@@ -57,7 +62,8 @@ class TelegramScraper {
         exclude_patterns: []
       };
 
-      logger.info(`Loaded ${this.activeChannels.length} active channels and ${this.allKeywords.length} keywords`);
+      logger.info(`Loaded ${this.activeChannels.length} active channels, ${this.allKeywords.length} keywords, and ${Object.keys(this.regionConfig.region_aliases).length} regional configurations`);
+      
     } catch (error) {
       logger.error('Error loading configuration:', error);
       throw error;
@@ -321,11 +327,29 @@ class TelegramScraper {
     if (channel.assigned_regions && channelFiltering.enforce_region_filter) {
       const regionResult = this.checkRegionMatch(text, channel.assigned_regions);
       if (!regionResult.hasMatch) {
+        // Log filtering details for monitoring and analysis
+        logger.info('Regional filter applied', {
+          channel: channel.name,
+          assignedRegions: channel.assigned_regions,
+          textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+          filterReason: 'No assigned region found',
+          fuzzyAttempted: true, // Since we now use fuzzy matching
+          contextualAttempted: true // Since we now use contextual matching
+        });
+        
         return { 
           shouldImport: false, 
           reason: `No assigned region found. Channel covers: ${channel.assigned_regions.join(', ')}`,
           filterType: 'region'
         };
+      } else {
+        // Log successful matches for monitoring effectiveness
+        logger.debug('Regional filter passed', {
+          channel: channel.name,
+          assignedRegions: channel.assigned_regions,
+          matchedRegions: regionResult.matchedRegions,
+          textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+        });
       }
     }
     
@@ -400,6 +424,18 @@ class TelegramScraper {
       }
     }
 
+    // Enhanced fuzzy matching for partial region names
+    if (matchedRegions.length === 0) {
+      const fuzzyMatches = this.performFuzzyRegionMatching(text, assignedRegions);
+      matchedRegions.push(...fuzzyMatches);
+    }
+
+    // Context-based region inference
+    if (matchedRegions.length === 0) {
+      const contextualMatches = this.inferRegionFromContext(text, assignedRegions);
+      matchedRegions.push(...contextualMatches);
+    }
+
     return {
       hasMatch: matchedRegions.length > 0,
       matchedRegions: [...new Set(matchedRegions)], // Remove duplicates
@@ -408,25 +444,79 @@ class TelegramScraper {
   }
 
   /**
+   * Perform fuzzy matching for region names
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Array} - Array of matched regions
+   */
+  performFuzzyRegionMatching(text, assignedRegions) {
+    const matches = [];
+    const lowerText = text.toLowerCase();
+    
+    // Get fuzzy matching settings from YAML configuration
+    const fuzzyConfig = this.regionConfig.regional_filtering?.fuzzy_matching || {
+      enabled: true,
+      min_match_percentage: 0.6,
+      min_length: 3
+    };
+    
+    // Skip if fuzzy matching is disabled
+    if (!fuzzyConfig.enabled) {
+      return matches;
+    }
+    
+    for (const region of assignedRegions) {
+      const regionLower = region.toLowerCase();
+      
+      // Check for partial matches based on configured percentage and minimum length
+      if (regionLower.length >= fuzzyConfig.min_length) {
+        const minMatchLength = Math.floor(regionLower.length * fuzzyConfig.min_match_percentage);
+        
+        // Check if a substantial part of the region name appears in text
+        for (let i = 0; i <= regionLower.length - minMatchLength; i++) {
+          const substring = regionLower.substring(i, i + minMatchLength);
+          if (lowerText.includes(substring)) {
+            matches.push(region);
+            break;
+          }
+        }
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
+   * Infer region from context clues
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Array} - Array of inferred regions
+   */
+  inferRegionFromContext(text, assignedRegions) {
+    const matches = [];
+    const lowerText = text.toLowerCase();
+    
+    // Get context patterns from YAML configuration
+    const contextPatterns = this.regionConfig.contextual_patterns || {};
+
+    for (const region of assignedRegions) {
+      const patterns = contextPatterns[region] || [];
+      for (const pattern of patterns) {
+        if (lowerText.includes(pattern.toLowerCase())) {
+          matches.push(region);
+          break;
+        }
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
    * Get regional aliases and alternative names
    */
   getRegionAliases() {
-    return {
-      'دمشق': ['العاصمة', 'دمشق الشام', 'الشام', 'damascus'],
-      'حلب': ['حلب الشهباء', 'aleppo', 'alep'],
-      'حمص': ['حمص الأبية', 'homs'],
-      'حماة': ['حماة الأسود', 'hama', 'hamah'],
-      'درعا': ['درعا البلد', 'daraa', 'deraa'],
-      'دير الزور': ['دير الزور الفيحاء', 'deir ez-zor', 'deir ezzor'],
-      'السويداء': ['السويداء الكرامة', 'as-suwayda', 'sweida'],
-      'القنيطرة': ['quneitra', 'qunaytirah'],
-      'طرطوس': ['tartus', 'tartous'],
-      'اللاذقية': ['latakia', 'lattakia'],
-      'الرقة': ['raqqa', 'ar-raqqah'],
-      'إدلب': ['idlib', 'idleb'],
-      'الحسكة': ['al-hasakah', 'hasaka'],
-      'ريف دمشق': ['ريف الشام', 'rif dimashq', 'damascus countryside', 'غوطة']
-    };
+    return this.regionConfig.region_aliases;
   }
 
   /**

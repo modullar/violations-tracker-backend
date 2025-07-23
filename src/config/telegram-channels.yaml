@@ -13,7 +13,9 @@ channels:
       - "دمشق"
       - "ريف دمشق"
       - "درعا"
+      - "ريف درعا"
       - "السويداء"
+      - "القنيطرة"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
@@ -29,9 +31,13 @@ channels:
     language: "ar"
     assigned_regions:
       - "حلب"
+      - "ريف حلب"
       - "إدلب"
+      - "ريف إدلب"
       - "حمص"
+      - "ريف حمص"
       - "حماة"
+      - "ريف حماة"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
@@ -96,13 +102,15 @@ channels:
     assigned_regions:
       - "دير الزور"
       - "الرقة"
+      - "ريف الرقة"
       - "الحسكة"
-      - "القامشلي"
+      - "ريف الحسكة"
     filtering:
       min_keyword_matches: 2
       require_context_keywords: true
       min_text_length: 50
       exclude_patterns: ["طقس", "أحوال جوية", "اقتصاد", "سياسة"]
+      enforce_region_filter: true
 
   - name: "D24net"
     url: "https://t.me/D24net"
@@ -119,6 +127,7 @@ channels:
     language: "ar"
     assigned_regions:
       - "درعا"
+      - "ريف درعا"
       - "القنيطرة"
       - "السويداء"      
     filtering:
@@ -126,6 +135,7 @@ channels:
       require_context_keywords: true
       min_text_length: 50
       exclude_patterns: ["طقس", "أحوال جوية", "اقتصاد", "سياسة"]
+      enforce_region_filter: true
 
 # Scraping configuration
 scraping:

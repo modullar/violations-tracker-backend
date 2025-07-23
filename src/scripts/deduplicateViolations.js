@@ -27,17 +27,17 @@ const CONFIG = {
     DESCRIPTION: 0.10     // Description similarity
   },
   
-  // Very conservative thresholds - only merge obvious duplicates
-  SIMILARITY_THRESHOLD: 0.95,     // Much higher threshold - need 95% confidence
-  MAX_DISTANCE_KM: 2,             // Reduced to 2km radius for stricter location matching
-  TIME_WINDOW_HOURS: 3,           // Reduced to 3 hour window for same event
-  MIN_DESCRIPTION_SIMILARITY: 0.7, // Increased to 70% description similarity minimum
+  // More balanced thresholds for better Arabic text handling
+  SIMILARITY_THRESHOLD: 0.85,     // Reduced from 95% to 85% for better recall
+  MAX_DISTANCE_KM: 5,             // Increased to 5km for same village/area
+  TIME_WINDOW_HOURS: 24,          // Increased to 24 hours for same day events
+  MIN_DESCRIPTION_SIMILARITY: 0.5, // Reduced to 50% for better Arabic text matching
   CASUALTY_TOLERANCE: 0.3,        // Reduced to 30% tolerance for casualty differences
   
   // Safety limits (more conservative)
   MAX_DELETIONS_PER_RUN: 25,      // Reduced limit to prevent mass deletions
   MIN_TOTAL_VIOLATIONS: 50,       // Don't run if less than 50 total violations
-  DRY_RUN: true                   // Safe default - dry run mode
+  DRY_RUN: false                  // ENABLED: Will actually merge duplicates
 };
 
 // Calculate distance between two points using Haversine formula
@@ -95,10 +95,16 @@ function calculateDescriptionSimilarity(desc1, desc2) {
     
     const words = normalized.split(' ');
     
-    // Filter out common words and keep important ones
+    // Filter out common words and keep important ones (including Arabic common words)
+    const commonWords = [
+      // English common words
+      'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'within', 'without', 'against', 'across', 'beside', 'beyond', 'under', 'over', 'around', 'near', 'far', 'inside', 'outside', 'behind', 'front', 'next', 'last', 'first', 'second', 'third', 'fourth', 'fifth', 'carried', 'out', 'areas', 'targeting',
+      // Arabic common words
+      'في', 'من', 'إلى', 'على', 'عن', 'مع', 'بعد', 'قبل', 'أثناء', 'خلال', 'ضد', 'نحو', 'حول', 'دون', 'سوى', 'غير', 'كل', 'بعض', 'جميع', 'كان', 'كانت', 'يكون', 'تكون', 'هذا', 'هذه', 'ذلك', 'تلك', 'التي', 'الذي', 'التي', 'الذين', 'اللذان', 'اللتان', 'اللواتي', 'اللاتي'
+    ];
+    
     const importantWords = words.filter(word => 
-      word.length > 2 && 
-      !['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'within', 'without', 'against', 'across', 'beside', 'beyond', 'under', 'over', 'around', 'near', 'far', 'inside', 'outside', 'behind', 'front', 'next', 'last', 'first', 'second', 'third', 'fourth', 'fifth', 'carried', 'out', 'areas', 'targeting'].includes(word)
+      word.length > 2 && !commonWords.includes(word)
     );
     
     return {
@@ -220,11 +226,25 @@ function calculateSimilarityScore(v1, v2) {
   
   score.details.casualtySimilarity = score.casualties;
 
-  // Description similarity
+  // Description similarity - try English first, fall back to Arabic
+  let descriptionSimilarity = 0;
+  
   if (v1.description?.en && v2.description?.en) {
-    score.description = calculateDescriptionSimilarity(v1.description.en, v2.description.en);
+    // Both have English descriptions - use English
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.en);
+  } else if (v1.description?.ar && v2.description?.ar) {
+    // Both have Arabic descriptions - use Arabic
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.ar);
+  } else if (v1.description?.en && v2.description?.ar) {
+    // Cross-language comparison - lower weight
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.ar) * 0.7;
+  } else if (v1.description?.ar && v2.description?.en) {
+    // Cross-language comparison - lower weight
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.en) * 0.7;
   }
-  score.details.descriptionSimilarity = score.description;
+  
+  score.description = descriptionSimilarity;
+  score.details.descriptionSimilarity = descriptionSimilarity;
 
   // Calculate weighted total score
   score.total = (
@@ -253,9 +273,9 @@ function validateDuplicate(v1, v2, score) {
   // If all essential criteria match perfectly, we can be more lenient with description
   const strongMatch = meetsEssential && score.details.samePerpetrator;
   
-  // Description similarity requirements (more strict)
+  // Description similarity requirements (more lenient for strong matches)
   const descriptionOk = strongMatch ? 
-    score.details.descriptionSimilarity >= 0.6 :  // Stricter even for strong matches
+    score.details.descriptionSimilarity >= 0.4 :  // More lenient for strong location/time/type matches
     score.details.descriptionSimilarity >= CONFIG.MIN_DESCRIPTION_SIMILARITY;
 
   const meetsCore = meetsEssential && descriptionOk;
