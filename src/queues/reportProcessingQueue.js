@@ -1,7 +1,7 @@
 const Queue = require('bull');
 const logger = require('../config/logger');
 const Report = require('../models/Report');
-const { processReport } = require('../commands/violations/process');
+const { processReport, processReportsBatch } = require('../commands/violations/process');
 
 const createReportProcessingQueue = (redisConfig) => {
   const queue = new Queue('report-processing-queue', {
@@ -43,46 +43,152 @@ const createReportProcessingQueue = (redisConfig) => {
       logger.info(`Found ${reports.length} reports ready for processing`);
       job.progress(10);
 
-      // Process reports in chunks of 3 for rate limiting
-      const chunkSize = 3;
-      const chunks = [];
-      for (let i = 0; i < reports.length; i += chunkSize) {
-        chunks.push(reports.slice(i, i + chunkSize));
-      }
-
+      // Determine processing method based on environment configuration
+      const batchSize = parseInt(process.env.CLAUDE_BATCH_SIZE) || 8;
+      const useBatchProcessing = process.env.CLAUDE_BATCH_ENABLED !== 'false';
+      
       let totalViolationsCreated = 0;
       let successfulReports = 0;
       let failedReports = 0;
 
-      // Process each chunk with delay between chunks
-      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-        const chunk = chunks[chunkIndex];
-        const progressBase = 10 + (chunkIndex * 80 / chunks.length);
+      if (useBatchProcessing && reports.length >= 3) {
+        // NEW: Batch Processing Path
+        logger.info('Using batch processing approach');
         
-        logger.info(`Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} reports)`);
+        // Create batches for processing
+        const batches = [];
+        for (let i = 0; i < reports.length; i += batchSize) {
+          batches.push(reports.slice(i, i + batchSize));
+        }
         
-        // Process chunk concurrently (max 3 concurrent Claude API calls)
-        const chunkPromises = chunk.map(async (report) => {
-          try {
-            const result = await processReport(report);
-            totalViolationsCreated += result.violationsCreated;
-            successfulReports++;
-            return result;
-          } catch (error) {
-            logger.error(`Failed to process report ${report._id}:`, error);
-            failedReports++;
-            return { error: error.message, reportId: report._id };
-          }
+        logger.info(`Created ${batches.length} batches for processing`, {
+          batchSize,
+          totalReports: reports.length
         });
+        
+        // Process batches with limited concurrency (max 3 concurrent batch calls)
+        const maxConcurrentBatches = 3;
+        const batchChunks = [];
+        for (let i = 0; i < batches.length; i += maxConcurrentBatches) {
+          batchChunks.push(batches.slice(i, i + maxConcurrentBatches));
+        }
+        
+        for (let chunkIndex = 0; chunkIndex < batchChunks.length; chunkIndex++) {
+          const batchChunk = batchChunks[chunkIndex];
+          const progressBase = 10 + (chunkIndex * 80 / batchChunks.length);
+          
+          logger.info(`Processing batch chunk ${chunkIndex + 1}/${batchChunks.length} (${batchChunk.length} batches)`);
+          
+          try {
+            // Process batches in the chunk concurrently
+            const batchPromises = batchChunk.map(async (batch, batchIndex) => {
+              try {
+                logger.info(`Processing batch ${chunkIndex * maxConcurrentBatches + batchIndex + 1} with ${batch.length} reports`);
+                const batchResults = await processReportsBatch(batch);
+                
+                // Aggregate results from this batch
+                let batchViolationsCreated = 0;
+                let batchSuccessfulReports = 0;
+                let batchFailedReports = 0;
+                
+                for (const result of batchResults) {
+                  if (result.success) {
+                    batchViolationsCreated += result.violationsCreated || 0;
+                    batchSuccessfulReports++;
+                  } else {
+                    batchFailedReports++;
+                  }
+                }
+                
+                logger.info(`Batch ${chunkIndex * maxConcurrentBatches + batchIndex + 1} completed`, {
+                  reportsInBatch: batch.length,
+                  successfulReports: batchSuccessfulReports,
+                  failedReports: batchFailedReports,
+                  violationsCreated: batchViolationsCreated
+                });
+                
+                return {
+                  violationsCreated: batchViolationsCreated,
+                  successfulReports: batchSuccessfulReports,
+                  failedReports: batchFailedReports
+                };
+                
+              } catch (error) {
+                logger.error(`Batch ${chunkIndex * maxConcurrentBatches + batchIndex + 1} failed:`, error);
+                return {
+                  violationsCreated: 0,
+                  successfulReports: 0,
+                  failedReports: batch.length
+                };
+              }
+            });
 
-        await Promise.all(chunkPromises);
+            const chunkResults = await Promise.all(batchPromises);
+            
+            // Aggregate results from all batches in this chunk
+            for (const result of chunkResults) {
+              totalViolationsCreated += result.violationsCreated;
+              successfulReports += result.successfulReports;
+              failedReports += result.failedReports;
+            }
+            
+          } catch (error) {
+            logger.error(`Batch chunk ${chunkIndex + 1} failed:`, error);
+            // Count all reports in failed chunks as failed
+            for (const batch of batchChunk) {
+              failedReports += batch.length;
+            }
+          }
+          
+          // Update progress
+          job.progress(Math.min(90, progressBase + (80 / batchChunks.length)));
+          
+          // Add delay between batch chunks for rate limiting
+          if (chunkIndex < batchChunks.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Longer delay for batch processing
+          }
+        }
         
-        // Update progress
-        job.progress(Math.min(90, progressBase + (80 / chunks.length)));
+      } else {
+        // EXISTING: Individual Processing Path (unchanged for fallback)
+        logger.info('Using individual processing approach (batch processing disabled or too few reports)');
         
-        // Add 1-second delay between chunks for rate limiting
-        if (chunkIndex < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        const chunkSize = 3;
+        const chunks = [];
+        for (let i = 0; i < reports.length; i += chunkSize) {
+          chunks.push(reports.slice(i, i + chunkSize));
+        }
+
+        // Process each chunk with delay between chunks
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+          const chunk = chunks[chunkIndex];
+          const progressBase = 10 + (chunkIndex * 80 / chunks.length);
+          
+          logger.info(`Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} reports)`);
+          
+          // Process chunk concurrently (max 3 concurrent Claude API calls)
+          const chunkPromises = chunk.map(async (report) => {
+            try {
+              const result = await processReport(report);
+              totalViolationsCreated += result.violationsCreated || 0;
+              successfulReports++;
+              return result;
+            } catch (error) {
+              logger.error(`Failed to process report ${report._id}:`, error);
+              failedReports++;
+              return { error: error.message, reportId: report._id };
+            }
+          });
+
+          await Promise.all(chunkPromises);
+          
+          // Update progress
+          job.progress(Math.min(90, progressBase + (80 / chunks.length)));
+          
+          // Add 1-second delay between chunks for rate limiting
+          if (chunkIndex < chunks.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
 

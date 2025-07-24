@@ -474,7 +474,37 @@ EXCLUSION RULES - DO NOT EXTRACT:
 
 Extract only violations with victim counts. Skip general news. Return raw JSON array:`;
 
+// Batch-specific prompt templates for processing multiple reports
+const BATCH_USER_PROMPT = `Process these {REPORT_COUNT} reports and return violations for each.
+
+For each report, extract violations using the same rules as individual processing.
+
+{REPORTS_CONTENT}
+
+RETURN FORMAT - JSON object with report IDs as keys:
+{
+  "report_1": [violations_array_or_empty],
+  "report_2": [violations_array_or_empty],
+  "report_3": [violations_array_or_empty]
+}
+
+CRITICAL: 
+- Each report_N key must have an array value (empty [] if no violations)
+- Use exact format: "report_1", "report_2", etc.
+- Return ONLY the JSON object, no markdown, no explanations
+- Apply the same extraction rules as individual processing
+- Only extract violations that occur IN SYRIA`;
+
+const BATCH_REPORT_TEMPLATE = `
+REPORT_{INDEX}:
+Source: {SOURCE_INFO}
+Date: {REPORT_DATE}
+Text: {REPORT_TEXT}
+---`;
+
 module.exports = {
   SYSTEM_PROMPT,
-  USER_PROMPT
+  USER_PROMPT,
+  BATCH_USER_PROMPT,          // New batch prompt
+  BATCH_REPORT_TEMPLATE       // New report template
 };
