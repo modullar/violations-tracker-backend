@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 
@@ -33,12 +34,21 @@ const app = express();
 // Body parser
 app.use(express.json());
 
+// Cookie parser
+app.use(cookieParser());
+
 // Request logging
 app.use(requestLogger);
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+// Enable CORS for all routes with credentials support
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(rateLimiter);
 
 // Mount Swagger docs
