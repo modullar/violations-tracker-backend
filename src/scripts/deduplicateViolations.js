@@ -30,7 +30,7 @@ const CONFIG = {
   // More balanced thresholds for better Arabic text handling
   SIMILARITY_THRESHOLD: 0.85,     // Reduced from 95% to 85% for better recall
   MAX_DISTANCE_KM: 5,             // Increased to 5km for same village/area
-  TIME_WINDOW_HOURS: 24,          // Increased to 24 hours for same day events
+  TIME_WINDOW_HOURS: 12,          // 12 hours - violations within 12 hours are considered potential duplicates
   MIN_DESCRIPTION_SIMILARITY: 0.5, // Reduced to 50% for better Arabic text matching
   CASUALTY_TOLERANCE: 0.3,        // Reduced to 30% tolerance for casualty differences
   
