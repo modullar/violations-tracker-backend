@@ -63,12 +63,13 @@ function calculateTimeDifference(date1, date2) {
   return Math.abs(d2 - d1) / (1000 * 60 * 60); // Hours
 }
 
-// Calculate casualty similarity
-function calculateCasualtySimilarity(casualties1, casualties2) {
-  if (!casualties1 || !casualties2) return 0;
+// Calculate casualty similarity based on all casualty counts
+function calculateCasualtySimilarity(violation1, violation2) {
+  // Get total casualty counts for both violations
+  const casualtyFields = ['casualties', 'kidnapped_count', 'detained_count', 'injured_count', 'displaced_count'];
   
-  const total1 = (casualties1.killed || 0) + (casualties1.injured || 0);
-  const total2 = (casualties2.killed || 0) + (casualties2.injured || 0);
+  const total1 = casualtyFields.reduce((sum, field) => sum + (violation1[field] || 0), 0);
+  const total2 = casualtyFields.reduce((sum, field) => sum + (violation2[field] || 0), 0);
   
   if (total1 === 0 && total2 === 0) return 1;
   if (total1 === 0 || total2 === 0) return 0;
@@ -209,20 +210,8 @@ function calculateSimilarityScore(v1, v2) {
   score.perpetrator = (perp1 === perp2) ? 1 : 0;
   score.details.samePerpetrator = perp1 === perp2;
 
-  // Casualty similarity (handle undefined/null gracefully)
-  const casualties1 = v1.casualties || v1.casualties_count || 0;
-  const casualties2 = v2.casualties || v2.casualties_count || 0;
-  
-  if (casualties1 === 0 && casualties2 === 0) {
-    // Both have no casualties - perfect match
-    score.casualties = 1;
-  } else if (casualties1 === 0 || casualties2 === 0) {
-    // One has casualties, one doesn't - partial match
-    score.casualties = 0.5;
-  } else {
-    // Both have casualties - use detailed calculation
-    score.casualties = calculateCasualtySimilarity(casualties1, casualties2);
-  }
+  // Casualty similarity using all casualty fields
+  score.casualties = calculateCasualtySimilarity(v1, v2);
   
   score.details.casualtySimilarity = score.casualties;
 
@@ -367,14 +356,15 @@ function smartMerge(keepViolation, duplicates) {
       merged.tags = [...(merged.tags || []), ...newTags];
     }
 
-    // Use higher casualty count if available
-    if (duplicate.casualties) {
-      const currentTotal = (merged.casualties?.killed || 0) + (merged.casualties?.injured || 0);
-      const duplicateTotal = (duplicate.casualties.killed || 0) + (duplicate.casualties.injured || 0);
-      if (duplicateTotal > currentTotal) {
-        merged.casualties = duplicate.casualties;
+    // Merge all casualty counts by taking the maximum of each field
+    const casualtyFields = ['casualties', 'kidnapped_count', 'detained_count', 'injured_count', 'displaced_count'];
+    casualtyFields.forEach(field => {
+      const currentCount = merged[field] || 0;
+      const duplicateCount = duplicate[field] || 0;
+      if (duplicateCount > currentCount) {
+        merged[field] = duplicateCount;
       }
-    }
+    });
   }
 
   return merged;
