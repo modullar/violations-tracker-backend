@@ -265,6 +265,12 @@ exclude_patterns:
   - "ادانة"
   - "إدانة"
   
+  # Administrative and government activities
+  - "جولة تفقدية"
+  - "جولة"
+  - "تفقدية"
+  - "تحسين الخدمات"
+  - "تطوير الخدمات"  
   # Official statements and condemnations (to prevent processing as violations)
   - "وزارة الخارجية"
   - "الخارجية المصرية"

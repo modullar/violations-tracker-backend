@@ -471,6 +471,20 @@ EXCLUSION RULES - DO NOT EXTRACT:
 - Economic, sports, entertainment, or weather reports
 - Administrative announcements or policy statements
 - Statements that only condemn or express concern about violations (without describing actual violations)
+- Government administrative activities (inspections, tours, appointments, infrastructure improvements)
+- Reports about officials visiting branches, departments, or facilities for administrative purposes
+- Announcements about staffing changes, service improvements, or administrative reforms
+- News about government workers, civil servants, or administrative personnel
+- Reports about maintenance, renovations, or facility improvements
+- Opening ceremonies, inaugurations, or project launches
+- Training programs, workshops, or administrative meetings
+
+EXAMPLES OF WHAT TO EXCLUDE:
+- "Deputy Interior Minister conducts inspection tour..."
+- "Ministry announces new appointments..."
+- "Government improves services at immigration office..."
+- "Officials visit facility to assess infrastructure..."
+- "New staff hired to improve workflow..."
 
 Extract only violations with victim counts. Skip general news. Return raw JSON array:`;
 

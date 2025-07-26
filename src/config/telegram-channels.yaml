@@ -45,23 +45,6 @@ channels:
       exclude_patterns: []
       enforce_region_filter: true
 
-  - name: "Halab Today"
-    url: "https://t.me/HalabTodayTV"
-    description: "Halab Today"
-    active: true
-    priority: "low"
-    language: "ar"
-    assigned_regions:
-      - "حلب"
-      - "إدلب"
-      - "ريف إدلب"
-      - "ريف حلب"
-    filtering:
-      min_keyword_matches: 1
-      require_context_keywords: true
-      min_text_length: 40
-      enforce_region_filter: true
-
   - name: "صوت العاصمة"
     url: "https://t.me/damascusv011"
     description: "صوت العاصمة"
