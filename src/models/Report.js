@@ -197,6 +197,7 @@ ReportSchema.statics.findReadyForProcessing = function(limit = 15) {
       // Stuck processing reports (processing for more than 5 minutes)
       { 
         status: 'processing',
+        'processing_metadata.attempts': { $lt: 3 }, // Ensure we don't process maxed out reports
         'processing_metadata.started_at': { $lte: fiveMinutesAgo }
       }
     ],
@@ -266,8 +267,21 @@ ReportSchema.statics.sanitizeData = function(reportData) {
 
 // Instance method to mark as processing
 ReportSchema.methods.markAsProcessing = function() {
+  const maxAttempts = 3;
+  const currentAttempts = this.processing_metadata.attempts || 0;
+  
+  // Check if we've already reached max attempts
+  if (currentAttempts >= maxAttempts) {
+    // Don't increment, just update timestamps and status
+    this.status = 'processing';
+    this.processing_metadata.started_at = new Date();
+    this.processing_metadata.last_attempt = new Date();
+    return this.save();
+  }
+  
+  // Normal processing - increment attempts
   this.status = 'processing';
-  this.processing_metadata.attempts = (this.processing_metadata.attempts || 0) + 1;
+  this.processing_metadata.attempts = currentAttempts + 1;
   this.processing_metadata.started_at = new Date();
   this.processing_metadata.last_attempt = new Date();
   return this.save();
