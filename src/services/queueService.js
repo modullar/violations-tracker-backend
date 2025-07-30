@@ -199,8 +199,8 @@ reportParsingQueue.process(async (job, done) => {
           violation.source.en = `${violation.source.en ? violation.source.en + '. ' : ''}${sourceURL.name}`;
           
           if (sourceURL.url) {
-            violation.source_url = violation.source_url || { en: '', ar: '' };
-            violation.source_url.en = sourceURL.url;
+            violation.source_urls = violation.source_urls || [];
+            violation.source_urls.push(sourceURL.url);
           }
         }
 

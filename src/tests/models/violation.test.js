@@ -49,10 +49,10 @@ describe('Violation Model', () => {
         en: 'Test Source',
         ar: 'مصدر الاختبار'
       },
-      source_url: {
-        en: 'https://example.com/en/report',
-        ar: 'https://example.com/ar/report'
-      },
+      source_urls: [
+        'https://example.com/en/report',
+        'https://example.com/ar/report'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: {
@@ -104,10 +104,10 @@ describe('Violation Model', () => {
         en: 'Test Source',
         ar: 'مصدر الاختبار'
       },
-      source_url: {
-        en: 'https://example.com/en/report',
-        ar: 'https://example.com/ar/report'
-      },
+      source_urls: [
+        'https://example.com/en/report',
+        'https://example.com/ar/report'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       perpetrator: {
@@ -150,10 +150,10 @@ describe('Violation Model', () => {
         en: 'Test Source',
         ar: 'مصدر الاختبار'
       },
-      source_url: {
-        en: 'https://example.com/en/report',
-        ar: 'https://example.com/ar/report'
-      },
+      source_urls: [
+        'https://example.com/en/report',
+        'https://example.com/ar/report'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: {
@@ -193,9 +193,9 @@ describe('Violation Model', () => {
         en: 'Short',
         ar: 'قصير'
       },
-      source_url: {
-        en: 'not-a-valid-url'
-      },
+      source_urls: [
+        'not-a-valid-url'
+      ],
       verified: true,
       certainty_level: 'invalid',
       perpetrator_affiliation: 'invalid_affiliation'
@@ -282,7 +282,10 @@ describe('Victim Information Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -310,7 +313,10 @@ describe('Victim Information Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -339,7 +345,10 @@ describe('Victim Information Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -368,7 +377,10 @@ describe('Victim Information Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -397,7 +409,10 @@ describe('Verification Method Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       perpetrator: { en: 'Test Perpetrator', ar: 'مرتكب الاختبار' },
@@ -419,7 +434,10 @@ describe('Verification Method Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { ar: 'طريقة التحقق' },
@@ -442,7 +460,10 @@ describe('Verification Method Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification method', ar: 'طريقة التحقق' },
@@ -473,7 +494,10 @@ describe('Reported Date Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -501,7 +525,10 @@ describe('Reported Date Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -526,7 +553,10 @@ describe('Reported Date Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -917,7 +947,10 @@ describe('Date Auto-assignment Integration Tests', () => {
       },
       description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -950,7 +983,10 @@ describe('Date Auto-assignment Integration Tests', () => {
       },
       description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -983,7 +1019,10 @@ describe('Date Auto-assignment Integration Tests', () => {
       },
       description: { en: 'Test description that is long enough', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: 'https://example.com', ar: 'https://example.com/ar' },
+      source_urls: [
+        'https://example.com',
+        'https://example.com/ar'
+      ],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -1064,7 +1103,7 @@ describe('Source URL Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: longUrl, ar: longUrl },
+      source_urls: [longUrl],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -1092,7 +1131,7 @@ describe('Source URL Validation', () => {
       },
       description: { en: 'Test description', ar: 'وصف الاختبار' },
       source: { en: 'Test Source', ar: 'مصدر الاختبار' },
-      source_url: { en: tooLongUrl, ar: '' },
+      source_urls: [tooLongUrl],
       verified: true,
       certainty_level: 'confirmed',
       verification_method: { en: 'Test verification', ar: 'التحقق' },
@@ -1101,6 +1140,6 @@ describe('Source URL Validation', () => {
     };
 
     const violation = new Violation(violationData);
-    await expect(violation.validate()).rejects.toThrow('One or more source URLs are invalid or exceed 1000 characters');
+    await expect(violation.validate()).rejects.toThrow('Source URLs must contain at least one valid URL, each up to 1000 characters');
   });
 }); 

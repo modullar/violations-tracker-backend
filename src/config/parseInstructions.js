@@ -18,7 +18,7 @@ VIOLATION MODEL SCHEMA:
   - coordinates: OPTIONAL - We'll generate these later, don't include them
 - description: REQUIRED - Object with English (.en) REQUIRED and optionally Arabic (.ar) versions
 - source: OPTIONAL - Object with English (.en) and optionally Arabic (.ar) versions
-- source_url: OPTIONAL - Object with English (.en) and optionally Arabic (.ar) versions
+- source_urls: REQUIRED - Array of strings containing source URLs
 - verified: REQUIRED - Boolean (default: false)
 - certainty_level: REQUIRED - One of [confirmed, probable, possible]
 - verification_method: OPTIONAL
@@ -115,7 +115,7 @@ const USER_PROMPT = `Please parse the following human rights report and extract 
 # OPTIONAL FIELDS:
 - reported_date: YYYY-MM-DD format (optional)
 - source: {en: "English source", ar: "Arabic source"} (optional, max 1500 chars)
-- source_url: {en: "English URL", ar: "Arabic URL"} (optional, max 1000 chars)
+- source_urls: ["URL1", "URL2", ...] (required, at least one URL, each max 1000 chars)
 - perpetrator: {en: "English perpetrator", ar: "Arabic perpetrator"} (optional, max 200 chars)
 - verification_method: {en: "English method", ar: "Arabic method"} (optional, max 500 chars)
 - victims: array of victim objects (optional)
