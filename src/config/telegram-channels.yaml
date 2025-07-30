@@ -59,6 +59,37 @@ channels:
       require_context_keywords: true
       enforce_region_filter: true
 
+
+  - name: "RoaaMedia, رؤى لدراسات الحرب"
+    url: "https://t.me/roaamedianews"
+    description: "RoaaMedia, رؤى لدراسات الحرب"
+    active: true
+    priority: "medium"
+    language: "ar"
+    assigned_regions:
+      - "حلب"
+      - "دمشق"
+      - "حمص"
+      - "ريف حمص"
+      - "ريف دمشق"
+      - "ريف درعا"
+      - "ريف الرقة"
+      - "ريف الحسكة"
+      - "ريف القنيطرة"
+      - "اللاذقية"
+      - "ريف اللاذقية"
+      - "السويداء"
+      - "ريف السويداء"
+      - "القنيطرة"
+      - "ريف القنيطرة"
+      - "الحسكة"
+      - "طرطوس"
+      - "ريف طرطوس"
+      - "درعا"
+      - "ريف درعا"
+      - "القنيطرة"
+      - "ريف القنيطرة"
+
   - name: "سوريا لحظة بلحظة"
     url: "https://t.me/Almohrar"
     description: "سوريا لحظة بلحظة"
