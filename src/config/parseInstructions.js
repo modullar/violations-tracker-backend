@@ -46,6 +46,7 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
     name: {en: "English name (REQUIRED, 2-100 chars)", ar: "Arabic name (REQUIRED, 2-100 chars)"}, 
     administrative_division: {en: "English admin division (REQUIRED)", ar: "Arabic admin division (REQUIRED)"}
   }
+- source_urls: ["URL1", "URL2", ...] (required, at least one URL, each max 1000 chars)
 - description: {en: "English description (REQUIRED, 10-2000 chars)", ar: "Arabic description (REQUIRED, 10-2000 chars)"}
 - perpetrator_affiliation: assad_regime, post_8th_december_government, various_armed_groups, isis, sdf, israel, turkey, druze_militias, russia, iran_shia_militias, international_coalition, bedouins, unknown
 - certainty_level: confirmed, probable, possible
@@ -59,7 +60,7 @@ CRITICAL: RETURN ONLY A RAW JSON ARRAY - no markdown formatting, no explanations
 # OPTIONAL FIELDS:
 - reported_date: YYYY-MM-DD format (optional)
 - source: {en: "English source", ar: "Arabic source"} (optional, max 1500 chars)
-- source_url: {en: "English URL", ar: "Arabic URL"} (optional, max 1000 chars)
+- source_urls: ["URL1", "URL2", ...] (required, at least one URL, each max 1000 chars)
 - perpetrator: {en: "English perpetrator", ar: "Arabic perpetrator"} (optional, max 200 chars)
 - verification_method: {en: "English method", ar: "Arabic method"} (optional, max 500 chars)
 - victims: array of victim objects (optional)

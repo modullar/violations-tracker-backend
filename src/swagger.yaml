@@ -218,6 +218,7 @@ components:
         - date
         - location
         - description
+        - source_urls
         - verified
         - certainty_level
       properties:
@@ -256,9 +257,17 @@ components:
         source:
           $ref: '#/components/schemas/LocalizedString'
           description: Source of information in English and Arabic
+        source_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 1000
+          description: Array of source URLs (required, at least one URL)
+          minItems: 1
         source_url:
           $ref: '#/components/schemas/LocalizedString'
-          description: Source URL in English and Arabic, each URL up to 1000 characters
+          description: Source URL in English and Arabic, each URL up to 1000 characters (deprecated, use source_urls instead)
         verified:
           type: boolean
         certainty_level:

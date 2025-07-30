@@ -70,120 +70,115 @@ describe('Violation Merge Service', () => {
   });
 
   describe('mergeSourceUrls', () => {
-    it('should combine different source URLs with semicolon separator', () => {
-      const targetSourceUrl = { 
-        en: 'https://example.com/source1', 
-        ar: 'https://example.ar/source1' 
-      };
-      const sourceSourceUrl = { 
-        en: 'https://example.com/source2', 
-        ar: 'https://example.ar/source2' 
-      };
+    it('should combine different source URLs', () => {
+      const targetSourceUrls = [
+        'https://example.com/source1',
+        'https://example.ar/source1'
+      ];
+      const sourceSourceUrls = [
+        'https://example.com/source2',
+        'https://example.ar/source2'
+      ];
 
-      const result = mergeSourceUrls(targetSourceUrl, sourceSourceUrl);
+      const result = mergeSourceUrls(targetSourceUrls, sourceSourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/source1; https://example.com/source2',
-        ar: 'https://example.ar/source1; https://example.ar/source2'
-      });
+      expect(result).toEqual([
+        'https://example.com/source1',
+        'https://example.ar/source1',
+        'https://example.com/source2',
+        'https://example.ar/source2'
+      ]);
     });
 
     it('should not duplicate identical URLs', () => {
-      const sourceUrl = { 
-        en: 'https://example.com/same', 
-        ar: 'https://example.ar/same' 
-      };
+      const sourceUrls = [
+        'https://example.com/same',
+        'https://example.ar/same'
+      ];
 
-      const result = mergeSourceUrls(sourceUrl, sourceUrl);
+      const result = mergeSourceUrls(sourceUrls, sourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/same',
-        ar: 'https://example.ar/same'
-      });
+      expect(result).toEqual([
+        'https://example.com/same',
+        'https://example.ar/same'
+      ]);
     });
 
     it('should handle when only target has URLs', () => {
-      const targetSourceUrl = { 
-        en: 'https://example.com/target', 
-        ar: 'https://example.ar/target' 
-      };
-      const sourceSourceUrl = { en: '', ar: '' };
+      const targetSourceUrls = [
+        'https://example.com/target',
+        'https://example.ar/target'
+      ];
+      const sourceSourceUrls = [];
 
-      const result = mergeSourceUrls(targetSourceUrl, sourceSourceUrl);
+      const result = mergeSourceUrls(targetSourceUrls, sourceSourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/target',
-        ar: 'https://example.ar/target'
-      });
+      expect(result).toEqual([
+        'https://example.com/target',
+        'https://example.ar/target'
+      ]);
     });
 
     it('should handle when only source has URLs', () => {
-      const targetSourceUrl = { en: '', ar: '' };
-      const sourceSourceUrl = { 
-        en: 'https://example.com/source', 
-        ar: 'https://example.ar/source' 
-      };
+      const targetSourceUrls = [];
+      const sourceSourceUrls = [
+        'https://example.com/source',
+        'https://example.ar/source'
+      ];
 
-      const result = mergeSourceUrls(targetSourceUrl, sourceSourceUrl);
+      const result = mergeSourceUrls(targetSourceUrls, sourceSourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/source',
-        ar: 'https://example.ar/source'
-      });
+      expect(result).toEqual([
+        'https://example.com/source',
+        'https://example.ar/source'
+      ]);
     });
 
-    it('should handle mixed language scenarios', () => {
-      const targetSourceUrl = { 
-        en: 'https://example.com/english', 
-        ar: '' 
-      };
-      const sourceSourceUrl = { 
-        en: '', 
-        ar: 'https://example.ar/arabic' 
-      };
+    it('should handle mixed scenarios', () => {
+      const targetSourceUrls = [
+        'https://example.com/english'
+      ];
+      const sourceSourceUrls = [
+        'https://example.ar/arabic'
+      ];
 
-      const result = mergeSourceUrls(targetSourceUrl, sourceSourceUrl);
+      const result = mergeSourceUrls(targetSourceUrls, sourceSourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/english',
-        ar: 'https://example.ar/arabic'
-      });
+      expect(result).toEqual([
+        'https://example.com/english',
+        'https://example.ar/arabic'
+      ]);
     });
 
-    it('should handle empty objects', () => {
-      const result = mergeSourceUrls({}, {});
+    it('should handle empty arrays', () => {
+      const result = mergeSourceUrls([], []);
 
-      expect(result).toEqual({
-        en: '',
-        ar: ''
-      });
+      expect(result).toEqual([]);
     });
 
     it('should handle undefined inputs', () => {
       const result = mergeSourceUrls();
 
-      expect(result).toEqual({
-        en: '',
-        ar: ''
-      });
+      expect(result).toEqual([]);
     });
 
-    it('should combine when one language differs and other is same', () => {
-      const targetSourceUrl = { 
-        en: 'https://example.com/same', 
-        ar: 'https://example.ar/target' 
-      };
-      const sourceSourceUrl = { 
-        en: 'https://example.com/same', 
-        ar: 'https://example.ar/source' 
-      };
+    it('should combine when some URLs are the same', () => {
+      const targetSourceUrls = [
+        'https://example.com/same',
+        'https://example.ar/target'
+      ];
+      const sourceSourceUrls = [
+        'https://example.com/same',
+        'https://example.ar/source'
+      ];
 
-      const result = mergeSourceUrls(targetSourceUrl, sourceSourceUrl);
+      const result = mergeSourceUrls(targetSourceUrls, sourceSourceUrls);
 
-      expect(result).toEqual({
-        en: 'https://example.com/same',
-        ar: 'https://example.ar/target; https://example.ar/source'
-      });
+      expect(result).toEqual([
+        'https://example.com/same',
+        'https://example.ar/target',
+        'https://example.ar/source'
+      ]);
     });
   });
 
@@ -442,72 +437,72 @@ describe('Violation Merge Service', () => {
     it('should merge source URLs together instead of keeping only the old one', () => {
       const existingViolation = {
         type: 'AIRSTRIKE',
-        source_url: {
-          en: 'https://example.com/existing-source',
-          ar: 'https://example.ar/existing-source'
-        }
+        source_urls: [
+          'https://example.com/existing-source',
+          'https://example.ar/existing-source'
+        ]
       };
 
       const newViolationData = {
         type: 'AIRSTRIKE',
-        source_url: {
-          en: 'https://example.com/new-source',
-          ar: 'https://example.ar/new-source'
-        }
+        source_urls: [
+          'https://example.com/new-source',
+          'https://example.ar/new-source'
+        ]
       };
 
       const result = mergeViolations(newViolationData, existingViolation);
 
-      expect(result.source_url).toEqual({
-        en: 'https://example.com/existing-source; https://example.com/new-source',
-        ar: 'https://example.ar/existing-source; https://example.ar/new-source'
-      });
+      expect(result.source_urls).toEqual([
+        'https://example.com/existing-source',
+        'https://example.ar/existing-source',
+        'https://example.com/new-source',
+        'https://example.ar/new-source'
+      ]);
     });
 
     it('should handle source URLs when only one violation has them', () => {
       const existingViolation = {
         type: 'AIRSTRIKE',
-        source_url: {
-          en: 'https://example.com/existing-only',
-          ar: ''
-        }
+        source_urls: [
+          'https://example.com/existing-only'
+        ]
       };
 
       const newViolationData = {
         type: 'AIRSTRIKE'
-        // No source_url
+        // No source_urls
       };
 
       const result = mergeViolations(newViolationData, existingViolation);
 
-      expect(result.source_url).toEqual({
-        en: 'https://example.com/existing-only',
-        ar: ''
-      });
+      expect(result.source_urls).toEqual([
+        'https://example.com/existing-only'
+      ]);
     });
 
     it('should not duplicate identical source URLs', () => {
-      const sourceUrl = {
-        en: 'https://example.com/same-source',
-        ar: 'https://example.ar/same-source'
-      };
+      const sourceUrls = [
+        'https://example.com/same-source',
+        'https://example.ar/same-source'
+      ];
 
       const existingViolation = {
         type: 'AIRSTRIKE',
-        source_url: sourceUrl
+        source_urls: sourceUrls
       };
 
       const newViolationData = {
         type: 'AIRSTRIKE',
-        source_url: sourceUrl
+        source_urls: sourceUrls
       };
 
       const result = mergeViolations(newViolationData, existingViolation);
 
-      expect(result.source_url).toEqual({
-        en: 'https://example.com/same-source',
-        ar: 'https://example.ar/same-source'
-      });
+      expect(result.source_urls).toEqual([
+        'https://example.com/same-source',
+        'https://example.ar/same-source'
+      ]);
     });
   });
 

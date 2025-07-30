@@ -36,10 +36,9 @@ const violations = [
       en: 'Syrian Observatory for Human Rights',
       ar: 'المرصد السوري لحقوق الإنسان'
     },
-    source_url: {
-      en: 'https://example.com/sohr/report/12345',
-      ar: 'https://example.com/sohr/report/12345'
-    },
+    source_urls: [
+      'https://example.com/sohr/report/12345'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -114,10 +113,9 @@ const violations = [
       en: 'Médecins Sans Frontières',
       ar: 'أطباء بلا حدود'
     },
-    source_url: {
-      en: 'https://example.com/msf/report/5678',
-      ar: 'https://example.com/msf/report/5678'
-    },
+    source_urls: [
+      'https://example.com/msf/report/5678'
+    ],
     verified: true,
     certainty_level: 'probable',
     verification_method: {
@@ -206,10 +204,9 @@ const violations = [
       en: 'Syrian Network for Human Rights',
       ar: 'الشبكة السورية لحقوق الإنسان'
     },
-    source_url: {
-      en: 'https://example.com/snhr/report/9876',
-      ar: 'https://example.com/snhr/report/9876'
-    },
+    source_urls: [
+      'https://example.com/snhr/report/9876'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -250,10 +247,9 @@ const violations = [
       en: 'Local Coordination Committees',
       ar: 'لجان التنسيق المحلية'
     },
-    source_url: {
-      en: 'https://example.com/lcc/report/2468',
-      ar: 'https://example.com/lcc/report/2468'
-    },
+    source_urls: [
+      'https://example.com/lcc/report/2468'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -341,10 +337,9 @@ const violations = [
       en: 'Human Rights Watch',
       ar: 'هيومن رايتس ووتش'
     },
-    source_url: {
-      en: 'https://example.com/hrw/report/2468',
-      ar: 'https://example.com/hrw/report/2468'
-    },
+    source_urls: [
+      'https://example.com/hrw/report/2468'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -386,10 +381,9 @@ const violations = [
       en: 'UNHCR field report',
       ar: 'تقرير المفوضية السامية لشؤون اللاجئين'
     },
-    source_url: {
-      en: 'https://example.com/unhcr/report/8001',
-      ar: 'https://example.com/unhcr/report/8001'
-    },
+    source_urls: [
+      'https://example.com/unhcr/report/8001'
+    ],
     verified: false,
     certainty_level: 'possible',
     verification_method: {
@@ -430,10 +424,9 @@ const violations = [
       en: 'Amnesty International',
       ar: 'منظمة العفو الدولية'
     },
-    source_url: {
-      en: 'https://example.com/amnesty/report/4455',
-      ar: 'https://example.com/amnesty/report/4455'
-    },
+    source_urls: [
+      'https://example.com/amnesty/report/4455'
+    ],
     verified: true,
     certainty_level: 'probable',
     verification_method: {
@@ -488,10 +481,9 @@ const violations = [
       en: 'Local media outlets',
       ar: 'وسائل إعلام محلية'
     },
-    source_url: {
-      en: 'https://example.com/localmedia/report/9912',
-      ar: 'https://example.com/localmedia/report/9912'
-    },
+    source_urls: [
+      'https://example.com/localmedia/report/9912'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -541,10 +533,9 @@ const violations = [
       en: 'Civil Defense (White Helmets)',
       ar: 'الدفاع المدني (الخوذ البيضاء)'
     },
-    source_url: {
-      en: 'https://example.com/whitehelmets/report/3021',
-      ar: 'https://example.com/whitehelmets/report/3021'
-    },
+    source_urls: [
+      'https://example.com/whitehelmets/report/3021'
+    ],
     verified: false,
     certainty_level: 'possible',
     verification_method: {
@@ -592,10 +583,9 @@ const violations = [
       en: 'Rebel media center',
       ar: 'مركز إعلامي معارض'
     },
-    source_url: {
-      en: 'https://example.com/rebel/report/5566',
-      ar: 'https://example.com/rebel/report/5566'
-    },
+    source_urls: [
+      'https://example.com/rebel/report/5566'
+    ],
     verified: true,
     certainty_level: 'probable',
     verification_method: {
@@ -640,10 +630,9 @@ const violations = [
       en: 'Humanitarian NGO statement',
       ar: 'بيان منظمة إنسانية'
     },
-    source_url: {
-      en: 'https://example.com/ngo/report/7412',
-      ar: 'https://example.com/ngo/report/7412'
-    },
+    source_urls: [
+      'https://example.com/ngo/report/7412'
+    ],
     verified: false,
     certainty_level: 'possible',
     verification_method: {
@@ -684,10 +673,9 @@ const violations = [
       en: 'Syrian Network for Human Rights',
       ar: 'الشبكة السورية لحقوق الإنسان'
     },
-    source_url: {
-      en: 'https://example.com/snhr/report/8841',
-      ar: 'https://example.com/snhr/report/8841'
-    },
+    source_urls: [
+      'https://example.com/snhr/report/8841'
+    ],
     verified: true,
     certainty_level: 'probable',
     verification_method: {
@@ -731,10 +719,9 @@ const violations = [
       en: 'Local news agency',
       ar: 'وكالة أنباء محلية'
     },
-    source_url: {
-      en: 'https://example.com/localnews/report/1122',
-      ar: 'https://example.com/localnews/report/1122'
-    },
+    source_urls: [
+      'https://example.com/localnews/report/1122'
+    ],
     verified: false,
     certainty_level: 'possible',
     verification_method: {
@@ -783,10 +770,9 @@ const violations = [
       en: 'Syrian Observatory for Human Rights',
       ar: 'المرصد السوري لحقوق الإنسان'
     },
-    source_url: {
-      en: 'https://example.com/sohr/report/6677',
-      ar: 'https://example.com/sohr/report/6677'
-    },
+    source_urls: [
+      'https://example.com/sohr/report/6677'
+    ],
     verified: true,
     certainty_level: 'confirmed',
     verification_method: {
@@ -831,10 +817,9 @@ const violations = [
       en: 'Reuters',
       ar: 'رويترز'
     },
-    source_url: {
-      en: 'https://example.com/reuters/report/2222',
-      ar: 'https://example.com/reuters/report/2222'
-    },
+    source_urls: [
+      'https://example.com/reuters/report/2222'
+    ],
     verified: false,
     certainty_level: 'possible',
     verification_method: {
