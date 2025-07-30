@@ -187,14 +187,14 @@ const ViolationSchema = new mongoose.Schema({
       message: 'Source cannot be more than 1500 characters in either language'
     }
   },
-  source_url: {
-    type: LocalizedStringSchema,
-    default: { en: '', ar: '' },
+  source_urls: {
+    type: [String],
+    required: [true, 'Source URLs are required'],
     validate: {
-      validator: function(value) {
-        if (!value) return true;
+      validator: function(v) {
+        if (!v || v.length === 0) return false;
         const validateUrl = (url) => {
-          if (!url) return true;
+          if (!url) return false;
           try {
             // Allow URLs with or without protocol
             const urlToTest = url.startsWith('http') ? url : `https://${url}`;
@@ -205,14 +205,15 @@ const ViolationSchema = new mongoose.Schema({
             return /^(https?:\/\/)?([a-zA-Z0-9._-]+)\.([a-zA-Z]{2,})([/\w._~:/?#[\]@!$&'()*+,;=%-]*)?$/i.test(url);
           }
         };
-        if (value.en && !validateUrl(value.en)) return false;
-        if (value.ar && !validateUrl(value.ar)) return false;
-        if (value.en && value.en.length > 1000) return false;
-        if (value.ar && value.ar.length > 1000) return false;
-        return true;
+        return v.every(url => validateUrl(url) && url.length <= 1000);
       },
-      message: 'One or more source URLs are invalid or exceed 1000 characters'
+      message: 'Source URLs must contain at least one valid URL, each up to 1000 characters'
     }
+  },
+  source_url: {
+    type: OptionalLocalizedStringSchema,
+    default: { en: '', ar: '' },
+    required: false
   },
   verified: {
     type: Boolean,

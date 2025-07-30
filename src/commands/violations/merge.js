@@ -130,34 +130,10 @@ function updateCasualtyCounts(mergedData) {
  * @param {Object} sourceSourceUrl - Source URL object to merge
  * @returns {Object} Merged source URL object with arrays for each language
  */
-function mergeSourceUrls(targetSourceUrl = {}, sourceSourceUrl = {}) {
-  const merged = {};
-  
-  // Handle English URLs
-  const targetEn = targetSourceUrl.en || '';
-  const sourceEn = sourceSourceUrl.en || '';
-  
-  if (targetEn && sourceEn && targetEn !== sourceEn) {
-    // If both exist and are different, combine them
-    merged.en = targetEn + '; ' + sourceEn;
-  } else {
-    // Use whichever exists
-    merged.en = targetEn || sourceEn || '';
-  }
-  
-  // Handle Arabic URLs
-  const targetAr = targetSourceUrl.ar || '';
-  const sourceAr = sourceSourceUrl.ar || '';
-  
-  if (targetAr && sourceAr && targetAr !== sourceAr) {
-    // If both exist and are different, combine them
-    merged.ar = targetAr + '; ' + sourceAr;
-  } else {
-    // Use whichever exists
-    merged.ar = targetAr || sourceAr || '';
-  }
-  
-  return merged;
+function mergeSourceUrls(targetSourceUrls = [], sourceSourceUrls = []) {
+  // Combine arrays and remove duplicates
+  const combined = [...(targetSourceUrls || []), ...(sourceSourceUrls || [])];
+  return [...new Set(combined)].filter(url => url && url.trim());
 }
 
 /**
@@ -205,8 +181,8 @@ function mergeViolations(newViolationData, existingViolation, options = {}) {
     );
   }
 
-  if (newViolationData.source_url || existingViolation.source_url) {
-    merged.source_url = mergeSourceUrls(existingViolation.source_url, newViolationData.source_url);
+  if (newViolationData.source_urls || existingViolation.source_urls) {
+    merged.source_urls = mergeSourceUrls(existingViolation.source_urls, newViolationData.source_urls);
   }
 
   if (newViolationData.verification_method || existingViolation.verification_method) {
