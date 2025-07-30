@@ -1,22 +1,15 @@
-const mongoose = require('mongoose');
-const config = require('../src/config/config');
-const logger = require('../src/config/logger');
 
-async function migrateSourceUrls() {
-  try {
-    // Connect to MongoDB
-    await mongoose.connect(config.mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    
-    logger.info('Connected to MongoDB for migration');
-    
-    // Get the Violation model
-    const Violation = require('../src/models/Violation');
+
+module.exports = {
+  /**
+   * @param db {import('mongodb').Db}
+   * @returns {Promise<void>}
+   */
+  async up(db) {
+    console.log('Starting source_urls migration...');
     
     // Find all violations that have source_url but no source_urls
-    const violations = await Violation.find({
+    const violations = await db.collection('violations').find({
       $and: [
         {
           $or: [
@@ -31,9 +24,9 @@ async function migrateSourceUrls() {
           ]
         }
       ]
-    });
+    }).toArray();
     
-    logger.info(`Found ${violations.length} violations to migrate`);
+    console.log(`Found ${violations.length} violations to migrate`);
     
     let migratedCount = 0;
     let skippedCount = 0;
@@ -56,7 +49,7 @@ async function migrateSourceUrls() {
         // Remove duplicates
         const uniqueUrls = [...new Set(sourceUrls)];
         
-        await Violation.updateOne(
+        await db.collection('violations').updateOne(
           { _id: violation._id },
           { 
             $set: { source_urls: uniqueUrls },
@@ -65,10 +58,10 @@ async function migrateSourceUrls() {
         );
         
         migratedCount++;
-        logger.info(`Migrated violation ${violation._id}: ${uniqueUrls.length} URLs`);
+        console.log(`Migrated violation ${violation._id}: ${uniqueUrls.length} URLs`);
       } else {
         // If no valid URLs found, set a default empty array
-        await Violation.updateOne(
+        await db.collection('violations').updateOne(
           { _id: violation._id },
           { 
             $set: { source_urls: [] },
@@ -77,46 +70,70 @@ async function migrateSourceUrls() {
         );
         
         skippedCount++;
-        logger.warn(`No valid URLs found for violation ${violation._id}, set empty array`);
+        console.log(`No valid URLs found for violation ${violation._id}, set empty array`);
       }
     }
     
-    logger.info(`Migration completed: ${migratedCount} violations migrated, ${skippedCount} violations with no URLs`);
+    console.log(`Migration completed: ${migratedCount} violations migrated, ${skippedCount} violations with no URLs`);
     
     // Verify migration
-    const remainingViolations = await Violation.find({
+    const remainingViolations = await db.collection('violations').find({
       $or: [
         { 'source_url.en': { $exists: true, $ne: '' } },
         { 'source_url.ar': { $exists: true, $ne: '' } }
       ]
-    });
+    }).toArray();
     
     if (remainingViolations.length > 0) {
-      logger.warn(`Warning: ${remainingViolations.length} violations still have source_url field`);
+      console.log(`Warning: ${remainingViolations.length} violations still have source_url field`);
     } else {
-      logger.info('All violations successfully migrated');
+      console.log('All violations successfully migrated');
+    }
+  },
+
+  /**
+   * @param db {import('mongodb').Db}
+   * @returns {Promise<void>}
+   */
+  async down(db) {
+    console.log('Starting source_urls migration rollback...');
+    
+    // Find all violations that have source_urls but no source_url
+    const violations = await db.collection('violations').find({
+      $and: [
+        { source_urls: { $exists: true } },
+        {
+          $or: [
+            { source_url: { $exists: false } },
+            { source_url: null }
+          ]
+        }
+      ]
+    }).toArray();
+    
+    console.log(`Found ${violations.length} violations to rollback`);
+    
+    let rollbackCount = 0;
+    
+    for (const violation of violations) {
+      // Convert source_urls back to source_url format
+      const sourceUrl = {
+        en: violation.source_urls && violation.source_urls.length > 0 ? violation.source_urls[0] : '',
+        ar: violation.source_urls && violation.source_urls.length > 1 ? violation.source_urls[1] : ''
+      };
+      
+      await db.collection('violations').updateOne(
+        { _id: violation._id },
+        { 
+          $set: { source_url: sourceUrl },
+          $unset: { source_urls: 1 }
+        }
+      );
+      
+      rollbackCount++;
+      console.log(`Rolled back violation ${violation._id}`);
     }
     
-  } catch (error) {
-    logger.error('Migration failed:', error);
-    throw error;
-  } finally {
-    await mongoose.disconnect();
-    logger.info('Disconnected from MongoDB');
+    console.log(`Rollback completed: ${rollbackCount} violations rolled back`);
   }
-}
-
-// Run migration if this file is executed directly
-if (require.main === module) {
-  migrateSourceUrls()
-    .then(() => {
-      logger.info('Migration completed successfully');
-      process.exit(0);
-    })
-    .catch((error) => {
-      logger.error('Migration failed:', error);
-      process.exit(1);
-    });
-}
-
-module.exports = migrateSourceUrls; 
+}; 
