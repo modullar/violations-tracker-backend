@@ -223,6 +223,12 @@ class TelegramScraper {
       }
 
     } catch (error) {
+      // Handle network-specific errors more gracefully
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNABORTED') {
+        logger.warn(`Network error scraping channel ${channel.name}: ${error.message}`);
+        throw new Error(`Network connectivity issue for ${channel.name}: ${error.message}`);
+      }
+      
       logger.error(`Error scraping channel ${channel.name}:`, error);
       throw error;
     }

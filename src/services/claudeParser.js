@@ -209,6 +209,16 @@ class ClaudeParserService {
         });
       }
 
+      // Check for rate limiting specifically
+      if (error.response?.status === 400 && error.response?.data?.error?.type === 'invalid_request_error') {
+        const rateLimitError = new Error('Claude API rate limit exceeded. Processing will resume when quota resets.');
+        rateLimitError.isRateLimit = true;
+        rateLimitError.originalError = error;
+        rateLimitError.responseData = error.response?.data;
+        rateLimitError.responseStatus = error.response?.status;
+        throw rateLimitError;
+      }
+
       // Create a more detailed error to throw
       const enhancedError = new Error(
         `Claude API error: ${error.message} ${

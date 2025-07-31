@@ -71,6 +71,11 @@ const createTelegramScrapingQueue = (redisConfig) => {
 
   queue.on('failed', (job, error) => {
     logger.error(`Telegram scraping job ${job.id} failed:`, error);
+    
+    // Handle Redis-specific errors
+    if (error.message && error.message.includes('Missing lock for job repeat')) {
+      logger.warn(`Redis lock issue detected for job ${job.id}. This may indicate Redis connectivity problems.`);
+    }
   });
 
   queue.on('stalled', (job) => {

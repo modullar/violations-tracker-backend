@@ -125,6 +125,22 @@ const processReport = async (report) => {
       logger.debug(`Claude parsing completed for report ${report._id}, found ${parsedViolations?.length || 0} potential violations`);
       
     } catch (error) {
+      // Handle rate limiting specifically
+      if (error.isRateLimit) {
+        const errorMessage = 'Claude API rate limit exceeded. Processing will resume when quota resets.';
+        logger.warn(`Rate limit hit for report ${report._id}: ${errorMessage}`);
+        
+        // Don't mark as failed for rate limiting - just return with error
+        return {
+          success: false,
+          reportId: report._id,
+          violationsCreated: 0,
+          error: errorMessage,
+          isRateLimit: true,
+          processingTimeMs: Date.now() - startTime
+        };
+      }
+      
       const errorMessage = `Claude parsing failed: ${error.message}`;
       logger.error(`Claude parsing error for report ${report._id}:`, error);
       
