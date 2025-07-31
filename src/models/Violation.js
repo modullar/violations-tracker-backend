@@ -332,6 +332,12 @@ const ViolationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  // Reference to the report this violation was created from
+  report_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Report',
+    default: null
+  },
   // Hash of key violation fields to prevent identical duplicates
   content_hash: {
     type: String,
@@ -352,6 +358,9 @@ const ViolationSchema = new mongoose.Schema({
 
 // Create a 2dsphere index for geospatial queries
 ViolationSchema.index({ 'location.coordinates': '2dsphere' });
+
+// Index for report_id for bidirectional linking
+ViolationSchema.index({ report_id: 1 });
 
 // Method to generate content hash
 ViolationSchema.methods.generateContentHash = function() {
@@ -637,6 +646,12 @@ ViolationSchema.statics.sanitizeData = function(violationData) {
   }
   
   return sanitized;
+};
+
+// Instance method to link violation to a report
+ViolationSchema.methods.linkToReport = function(reportId) {
+  this.report_id = reportId;
+  return this.save();
 };
 
 module.exports = mongoose.model('Violation', ViolationSchema);

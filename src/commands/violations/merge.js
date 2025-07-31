@@ -253,6 +253,17 @@ async function mergeWithExistingViolation(newViolationData, existingViolation, u
     // Add user information
     mergedData.updated_by = userId;
     
+    // EXPLICIT FIX: Ensure dates are explicitly set from new data when preferNew is true
+    // This addresses potential issues with object reference or field modification detection
+    if (options.preferNew !== false) {
+      if (newViolationData.date) {
+        mergedData.date = newViolationData.date;
+      }
+      if (newViolationData.reported_date) {
+        mergedData.reported_date = newViolationData.reported_date;
+      }
+    }
+    
     // Update the existing violation
     const updatedViolation = await Violation.findByIdAndUpdate(
       existingViolation._id,
@@ -263,7 +274,9 @@ async function mergeWithExistingViolation(newViolationData, existingViolation, u
     logger.info('Merged violation data', {
       violationId: existingViolation._id,
       userId,
-      fieldsUpdated: Object.keys(mergedData).length
+      fieldsUpdated: Object.keys(mergedData).length,
+      dateUpdated: mergedData.date ? mergedData.date.toISOString().split('T')[0] : 'N/A',
+      reportedDateUpdated: mergedData.reported_date ? mergedData.reported_date.toISOString().split('T')[0] : 'N/A'
     });
 
     return updatedViolation;

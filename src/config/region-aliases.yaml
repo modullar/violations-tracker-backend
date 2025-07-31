@@ -1,0 +1,551 @@
+# Regional Aliases Configuration
+# Maps region names to their aliases, neighborhoods, and alternative references
+# This enables smart regional filtering without hardcoding in JavaScript
+
+region_aliases:
+  دمشق:
+    # Capital aliases
+    - العاصمة
+    - دمشق الشام
+    - الشام
+    - damascus
+    - capital
+    # Damascus neighborhoods and districts
+    - باب توما
+    - الصالحية
+    - المهاجرين
+    - أبو رمانة
+    - المالكي
+    - المزة
+    - كفرسوسة
+    - القصاع
+    - برزة
+    - التجارة
+    - الشاغور
+    - القيمرية
+    - ساروجة
+    - العمارة
+    - الميدان
+    - الحلبوني
+    - زملكا
+    - عين ترما
+    - جوبر
+    - القابون
+    - تشرين
+    - المدينة القديمة
+    # English neighborhood names
+    - bab toma
+    - abu rummaneh
+    - mezzeh
+    - kafr sousa
+    - malki
+    - qassaa
+    - barzeh
+    - shaghour
+    - midan
+    - jobar
+    - qaboun
+    - old city damascus
+    - damascus old city
+
+  ريف دمشق:
+    - ريف الشام
+    - rif dimashq
+    - damascus countryside
+    - غوطة
+    # Major towns in Damascus countryside
+    - دوما
+    - daraya
+    - داريا
+    - الزبداني
+    - معلولا
+    - صيدنايا
+    - يبرود
+    - القطيفة
+    - النبك
+    - قارة
+    - رنكوس
+    - معضمية الشام
+    - كسوة
+    - جديدة عرطوز
+    - بلودان
+    - عين الفيجة
+    - الكسوة
+    - أشرفية الوادي
+    - حرستا
+    - عربين
+    - سقبا
+    - كفربطنا
+    - حمورية
+    - مسرابا
+    # English town names
+    - douma
+    - zabadani
+    - maaloula
+    - saidnaya
+    - yabroud
+    - muadamiyat al-sham
+    - harasta
+    - arbin
+    - kafr batna
+    # Ghouta areas
+    - الغوطة الشرقية
+    - الغوطة الغربية
+    - eastern ghouta
+    - western ghouta
+
+  حلب:
+    - حلب الشهباء
+    - aleppo
+    - alep
+    - shahba
+    # Aleppo neighborhoods and districts
+    - الشعار
+    - الفردوس
+    - صلاح الدين
+    - المرجة
+    - العزيزية
+    - الميسر
+    - بستان القصر
+    - السكري
+    - الأنصاري
+    - القاطرجي
+    - الهلك
+    - الجميلية
+    - باب النيرب
+    - باب النصر
+    - الزبدية
+    - العقبة
+    - قاضي عسكر
+    - شيخ مقصود
+    - الأشرفية
+    - السليمانية
+    # English neighborhood names
+    - bustan al-qasr
+    - salah al-din
+    - al-marjeh
+    - aziziyeh
+    - al-maysar
+    - sukari
+    - ansari
+    - qaterji
+    - halak
+    - sheikh maqsoud
+    - ashrafiyeh
+
+  ريف حلب:
+    - aleppo countryside
+    - ريف حلب الشمالي
+    - ريف حلب الشرقي
+    # Major towns in Aleppo countryside
+    - اعزاز
+    - عفرين
+    - منبج
+    - الباب
+    - جرابلس
+    - تل عفار
+    - صوران
+    - مارع
+    - إعزاز
+    - كوباني
+    - عين العرب
+    - الراعي
+    - اخترين
+    # English town names
+    - azaz
+    - afrin
+    - manbij
+    - al-bab
+    - jarabulus
+    - marea
+    - kobani
+    - ain al-arab
+    - al-rai
+    - akhtarin
+
+  حمص:
+    - حمص الأبية
+    - homs
+    - emesa
+    # Homs neighborhoods and areas
+    - الخالدية
+    - بابا عمرو
+    - الإنشاءات
+    - الوعر
+    - القصور
+    - الحميدية
+    - دير بعلبة
+    - الغوطة
+    - الزهراء
+    - كرم الزيتون
+    - الأرمن
+    # English area names
+    - khalidiyeh
+    - baba amr
+    - inshaat
+    - waer
+    - qusour
+    - hamidiyeh
+    - deir baalbeh
+    - zahra
+    - karm al-zeitoun
+
+  ريف حمص:
+    - homs countryside
+    - ريف حمص الشمالي
+    - ريف حمص الشرقي
+    - تلبيسة
+    - الرستن
+    - تلدو
+    - القريتين
+    - تدمر
+    - السخنة
+    - تلكلخ
+    - الحولة
+    - كفرلاها
+    - الضبعة
+    # English town names
+    - talbisseh
+    - rastan
+    - taldu
+    - qaryatayn
+    - palmyra
+    - sukhnah
+    - talkalakh
+    - houla
+    - kafr laha
+    - dab'aa
+
+  حماة:
+    - حماة الأسود
+    - hama
+    - hamah
+    # Hama districts and areas
+    - الحاضر
+    - الحميدية
+    - السوق
+    - الصالحية
+    - كرم الزيتون
+    - الأربعين
+    - المحطة
+    - الإنشاءات
+    - الصابونية
+    # English area names
+    - hadir
+    - hamidiyeh
+    - souq
+    - salihiyeh
+    - arbaeen
+
+  ريف حماة:
+    - hama countryside
+    - ريف حماة الشمالي
+    - ريف حماة الشرقي
+    - سلمية
+    - صوران
+    - كفرزيتا
+    - التمانعة
+    - مورك
+    - اللطامنة
+    # English town names
+    - salamiyeh
+    - souran
+    - kafr zita
+    - tamanah
+    - morek
+    - latamneh
+
+  درعا:
+    - درعا البلد
+    - daraa
+    - deraa
+    - dara'a
+    # Daraa areas
+    - درعا المحطة
+    - طريق السد
+    - الصحاري
+    - المنشية
+    # English area names
+    - daraa al-balad
+    - daraa station
+    - manshiyeh
+    - sahari
+
+  ريف درعا:
+    - daraa countryside
+    - حوران
+    - houran
+    - إنخل
+    - جاسم
+    - الشيخ مسكين
+    - نوى
+    - الصنمين
+    - المزيريب
+    - بصرى الشام
+    - تسيل
+    - الطيبة
+    - الحارة
+    # English town names
+    - inkhil
+    - jasim
+    - sheikh maskin
+    - nawa
+    - sanamein
+    - muzayrib
+    - bosra
+    - tasil
+    - taybeh
+    - harra
+
+  دير الزور:
+    - دير الزور الفيحاء
+    - deir ez-zor
+    - deir ezzor
+    - deir al-zour
+    - الجورة
+    - الحقانية
+    - الوليد
+    - العشارة
+    - البوكمال
+    # English area names
+    - jourah
+    - haqqaniyeh
+    - waleed
+    - ashara
+    - abu kamal
+
+  السويداء:
+    - السويداء الكرامة
+    - as-suwayda
+    - sweida
+    - suwayda
+    - شهبا
+    - صلخد
+    - القريا
+    - عرى
+    - شقا
+    # English town names
+    - shahba
+    - salkhad
+    - quraya
+    - orman
+    - shaqa
+
+  القنيطرة:
+    - quneitra
+    - qunaytirah
+    - kuneitra
+    - فيق
+    - خان أرنبة
+    - مسعدة
+    - بيت جن
+    - حضر
+    # English town names
+    - fiq
+    - khan arnabah
+    - masada
+    - beit jann
+    - hadar
+
+  طرطوس:
+    - tartus
+    - tartous
+    - tortosa
+    - بانياس
+    - صافيتا
+    - الدريكيش
+    - القدموس
+    - الشيخ بدر
+    # English town names
+    - banias
+    - safita
+    - dreikish
+    - qadmous
+    - sheikh badr
+
+  ريف طرطوس:
+    - tartus countryside
+    - كسب
+    - عين الشقق
+    - برج إسلام
+    - الحفة
+    # English town names
+    - kasab
+    - ain al-shaqaq
+    - burj islam
+    - haffeh
+
+  اللاذقية:
+    - latakia
+    - lattakia
+    - laodicea
+    - الصليبة
+    - الرمل الجنوبي
+    - الرمل الشمالي
+    - الشاطئ الأزرق
+    - سليبة
+    - الزراعة
+    - المشروع
+    - الطلائع
+    # English area names
+    - salibeh
+    - raml
+    - blue beach
+    - ziraa
+    - mashrou
+
+  ريف اللاذقية:
+    - latakia countryside
+    - جبلة
+    - قرداحة
+    - الحفة
+    - صلنفة
+    - كسب
+    - القنجرة
+    # English town names
+    - jableh
+    - qardaha
+    - haffeh
+    - salenfeh
+    - kasab
+    - qunjarah
+
+  الرقة:
+    - raqqa
+    - ar-raqqah
+    - rakka
+    - تل أبيض
+    - الثورة
+    - المنصورة
+    - الكرامة
+    # English area names
+    - tal abyad
+    - thawrah
+    - mansourah
+    - karamah
+
+  ريف الرقة:
+    - raqqa countryside
+    - عين عيسى
+    - سلوك
+    - الكرامة
+    - المعدان
+    - الجرنية
+    # English town names
+    - ain issa
+    - suluk
+    - madan
+    - jarnia
+
+  إدلب:
+    - idlib
+    - idleb
+    - edlib
+    - معرة النعمان
+    - خان شيخون
+    - سراقب
+    - أريحا
+    - حارم
+    # English town names
+    - maarat al-numan
+    - khan shaykhoun
+    - saraqib
+    - ariha
+    - harim
+
+  ريف إدلب:
+    - idlib countryside
+    - جسر الشغور
+    - الفوعة
+    - كفريا
+    - بنش
+    - معرتمصرين
+    # English town names
+    - jisr al-shughour
+    - fuah
+    - kafraya
+    - binish
+    - maarat misrin
+
+  الحسكة:
+    - al-hasakah
+    - hasaka
+    - hasakeh
+    - القامشلي
+    - رأس العين
+    - المالكية
+    - عامودا
+    - درباسية
+    # English town names
+    - qamishli
+    - ras al-ain
+    - malikiyeh
+    - amouda
+    - darbasiyeh
+
+  ريف الحسكة:
+    - hasakah countryside
+    - الشدادي
+    - الهول
+    - تل براك
+    - تل حميس
+    # English town names
+    - shaddadi
+    - hol
+    - tal brak
+    - tal hamis
+
+# Contextual patterns that can help infer regions without explicit mention
+contextual_patterns:
+  دمشق:
+    # Government/official patterns (likely Damascus)
+    - الرئاسة
+    - القصر الجمهوري
+    - وزارة
+    - الحكومة
+    - presidency
+    - republican palace
+    - ministry
+    - government
+    # Central Damascus landmarks
+    - الأموي
+    - الحميدية
+    - المرجة
+    - umayyad
+    - hamidiyeh
+
+  حلب:
+    # Aleppo-specific landmarks
+    - القلعة
+    - citadel
+    - الجامع الكبير
+    - great mosque
+    # Industrial context (Aleppo is industrial center)
+    - منطقة صناعية
+    - industrial zone
+
+  حمص:
+    # Homs-specific context
+    - المصفاة
+    - refinery
+    - خالد بن الوليد
+    - khalid ibn walid
+
+# Regional filtering configuration
+regional_filtering:
+  # Fuzzy matching settings
+  fuzzy_matching:
+    enabled: true
+    min_match_percentage: 0.6  # At least 60% of region name must match
+    min_length: 3              # Only apply to regions with 3+ characters
+
+  # Contextual inference settings
+  contextual_inference:
+    enabled: true
+    confidence_threshold: 0.7  # How confident to be in contextual matches
+
+  # Logging and monitoring
+  logging:
+    log_successful_matches: true
+    log_filtered_messages: true
+    include_match_details: true 

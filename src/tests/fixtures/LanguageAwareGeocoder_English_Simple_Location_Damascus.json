@@ -1,0 +1,71 @@
+{
+  "request": {
+    "query": "Damascus, Syria",
+    "language": "en",
+    "complexity": "simple",
+    "apiUsed": "geocoding_api"
+  },
+  "geocodingApiResponse": {
+    "status": "OK",
+    "results": [
+      {
+        "address_components": [
+          {
+            "long_name": "Damascus",
+            "short_name": "Damascus",
+            "types": ["locality", "political"]
+          },
+          {
+            "long_name": "Damascus Governorate",
+            "short_name": "Damascus Governorate",
+            "types": ["administrative_area_level_1", "political"]
+          },
+          {
+            "long_name": "Syria",
+            "short_name": "SY",
+            "types": ["country", "political"]
+          }
+        ],
+        "formatted_address": "Damascus, Syria",
+        "geometry": {
+          "location": {
+            "lat": 33.4913481,
+            "lng": 36.2983286
+          },
+          "location_type": "APPROXIMATE",
+          "viewport": {
+            "northeast": {
+              "lat": 33.5731224,
+              "lng": 36.4047649
+            },
+            "southwest": {
+              "lat": 33.4088285,
+              "lng": 36.1918923
+            }
+          }
+        },
+        "place_id": "ChIJi8mnMiO-VhQRAmAcLudhSjQ",
+        "types": ["locality", "political"]
+      }
+    ]
+  },
+  "expectedResult": {
+    "latitude": 33.4913481,
+    "longitude": 36.2983286,
+    "country": "Syria",
+    "city": "Damascus",
+    "state": "Damascus Governorate",
+    "formattedAddress": "Damascus, Syria",
+    "quality": 0.9,
+    "fromPlacesAPI": false,
+    "apiCallsUsed": 1,
+    "complexity": "simple",
+    "detectedLanguage": "en",
+    "budgetStatus": {
+      "used": 0,
+      "limit": 1000,
+      "remaining": 1000
+    },
+    "fallbackReason": "Simple location"
+  }
+}

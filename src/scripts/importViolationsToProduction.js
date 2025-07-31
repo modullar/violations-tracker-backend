@@ -97,8 +97,12 @@ function areViolationsDuplicate(violation1, violation2) {
     nearbyLocation = distance <= DUPLICATE_CONFIG.maxDistanceMeters;
   }
 
-  // Check casualties match
-  const sameCasualties = JSON.stringify(violation1.casualties) === JSON.stringify(violation2.casualties);
+  // Check casualties match (allow for small differences in casualty counts)
+  const casualty1 = violation1.casualties || 0;
+  const casualty2 = violation2.casualties || 0;
+  const casualtyDiff = Math.abs(casualty1 - casualty2);
+  const maxCasualty = Math.max(casualty1, casualty2);
+  const sameCasualties = casualtyDiff <= 2 || (maxCasualty > 0 && (casualtyDiff / maxCasualty) <= 0.1); // Allow 10% difference or ≤2 casualties difference
   
   // Calculate description similarity
   const similarity = stringSimilarity.compareTwoStrings(
@@ -106,9 +110,17 @@ function areViolationsDuplicate(violation1, violation2) {
     violation2.description.en
   );
 
-  // If they match on key fields OR have high description similarity
-  return (sameType && sameDate && samePerpetrator && nearbyLocation && sameCasualties) || 
-         similarity >= DUPLICATE_CONFIG.similarityThreshold;
+  // Exact match on all key fields
+  const exactMatch = sameType && sameDate && samePerpetrator && nearbyLocation && sameCasualties;
+  
+  // High similarity match - require high similarity AND at least some key field matches
+  // This prevents false positives where similar events happen on different dates or with different details
+  const highSimilarityMatch = similarity >= DUPLICATE_CONFIG.similarityThreshold && 
+                             sameDate && // Must be same date for similarity-based matching
+                             samePerpetrator && // Must be same perpetrator
+                             (sameType || sameCasualties); // And either same type or similar casualties
+  
+  return exactMatch || highSimilarityMatch;
 }
 
 // Function to generate content hash for violations

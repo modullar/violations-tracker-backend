@@ -5,6 +5,11 @@ const logger = require('../config/logger');
 const config = require('../config/config');
 const GeocodingCache = require('../models/GeocodingCache');
 
+// Budget tracking for Places API
+let placesApiCallsToday = 0;
+let lastResetDate = new Date().toDateString();
+const PLACES_API_DAILY_LIMIT = 1000; // Budget limit
+
 // Check if Google API key is available
 if (!config.googleApiKey) {
   // Dynamically try to get API key from environment
@@ -91,6 +96,241 @@ if (process.env.NODE_ENV === 'test') {
     }
   };
 }
+
+/**
+ * Reset daily Places API counter if it's a new day
+ */
+const resetDailyCounterIfNeeded = () => {
+  const today = new Date().toDateString();
+  if (lastResetDate !== today) {
+    placesApiCallsToday = 0;
+    lastResetDate = today;
+    logger.info(`Daily Places API counter reset. New day: ${today}`);
+  }
+};
+
+/**
+ * Get current Places API usage stats
+ */
+const getPlacesApiUsage = () => {
+  resetDailyCounterIfNeeded();
+  return {
+    used: placesApiCallsToday,
+    limit: PLACES_API_DAILY_LIMIT,
+    remaining: PLACES_API_DAILY_LIMIT - placesApiCallsToday,
+    date: lastResetDate
+  };
+};
+
+/**
+ * Increment Places API usage counter
+ */
+const incrementPlacesApiUsage = (calls = 2) => {
+  resetDailyCounterIfNeeded();
+  placesApiCallsToday += calls;
+  logger.info(`Places API usage: ${placesApiCallsToday}/${PLACES_API_DAILY_LIMIT} calls today`);
+};
+
+/**
+ * Detect the primary language of a location name
+ * @param {string} text - Location name to analyze
+ * @returns {string} - 'ar' for Arabic, 'en' for English, 'mixed' for both
+ */
+const detectLocationLanguage = (text) => {
+  if (!text) return 'en';
+  
+  // Arabic Unicode range: \u0600-\u06FF
+  const arabicChars = text.match(/[\u0600-\u06FF]/g);
+  const englishChars = text.match(/[a-zA-Z]/g);
+  
+  const arabicCount = arabicChars ? arabicChars.length : 0;
+  const englishCount = englishChars ? englishChars.length : 0;
+  
+  // If no characters found, default to English
+  if (arabicCount === 0 && englishCount === 0) return 'en';
+  
+  // If both languages present, it's mixed
+  if (arabicCount > 0 && englishCount > 0) return 'mixed';
+  
+  // If only one language present, return that
+  if (arabicCount > 0) return 'ar';
+  if (englishCount > 0) return 'en';
+  
+  return 'en'; // Default fallback
+};
+
+/**
+ * Arabic-specific complexity detection
+ * @param {string} name - Location name (lowercase)
+ * @param {string} admin - Administrative division (lowercase)
+ * @returns {boolean} - True if location is complex
+ */
+const isArabicLocationComplex = (name, admin) => {
+  // Simple Arabic locations (major cities/provinces) - Geocoding API works well
+  const simpleArabicKeywords = [
+    'حلب', 'دمشق', 'حمص', 'اللاذقية', 'طرطوس', 'حماة', 'الرقة', 'دير الزور',
+    'السويداء', 'درعا', 'القنيطرة', 'إدلب', 'الحسكة',
+    'محافظة', 'مديرية', 'قضاء' // Administrative terms (removed منطقة as it conflicts)
+  ];
+  
+  // Complex Arabic locations - Places API gives better results
+  const complexArabicKeywords = [
+    // Neighborhoods and districts
+    'حي', 'منطقة', 'مقاطعة', 'قرية', 'بلدة', 'مدينة',
+    // Streets and roads
+    'شارع', 'طريق', 'جادة', 'زقاق', 'درب', 'ساحة',
+    // Specific buildings/landmarks
+    'مبنى', 'برج', 'مركز', 'مجمع', 'مستشفى', 'مدرسة', 'جامعة',
+    'جامع', 'مسجد', 'كنيسة', 'كنيس',
+    'سوق', 'بازار', 'خان',
+    // Government/military
+    'قصر', 'قيادة', 'مقر', 'فرع', 'مديرية', 'وزارة',
+    'مطار', 'معبر', 'حاجز', 'نقطة',
+    // Geographic features
+    'جبل', 'تل', 'وادي', 'نهر', 'بحيرة', 'جسر'
+  ];
+  
+  // Special case: admin divisions with specific cities should be simple
+  const adminCityPatterns = [
+    'منطقة حلب', 'منطقة دمشق', 'منطقة حمص', 'منطقة اللاذقية'
+  ];
+  
+  // Check for admin city patterns first
+  const fullText = `${name} ${admin}`.trim();
+  if (adminCityPatterns.some(pattern => fullText.includes(pattern))) {
+    return false; // Use Geocoding API for admin divisions of major cities
+  }
+  
+  // Check for complex locations first (higher priority)
+  if (complexArabicKeywords.some(keyword => name.includes(keyword) || admin.includes(keyword))) {
+    return true; // Use Places API
+  }
+  
+  // Check if name is a simple location
+  const nameIsSimple = simpleArabicKeywords.some(keyword => name.includes(keyword));
+  const adminIsSimple = simpleArabicKeywords.some(keyword => admin.includes(keyword));
+  
+  // If name is simple and no admin division, use Geocoding API
+  if (nameIsSimple && (!admin || admin.trim().length === 0)) {
+    return false;
+  }
+  
+  // If both name and admin are simple, use Geocoding API
+  if (nameIsSimple && adminIsSimple) {
+    return false;
+  }
+  
+  // If name is simple but admin is not simple, or vice versa, use Places API
+  if ((nameIsSimple && !adminIsSimple) || (!nameIsSimple && adminIsSimple)) {
+    return true;
+  }
+  
+  // Arabic text with admin division usually needs precision
+  return admin && admin.trim().length > 0;
+};
+
+/**
+ * English-specific complexity detection
+ * @param {string} name - Location name (lowercase)
+ * @param {string} admin - Administrative division (lowercase)
+ * @returns {boolean} - True if location is complex
+ */
+const isEnglishLocationComplex = (name, admin) => {
+  // Simple English locations - Geocoding API works well
+  const simpleEnglishKeywords = [
+    'aleppo', 'damascus', 'homs', 'latakia', 'tartus', 'hama', 'raqqa', 'deir ez-zor',
+    'as-suwayda', 'daraa', 'quneitra', 'idlib', 'al-hasakah',
+    'governorate', 'province', 'district', 'subdistrict'
+  ];
+  
+  // Complex English locations - Places API gives better results
+  const complexEnglishKeywords = [
+    // Neighborhoods and districts
+    'neighborhood', 'district', 'quarter', 'suburb', 'area', 'zone',
+    'village', 'town', 'city center', 'old city',
+    // Streets and roads
+    'street', 'road', 'avenue', 'boulevard', 'lane', 'square', 'roundabout',
+    // Buildings and landmarks
+    'building', 'tower', 'center', 'complex', 'hospital', 'school', 'university',
+    'mosque', 'church', 'synagogue',
+    'market', 'bazaar', 'mall', 'hotel',
+    // Government/military
+    'palace', 'command', 'headquarters', 'ministry', 'office', 'branch',
+    'airport', 'crossing', 'checkpoint', 'base',
+    // Geographic features
+    'mountain', 'hill', 'valley', 'river', 'lake', 'bridge'
+  ];
+  
+  // Check for complex locations first (higher priority)
+  if (complexEnglishKeywords.some(keyword => name.includes(keyword) || admin.includes(keyword))) {
+    return true; // Use Places API
+  }
+  
+  // Check if name is a simple location
+  const nameIsSimple = simpleEnglishKeywords.some(keyword => name.includes(keyword));
+  const adminIsSimple = simpleEnglishKeywords.some(keyword => admin.includes(keyword));
+  
+  // Special case: if admin contains "governorate", it's considered simple
+  const adminContainsGovernorate = admin.includes('governorate');
+  
+  // If name is simple and no admin division, use Geocoding API
+  if (nameIsSimple && (!admin || admin.trim().length === 0)) {
+    return false;
+  }
+  
+  // If both name and admin are simple, or admin contains governorate, use Geocoding API
+  if (nameIsSimple && (adminIsSimple || adminContainsGovernorate)) {
+    return false;
+  }
+  
+  // If name is simple but admin is not simple, or vice versa, use Places API
+  if ((nameIsSimple && !adminIsSimple && !adminContainsGovernorate) || (!nameIsSimple && adminIsSimple && !adminContainsGovernorate)) {
+    return true;
+  }
+  
+  // English text with specific admin division usually needs precision
+  return admin && admin.trim().length > 0 && !admin.includes('governorate');
+};
+
+/**
+ * Language-aware complexity detection
+ * @param {string} placeName - Location name
+ * @param {string} adminDivision - Administrative division
+ * @param {string} language - Language code ('ar' or 'en')
+ * @returns {boolean} - True if location is complex
+ */
+const isLocationComplex = (placeName, adminDivision, language) => {
+  const name = (placeName || '').toLowerCase();
+  const admin = (adminDivision || '').toLowerCase();
+  
+  // Detect actual language if not provided
+  const actualLang = language || detectLocationLanguage(placeName);
+  
+  if (actualLang === 'ar') {
+    return isArabicLocationComplex(name, admin);
+  } else {
+    return isEnglishLocationComplex(name, admin);
+  }
+};
+
+/**
+ * Check if Places API should be used based on complexity and budget
+ * @param {string} placeName - Location name
+ * @param {string} adminDivision - Administrative division
+ * @param {string} language - Language code
+ * @returns {boolean} - True if Places API should be used
+ */
+const shouldUsePlacesAPI = (placeName, adminDivision, language) => {
+  // Check daily limit first
+  resetDailyCounterIfNeeded();
+  if (placesApiCallsToday >= PLACES_API_DAILY_LIMIT) {
+    logger.warn(`Places API daily limit reached (${PLACES_API_DAILY_LIMIT}). Using Geocoding API.`);
+    return false;
+  }
+  
+  // Check complexity
+  return isLocationComplex(placeName, adminDivision, language);
+};
 
 /**
  * Clean up location name by removing common words that might interfere with geocoding
@@ -262,9 +502,9 @@ const getCachedOrFreshGeocode = async (placeName, adminDivision, language = 'en'
     logger.warn(`Cache lookup failed for "${placeName}": ${error.message}`);
   }
   
-  // Not in cache, make API call with optimized strategies
+  // Not in cache, make API call with language-aware strategies
   logger.info(`Cache miss for "${placeName}" (${language}) - making API calls`);
-  const results = await geocodeLocationWithOptimizedStrategies(placeName, adminDivision);
+  const results = await geocodeLocationWithLanguageAwareness(placeName, adminDivision, language);
   
   // Cache the result if successful
   if (results && results.length > 0) {
@@ -293,25 +533,81 @@ const getCachedOrFreshGeocode = async (placeName, adminDivision, language = 'en'
 };
 
 /**
- * Optimized geocoding with reduced API calls
+ * Language-aware geocoding with smart API selection and budget throttling
  * @param {string} placeName - Name of the place
  * @param {string} adminDivision - Administrative division
+ * @param {string} language - Language code ('ar' or 'en')
  * @returns {Promise<Array>} - Returns geocoding results
  */
-const geocodeLocationWithOptimizedStrategies = async (placeName, adminDivision) => {
+const geocodeLocationWithLanguageAwareness = async (placeName, adminDivision, language = 'en') => {
   const cleanedPlaceName = cleanLocationName(placeName || '');
-  
-  // OPTIMIZED: Reduced strategies from 5 to 2 for cost efficiency
-  const strategies = [
-    // 1. Full query with all details (most specific)
-    `${cleanedPlaceName}${adminDivision ? ', ' + adminDivision : ''}, Syria`,
-    // 2. Just the place name and Syria (fallback)
-    `${cleanedPlaceName}, Syria`
-  ];
-
   let apiCallsUsed = 0;
   
-  // Try regular geocoding API first (cheaper than Places API)
+  // In test mode, return mock data immediately to avoid any real API calls
+  if (process.env.NODE_ENV === 'test') {
+    const mockResults = getTestMockResults(placeName);
+    if (mockResults !== null) {
+      logger.info(`Test mode: geocodeLocationWithLanguageAwareness returning mock results for ${placeName}`);
+      // Add metadata for test results
+      const detectedLang = language || detectLocationLanguage(placeName);
+      const isComplex = isLocationComplex(placeName, adminDivision, detectedLang);
+      const usePlacesAPI = shouldUsePlacesAPI(placeName, adminDivision, detectedLang);
+      
+      if (mockResults.length > 0) {
+        mockResults[0].detectedLanguage = detectedLang;
+        mockResults[0].complexity = isComplex ? 'complex' : 'simple';
+        mockResults[0].budgetStatus = getPlacesApiUsage();
+        mockResults[0].fromPlacesAPI = usePlacesAPI;
+        mockResults[0].apiCallsUsed = usePlacesAPI ? 2 : 1;
+        mockResults[0].fallbackReason = isComplex ? (usePlacesAPI ? 'Places API used' : 'Budget exceeded') : 'Simple location';
+      } else {
+        // Empty array means invalid location, should throw error
+        throw new Error(`Could not find valid coordinates for ${detectedLang} location: ${placeName} (test mode)`);
+      }
+      return mockResults;
+    }
+  }
+  
+  // Determine if this location is complex based on language and budget
+  const detectedLang = language || detectLocationLanguage(placeName);
+  const isComplex = isLocationComplex(placeName, adminDivision, detectedLang);
+  const usePlacesAPI = shouldUsePlacesAPI(placeName, adminDivision, detectedLang);
+  
+  logger.info(`Location analysis: "${placeName}" (${detectedLang}) - Complex: ${isComplex}, Places API: ${usePlacesAPI}`);
+  
+  if (isComplex && usePlacesAPI) {
+    // Complex locations: Places API first (better precision)
+    try {
+      const mainQuery = `${cleanedPlaceName}${adminDivision ? ', ' + adminDivision : ''}, Syria`;
+      logger.info(`Using Places API for complex ${detectedLang} location: ${mainQuery}`);
+      
+      const placesResults = await googlePlacesSearch(mainQuery);
+      apiCallsUsed += 2; // Places API uses 2 calls (findplace + details)
+      incrementPlacesApiUsage(2);
+      
+      if (placesResults && placesResults.length > 0) {
+        placesResults[0].fromPlacesAPI = true;
+        placesResults[0].apiCallsUsed = apiCallsUsed;
+        placesResults[0].complexity = 'complex';
+        placesResults[0].detectedLanguage = detectedLang;
+        placesResults[0].budgetStatus = getPlacesApiUsage();
+        logger.info(`Places API successful for complex ${detectedLang} location: [${placesResults[0].longitude}, ${placesResults[0].latitude}]`);
+        return placesResults;
+      }
+    } catch (error) {
+      logger.warn(`Places API failed for complex ${detectedLang} location: ${error.message}`);
+    }
+  }
+  
+  // Simple locations OR fallback OR budget exceeded: Use Geocoding API
+  const strategies = [
+    `${cleanedPlaceName}${adminDivision ? ', ' + adminDivision : ''}, Syria`,
+    `${cleanedPlaceName}, Syria`
+  ];
+  
+  const fallbackReason = isComplex ? (usePlacesAPI ? 'Places API failed' : 'Budget exceeded') : 'Simple location';
+  logger.info(`Using Geocoding API for ${detectedLang} location (${fallbackReason}): ${placeName}`);
+  
   for (const query of strategies) {
     try {
       const results = await tryGeocode(query);
@@ -323,7 +619,11 @@ const geocodeLocationWithOptimizedStrategies = async (placeName, adminDivision) 
           results[0].quality = calculateQualityScore(results[0], query);
           results[0].apiCallsUsed = apiCallsUsed;
           results[0].fromPlacesAPI = false;
-          logger.info(`Geocoding successful with ${apiCallsUsed} API calls: [${longitude}, ${latitude}]`);
+          results[0].complexity = isComplex ? 'complex' : 'simple';
+          results[0].detectedLanguage = detectedLang;
+          results[0].budgetStatus = getPlacesApiUsage();
+          results[0].fallbackReason = fallbackReason;
+          logger.info(`Geocoding successful for ${detectedLang} location: [${longitude}, ${latitude}]`);
           return results;
         }
       }
@@ -332,24 +632,7 @@ const geocodeLocationWithOptimizedStrategies = async (placeName, adminDivision) 
     }
   }
   
-  // Only use expensive Places API as last resort for the main query
-  try {
-    const mainQuery = strategies[0];
-    logger.info(`Falling back to Places API for: ${mainQuery}`);
-    const placesResults = await googlePlacesSearch(mainQuery);
-    apiCallsUsed += 2; // Places API uses 2 calls (findplace + details)
-    
-    if (placesResults && placesResults.length > 0) {
-      placesResults[0].fromPlacesAPI = true;
-      placesResults[0].apiCallsUsed = apiCallsUsed;
-      logger.info(`Places API successful with ${apiCallsUsed} total API calls`);
-      return placesResults;
-    }
-  } catch (error) {
-    logger.error(`Places API also failed for "${placeName}": ${error.message}`);
-  }
-  
-  throw new Error(`Could not find valid coordinates for location: ${placeName} (used ${apiCallsUsed} API calls)`);
+  throw new Error(`Could not find valid coordinates for ${detectedLang} location: ${placeName} (used ${apiCallsUsed} API calls)`);
 };
 
 /**
@@ -650,5 +933,18 @@ module.exports = {
   geocoder, 
   geocodeLocation, 
   getCachedOrFreshGeocode,
-  generateCacheKey
+  generateCacheKey,
+  // Language detection functions
+  detectLocationLanguage,
+  isLocationComplex,
+  isArabicLocationComplex,
+  isEnglishLocationComplex,
+  // Budget management functions
+  getPlacesApiUsage,
+  shouldUsePlacesAPI,
+  resetDailyCounterIfNeeded,
+  // Main geocoding function
+  geocodeLocationWithLanguageAwareness,
+  // Test helpers
+  getTestMockResults
 };

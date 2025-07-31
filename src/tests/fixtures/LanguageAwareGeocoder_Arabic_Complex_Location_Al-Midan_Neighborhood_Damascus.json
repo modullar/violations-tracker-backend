@@ -1,0 +1,74 @@
+{
+  "request": {
+    "query": "حي الميدان، دمشق، Syria",
+    "language": "ar",
+    "complexity": "complex",
+    "apiUsed": "places_api"
+  },
+  "placesApiResponse": {
+    "findPlaceFromText": {
+      "status": "OK",
+      "candidates": [
+        {
+          "place_id": "ChIJmVOEXzW-VhQRvHqLcaEgTDo",
+          "name": "حي الميدان",
+          "formatted_address": "حي الميدان، دمشق، سوريا"
+        }
+      ]
+    },
+    "placeDetails": {
+      "status": "OK",
+      "result": {
+        "formatted_address": "حي الميدان، دمشق، سوريا",
+        "geometry": {
+          "location": {
+            "lat": 33.4913481,
+            "lng": 36.2983286
+          }
+        },
+        "name": "حي الميدان",
+        "address_components": [
+          {
+            "long_name": "حي الميدان",
+            "short_name": "حي الميدان",
+            "types": ["sublocality_level_1", "sublocality", "political"]
+          },
+          {
+            "long_name": "دمشق",
+            "short_name": "دمشق",
+            "types": ["locality", "political"]
+          },
+          {
+            "long_name": "محافظة دمشق",
+            "short_name": "محافظة دمشق",
+            "types": ["administrative_area_level_1", "political"]
+          },
+          {
+            "long_name": "سوريا",
+            "short_name": "SY",
+            "types": ["country", "political"]
+          }
+        ]
+      }
+    }
+  },
+  "expectedResult": {
+    "latitude": 33.4913481,
+    "longitude": 36.2983286,
+    "country": "سوريا",
+    "city": "دمشق",
+    "state": "محافظة دمشق",
+    "formattedAddress": "حي الميدان، دمشق، سوريا",
+    "placeName": "حي الميدان",
+    "quality": 0.9,
+    "fromPlacesAPI": true,
+    "apiCallsUsed": 2,
+    "complexity": "complex",
+    "detectedLanguage": "ar",
+    "budgetStatus": {
+      "used": 2,
+      "limit": 1000,
+      "remaining": 998
+    }
+  }
+}

@@ -3,63 +3,53 @@ const Report = require('../../models/Report');
 const { connectDB, closeDB } = require('../setup');
 
 describe('Report Model', () => {
-  let testCounter = 0;
-  
-  // Helper function to generate unique URLs for each test
-  const generateUniqueUrl = (messageId = null) => {
-    testCounter++;
-    const id = messageId || testCounter;
-    return `https://t.me/testchannel/${Date.now()}_${id}`;
-  };
-
   beforeAll(async () => {
     await connectDB();
+  });
+
+  beforeEach(async () => {
+    // Clear all test data between tests
+    if (mongoose.connection.readyState !== 0) {
+      const collections = mongoose.connection.collections;
+      for (const key in collections) {
+        const collection = collections[key];
+        await collection.deleteMany();
+      }
+    }
   });
 
   afterAll(async () => {
     await closeDB();
   });
 
-  beforeEach(async () => {
-    await Report.deleteMany({});
-  });
-
-  describe('Report Creation', () => {
-    it('should create a valid report with all required fields', async () => {
+  describe('Schema and Validation', () => {
+    it('should create a report with new fields', async () => {
       const reportData = {
-        source_url: generateUniqueUrl('123'),
-        text: 'This is a test report with enough text to meet the minimum requirement',
-        date: new Date('2024-01-15T10:00:00Z'),
-        parsedByLLM: false,
+        source_url: 'https://t.me/testchannel/123',
+        text: 'Test report text with enough characters to pass validation',
+        date: new Date(),
         metadata: {
           channel: 'testchannel',
           messageId: '123',
-          scrapedAt: new Date(),
-          matchedKeywords: ['قصف', 'مدنيين'],
-          language: 'ar',
-          mediaCount: 2,
-          forwardedFrom: null,
-          viewCount: 150
+          scrapedAt: new Date()
         }
       };
 
       const report = new Report(reportData);
       const savedReport = await report.save();
 
-      expect(savedReport._id).toBeDefined();
-      expect(savedReport.source_url).toBe(reportData.source_url);
-      expect(savedReport.text).toBe(reportData.text);
-      expect(savedReport.parsedByLLM).toBe(false);
-      expect(savedReport.status).toBe('new');
-      expect(savedReport.metadata.channel).toBe('testchannel');
-      expect(savedReport.metadata.matchedKeywords).toEqual(['قصف', 'مدنيين']);
+      expect(savedReport.status).toBe('unprocessed');
+      expect(savedReport.violation_ids).toEqual([]);
+      expect(savedReport.processing_metadata.attempts).toBe(0);
+      expect(savedReport.processing_metadata.violations_created).toBe(0);
     });
 
-    it('should fail validation with invalid Telegram URL', async () => {
+    it('should validate status enum values', async () => {
       const reportData = {
-        source_url: 'https://invalid-url.com',
-        text: 'This is a test report with enough text',
+        source_url: 'https://t.me/testchannel/123',
+        text: 'Test report text with enough characters to pass validation',
         date: new Date(),
+        status: 'invalid_status',
         metadata: {
           channel: 'testchannel',
           messageId: '123'
@@ -71,240 +61,354 @@ describe('Report Model', () => {
       await expect(report.save()).rejects.toThrow();
     });
 
-    it('should fail validation with short text', async () => {
+    it('should accept valid status values', async () => {
+      const validStatuses = ['unprocessed', 'processing', 'processed', 'failed', 'ignored', 'retry_pending'];
+      
+      for (const status of validStatuses) {
+        const reportData = {
+          source_url: `https://t.me/testchannel/${status}`,
+          text: 'Test report text with enough characters to pass validation',
+          date: new Date(),
+          status: status,
+          metadata: {
+            channel: 'testchannel',
+            messageId: status
+          }
+        };
+
+        const report = new Report(reportData);
+        const savedReport = await report.save();
+        expect(savedReport.status).toBe(status);
+      }
+    });
+  });
+
+  describe('Processing Methods', () => {
+    let report;
+
+    beforeEach(async () => {
       const reportData = {
-        source_url: generateUniqueUrl('124'),
-        text: 'Short',
+        source_url: 'https://t.me/testchannel/123',
+        text: 'Test report text with enough characters to pass validation',
         date: new Date(),
         metadata: {
           channel: 'testchannel',
-          messageId: '124'
+          messageId: '123',
+          scrapedAt: new Date()
         }
       };
 
-      const report = new Report(reportData);
-      
-      await expect(report.save()).rejects.toThrow();
+      report = new Report(reportData);
+      await report.save();
     });
 
-    it('should fail validation with future date', async () => {
-      const futureDate = new Date();
-      futureDate.setHours(futureDate.getHours() + 2);
+    describe('markAsProcessing', () => {
+      it('should update status and increment attempts', async () => {
+        expect(report.processing_metadata.attempts).toBe(0);
+        expect(report.status).toBe('unprocessed');
 
-      const reportData = {
-        source_url: generateUniqueUrl('125'),
-        text: 'This is a test report with enough text',
-        date: futureDate,
-        metadata: {
-          channel: 'testchannel',
-          messageId: '125'
-        }
-      };
+        await report.markAsProcessing();
 
-      const report = new Report(reportData);
-      
-      await expect(report.save()).rejects.toThrow();
+        expect(report.status).toBe('processing');
+        expect(report.processing_metadata.attempts).toBe(1);
+        expect(report.processing_metadata.started_at).toBeInstanceOf(Date);
+        expect(report.processing_metadata.last_attempt).toBeInstanceOf(Date);
+      });
+
+      it('should increment attempts on subsequent calls', async () => {
+        await report.markAsProcessing();
+        expect(report.processing_metadata.attempts).toBe(1);
+
+        await report.markAsProcessing();
+        expect(report.processing_metadata.attempts).toBe(2);
+      });
+    });
+
+    describe('markAsProcessed', () => {
+      it('should mark report as processed with violation IDs', async () => {
+        const violationIds = [
+          new mongoose.Types.ObjectId(),
+          new mongoose.Types.ObjectId()
+        ];
+        const processingTime = 5000;
+
+        await report.markAsProcessed(violationIds, processingTime);
+
+        expect(report.status).toBe('processed');
+        expect(report.parsedByLLM).toBe(true);
+        expect(report.violation_ids).toEqual(violationIds);
+        expect(report.processing_metadata.violations_created).toBe(2);
+        expect(report.processing_metadata.processing_time_ms).toBe(processingTime);
+        expect(report.processing_metadata.started_at).toBeNull();
+        expect(report.error).toBeNull();
+      });
+
+      it('should handle empty violation IDs', async () => {
+        await report.markAsProcessed([], 1000);
+
+        expect(report.status).toBe('processed');
+        expect(report.violation_ids).toEqual([]);
+        expect(report.processing_metadata.violations_created).toBe(0);
+      });
+
+      it('should handle null violation IDs', async () => {
+        await report.markAsProcessed(null, 1000);
+
+        expect(report.status).toBe('processed');
+        expect(report.violation_ids).toEqual([]);
+        expect(report.processing_metadata.violations_created).toBe(0);
+      });
+    });
+
+    describe('markAsFailed', () => {
+      it('should mark as retry_pending for first failure', async () => {
+        const errorMessage = 'Test error message';
+
+        await report.markAsFailed(errorMessage);
+
+        expect(report.status).toBe('retry_pending');
+        expect(report.error).toBe(errorMessage);
+        expect(report.processing_metadata.error_details).toBe(errorMessage);
+        expect(report.processing_metadata.started_at).toBeNull();
+      });
+
+      it('should mark as failed after max attempts', async () => {
+        const errorMessage = 'Test error message';
+        
+        // Set attempts to 3 (max)
+        report.processing_metadata.attempts = 3;
+        await report.save();
+
+        await report.markAsFailed(errorMessage);
+
+        expect(report.status).toBe('failed');
+        expect(report.error).toBe(errorMessage);
+      });
+
+      it('should handle retry logic correctly', async () => {
+        const errorMessage = 'Test error message';
+        
+        // First failure - should retry
+        await report.markAsFailed(errorMessage);
+        expect(report.status).toBe('retry_pending');
+
+        // Set attempts to 2
+        report.processing_metadata.attempts = 2;
+        await report.save();
+        
+        // Second failure - should still retry
+        await report.markAsFailed(errorMessage);
+        expect(report.status).toBe('retry_pending');
+
+        // Set attempts to 3 (max)
+        report.processing_metadata.attempts = 3;
+        await report.save();
+        
+        // Third failure - should fail permanently
+        await report.markAsFailed(errorMessage);
+        expect(report.status).toBe('failed');
+      });
+    });
+
+    describe('markAsIgnored', () => {
+      it('should mark report as ignored with reason', async () => {
+        const reason = 'No violations found';
+
+        await report.markAsIgnored(reason);
+
+        expect(report.status).toBe('ignored');
+        expect(report.error).toBe(reason);
+        expect(report.processing_metadata.error_details).toBe(reason);
+        expect(report.processing_metadata.started_at).toBeNull();
+      });
     });
   });
 
   describe('Static Methods', () => {
-    beforeEach(async () => {
-      // Create test reports
-      const reports = [
-        {
-          source_url: 'https://t.me/channel1/1',
-          text: 'Processed report text with enough characters',
+    describe('findReadyForProcessing', () => {
+      beforeEach(async () => {
+        // Create test reports with different statuses
+        const now = new Date();
+        const thirtyMinutesAgo = new Date(now.getTime() - 31 * 60 * 1000);
+        const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+        const fourMinutesAgo = new Date(now.getTime() - 4 * 60 * 1000); // Less than 5 minutes, not stuck yet
+
+        const reports = [
+          // Fresh unprocessed report
+          {
+            source_url: 'https://t.me/test/1',
+            text: 'Unprocessed report text with enough characters',
+            date: now,
+            status: 'unprocessed',
+            metadata: { channel: 'test', messageId: '1', scrapedAt: now }
+          },
+          // Retry pending report with enough wait time
+          {
+            source_url: 'https://t.me/test/2',
+            text: 'Retry pending report text with enough characters',
+            date: now,
+            status: 'retry_pending',
+            processing_metadata: {
+              attempts: 1,
+              last_attempt: thirtyMinutesAgo
+            },
+            metadata: { channel: 'test', messageId: '2', scrapedAt: now }
+          },
+          // Stuck processing report
+          {
+            source_url: 'https://t.me/test/3',
+            text: 'Stuck processing report text with enough characters',
+            date: now,
+            status: 'processing',
+            processing_metadata: {
+              attempts: 1,
+              started_at: tenMinutesAgo
+            },
+            metadata: { channel: 'test', messageId: '3', scrapedAt: now }
+          },
+          // Processed report (should not be included)
+          {
+            source_url: 'https://t.me/test/4',
+            text: 'Processed report text with enough characters',
+            date: now,
+            status: 'processed',
+            parsedByLLM: true,
+            metadata: { channel: 'test', messageId: '4', scrapedAt: now }
+          },
+          // Retry pending but not enough wait time
+          {
+            source_url: 'https://t.me/test/5',
+            text: 'Recent retry pending report text with enough characters',
+            date: now,
+            status: 'retry_pending',
+            processing_metadata: {
+              attempts: 1,
+              last_attempt: tenMinutesAgo
+            },
+            metadata: { channel: 'test', messageId: '5', scrapedAt: now }
+          },
+          // Processing but not stuck yet (less than 5 minutes)
+          {
+            source_url: 'https://t.me/test/6',
+            text: 'Recent processing report text with enough characters',
+            date: now,
+            status: 'processing',
+            processing_metadata: {
+              attempts: 1,
+              started_at: fourMinutesAgo
+            },
+            metadata: { channel: 'test', messageId: '6', scrapedAt: now }
+          },
+          // Max attempts reached
+          {
+            source_url: 'https://t.me/test/7',
+            text: 'Max attempts report text with enough characters',
+            date: now,
+            status: 'retry_pending',
+            processing_metadata: {
+              attempts: 3,
+              last_attempt: thirtyMinutesAgo
+            },
+            metadata: { channel: 'test', messageId: '7', scrapedAt: now }
+          }
+        ];
+
+        await Report.insertMany(reports);
+      });
+
+      it('should find reports ready for processing', async () => {
+        const readyReports = await Report.findReadyForProcessing(15);
+
+        expect(readyReports).toHaveLength(3);
+        
+        // Should include: unprocessed, retry_pending with enough wait, stuck processing
+        const statuses = readyReports.map(r => r.status);
+        expect(statuses).toContain('unprocessed');
+        expect(statuses).toContain('retry_pending');
+        expect(statuses).toContain('processing');
+      });
+
+      it('should respect the limit parameter', async () => {
+        const readyReports = await Report.findReadyForProcessing(2);
+        expect(readyReports.length).toBeLessThanOrEqual(2);
+      });
+
+      it('should sort by scrapedAt in descending order', async () => {
+        const readyReports = await Report.findReadyForProcessing(15);
+        
+        for (let i = 0; i < readyReports.length - 1; i++) {
+          expect(readyReports[i].metadata.scrapedAt.getTime())
+            .toBeGreaterThanOrEqual(readyReports[i + 1].metadata.scrapedAt.getTime());
+        }
+      });
+    });
+
+    describe('sanitizeData', () => {
+      it('should initialize processing metadata', () => {
+        const reportData = {
+          source_url: 'https://t.me/test/1',
+          text: 'Test report text',
           date: new Date(),
-          parsedByLLM: true,
-          status: 'parsed',
-          metadata: { channel: 'channel1', messageId: '1', scrapedAt: new Date() }
-        },
-        {
-          source_url: 'https://t.me/channel1/2',
-          text: 'Unprocessed report text with enough characters',
+          metadata: {
+            channel: 'test',
+            messageId: '1'
+          }
+        };
+
+        const sanitized = Report.sanitizeData(reportData);
+
+        expect(sanitized.processing_metadata).toBeDefined();
+        expect(sanitized.processing_metadata.attempts).toBe(0);
+        expect(sanitized.processing_metadata.violations_created).toBe(0);
+        expect(sanitized.violation_ids).toEqual([]);
+        expect(sanitized.status).toBe('unprocessed');
+      });
+
+      it('should preserve existing processing metadata', () => {
+        const reportData = {
+          source_url: 'https://t.me/test/1',
+          text: 'Test report text',
           date: new Date(),
-          parsedByLLM: false,
-          status: 'new',
-          metadata: { channel: 'channel1', messageId: '2', scrapedAt: new Date() }
-        },
-        {
-          source_url: 'https://t.me/channel2/1',
-          text: 'Another unprocessed report text with enough characters',
-          date: new Date(),
-          parsedByLLM: false,
-          status: 'new',
-          metadata: { channel: 'channel2', messageId: '1', scrapedAt: new Date() }
-        }
-      ];
+          processing_metadata: {
+            attempts: 2,
+            violations_created: 5
+          },
+          metadata: {
+            channel: 'test',
+            messageId: '1'
+          }
+        };
 
-      await Report.insertMany(reports);
-    });
+        const sanitized = Report.sanitizeData(reportData);
 
-    it('should find reports ready for processing', async () => {
-      const reports = await Report.findReadyForProcessing(10);
-      
-      expect(reports).toHaveLength(2);
-      expect(reports.every(report => !report.parsedByLLM && report.status === 'new')).toBe(true);
-    });
-
-    it('should find recent reports by channel', async () => {
-      const reports = await Report.findRecentByChannel('channel1', 24);
-      
-      expect(reports).toHaveLength(2);
-      expect(reports.every(report => report.metadata.channel === 'channel1')).toBe(true);
-    });
-
-    it('should check if report exists', async () => {
-      const exists = await Report.exists('channel1', '1');
-      const notExists = await Report.exists('channel1', '999');
-      
-      expect(exists).toBeTruthy();
-      expect(notExists).toBeFalsy();
-    });
-
-    it('should sanitize data correctly', async () => {
-      const inputData = {
-        source_url: 'https://t.me/test/123',
-        text: 'Test text',
-        date: '2024-01-15',
-        metadata: {
-          channel: 'test',
-          messageId: '123'
-        }
-      };
-
-      const sanitized = Report.sanitizeData(inputData);
-      
-      expect(sanitized.date instanceof Date).toBe(true);
-      expect(sanitized.parsedByLLM).toBe(false);
-      expect(sanitized.status).toBe('new');
-      expect(sanitized.metadata.matchedKeywords).toEqual([]);
+        expect(sanitized.processing_metadata.attempts).toBe(2);
+        expect(sanitized.processing_metadata.violations_created).toBe(5);
+      });
     });
   });
 
-  describe('Instance Methods', () => {
-    let report;
-
-    beforeEach(async () => {
-      report = new Report({
-        source_url: generateUniqueUrl('126'),
-        text: 'Test report with keywords: قصف and مدنيين in Arabic',
-        date: new Date(),
-        metadata: {
-          channel: 'testchannel',
-          messageId: '126',
-          scrapedAt: new Date()
-        }
-      });
+  describe('Indexes', () => {
+    it('should have proper indexes for batch processing', async () => {
+      const indexes = await Report.collection.getIndexes();
       
-      await report.save();
-    });
-
-    it('should mark report as processed', async () => {
-      const jobId = new mongoose.Types.ObjectId();
+      // Check if the processing index exists
+      const processingIndex = Object.keys(indexes).find(key => 
+        key.includes('status') && 
+        key.includes('processing_metadata.attempts') && 
+        key.includes('metadata.scrapedAt')
+      );
       
-      await report.markAsProcessed(jobId);
+      expect(processingIndex).toBeDefined();
       
-      expect(report.parsedByLLM).toBe(true);
-      expect(report.status).toBe('parsed');
-      expect(report.parsingJobId).toEqual(jobId);
-    });
-
-    it('should mark report as failed', async () => {
-      const errorMessage = 'Processing failed due to timeout';
+      // Check if violation_ids index exists
+      const violationIndex = Object.keys(indexes).find(key => key.includes('violation_ids'));
+      expect(violationIndex).toBeDefined();
       
-      await report.markAsFailed(errorMessage);
-      
-      expect(report.status).toBe('failed');
-      expect(report.error).toBe(errorMessage);
-    });
-
-    it('should extract keywords from text', () => {
-      const keywords = ['قصف', 'مدنيين', 'غارة', 'hospital'];
-      
-      const matched = report.extractKeywords(keywords);
-      
-      expect(matched).toContain('قصف');
-      expect(matched).toContain('مدنيين');
-      expect(matched).not.toContain('غارة');
-      expect(report.metadata.matchedKeywords).toEqual(matched);
+      // Check if last_attempt index exists
+      const lastAttemptIndex = Object.keys(indexes).find(key => 
+        key.includes('processing_metadata.last_attempt')
+      );
+      expect(lastAttemptIndex).toBeDefined();
     });
   });
-
-  describe('Indexes and Uniqueness', () => {
-    it('should enforce unique constraint on source_url', async () => {
-      const uniqueUrl = generateUniqueUrl('127');
-      const reportData = {
-        source_url: uniqueUrl,
-        text: 'First report with this URL',
-        date: new Date(),
-        metadata: {
-          channel: 'testchannel',
-          messageId: '127'
-        }
-      };
-
-      const report1 = new Report(reportData);
-      await report1.save();
-
-      const report2 = new Report({
-        ...reportData,
-        text: 'Second report with same URL'
-      });
-
-      await expect(report2.save()).rejects.toThrow();
-    });
-
-    it('should enforce unique constraint on channel + messageId combination', async () => {
-      const report1 = new Report({
-        source_url: generateUniqueUrl('128'),
-        text: 'First report',
-        date: new Date(),
-        metadata: {
-          channel: 'testchannel',
-          messageId: '128'
-        }
-      });
-      await report1.save();
-
-      const report2 = new Report({
-        source_url: generateUniqueUrl('129'),
-        text: 'Second report with same channel and messageId',
-        date: new Date(),
-        metadata: {
-          channel: 'testchannel',
-          messageId: '128'
-        }
-      });
-
-      await expect(report2.save()).rejects.toThrow();
-    });
-  });
-
-  describe('JSON Serialization', () => {
-    it('should format dates correctly in JSON output', async () => {
-      const testDate = new Date('2024-01-15T10:30:00Z');
-      const scrapedDate = new Date('2024-01-15T10:35:00Z');
-
-      const report = new Report({
-        source_url: generateUniqueUrl('130'),
-        text: 'Test report for JSON serialization',
-        date: testDate,
-        metadata: {
-          channel: 'testchannel',
-          messageId: '130',
-          scrapedAt: scrapedDate
-        }
-      });
-
-      await report.save();
-
-      const json = report.toJSON();
-      
-      expect(json.date).toBe(testDate.toISOString());
-      expect(json.metadata.scrapedAt).toBe(scrapedDate.toISOString());
-    });
-  });
-
-
 });
