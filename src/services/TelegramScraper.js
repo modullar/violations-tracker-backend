@@ -27,6 +27,11 @@ class TelegramScraper {
       const keywordsData = fs.readFileSync(keywordsPath, 'utf8');
       this.keywordsConfig = yaml.load(keywordsData);
 
+      // Load region aliases configuration
+      const regionAliasesPath = path.join(__dirname, '../config/region-aliases.yaml');
+      const regionAliasesData = fs.readFileSync(regionAliasesPath, 'utf8');
+      this.regionConfig = yaml.load(regionAliasesData);
+
       // Extract active channels
       this.activeChannels = this.channelsConfig.channels.filter(channel => channel.active);
       
@@ -44,7 +49,21 @@ class TelegramScraper {
         this.allKeywords.push(...this.keywordsConfig.location_keywords);
       }
 
-      logger.info(`Loaded ${this.activeChannels.length} active channels and ${this.allKeywords.length} keywords`);
+      // Load filtering configuration
+      this.filteringConfig = this.channelsConfig.filtering || {
+        global: {
+          min_keyword_matches: 2,
+          require_context_keywords: true,
+          min_text_length: 50,
+          max_emoji_ratio: 0.1,
+          max_punctuation_ratio: 0.2,
+          max_number_ratio: 0.3
+        },
+        exclude_patterns: []
+      };
+
+      logger.info(`Loaded ${this.activeChannels.length} active channels, ${this.allKeywords.length} keywords, and ${Object.keys(this.regionConfig.region_aliases).length} regional configurations`);
+      
     } catch (error) {
       logger.error('Error loading configuration:', error);
       throw error;
@@ -77,6 +96,7 @@ class TelegramScraper {
       failed: 0,
       newReports: 0,
       duplicates: 0,
+      filtered: 0, // New metric for filtered content
       channels: []
     };
 
@@ -88,13 +108,14 @@ class TelegramScraper {
         results.success++;
         results.newReports += channelResult.newReports;
         results.duplicates += channelResult.duplicates;
+        results.filtered += channelResult.filtered;
         results.channels.push({
           name: channel.name,
           status: 'success',
           ...channelResult
         });
         
-        logger.info(`Scraped ${channel.name}: ${channelResult.newReports} new reports, ${channelResult.duplicates} duplicates`);
+        logger.info(`Scraped ${channel.name}: ${channelResult.newReports} new reports, ${channelResult.duplicates} duplicates, ${channelResult.filtered} filtered`);
       } catch (error) {
         results.failed++;
         results.channels.push({
@@ -110,7 +131,7 @@ class TelegramScraper {
       await this.delay(2000);
     }
 
-    logger.info(`Scraping completed: ${results.success} successful, ${results.failed} failed, ${results.newReports} new reports`);
+    logger.info(`Scraping completed: ${results.success} successful, ${results.failed} failed, ${results.newReports} new reports, ${results.filtered} filtered`);
     return results;
   }
 
@@ -121,6 +142,8 @@ class TelegramScraper {
     const result = {
       newReports: 0,
       duplicates: 0,
+      filtered: 0, // New metric
+      regionFiltered: 0, // Regional filtering metric
       processed: 0,
       errors: []
     };
@@ -161,14 +184,22 @@ class TelegramScraper {
             continue;
           }
 
-          // Check for keywords
-          const matchedKeywords = this.findMatchingKeywords(messageData.text);
-          if (matchedKeywords.length === 0) {
-            logger.debug(`No keywords matched for message ${messageData.metadata.messageId}`);
+          // Enhanced filtering with content quality checks
+          const filteringResult = this.applyEnhancedFiltering(messageData.text, channel);
+          
+          if (!filteringResult.shouldImport) {
+            result.filtered++;
+            
+            // Track region-based filtering specifically
+            if (filteringResult.filterType === 'region') {
+              result.regionFiltered++;
+            }
+            
+            logger.debug(`Message filtered out: ${messageData.metadata.messageId} - ${filteringResult.reason}`);
             continue;
           }
 
-          messageData.metadata.matchedKeywords = matchedKeywords;
+          messageData.metadata.matchedKeywords = filteringResult.matchedKeywords;
 
           // Check if report already exists
           const existingReport = await Report.exists(channel.name, messageData.metadata.messageId);
@@ -192,6 +223,12 @@ class TelegramScraper {
       }
 
     } catch (error) {
+      // Handle network-specific errors more gracefully
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNABORTED') {
+        logger.warn(`Network error scraping channel ${channel.name}: ${error.message}`);
+        throw new Error(`Network connectivity issue for ${channel.name}: ${error.message}`);
+      }
+      
       logger.error(`Error scraping channel ${channel.name}:`, error);
       throw error;
     }
@@ -285,19 +322,270 @@ class TelegramScraper {
   }
 
   /**
-   * Find matching keywords in text
+   * Enhanced filtering with content quality checks
    */
-  findMatchingKeywords(text) {
+  applyEnhancedFiltering(text, channel) {
+    // Get channel-specific filtering settings or use global defaults
+    const channelFiltering = channel.filtering || this.filteringConfig.global;
+    const globalFiltering = this.filteringConfig.global;
+    
+    // Regional filtering - check FIRST before other expensive operations
+    if (channel.assigned_regions && channelFiltering.enforce_region_filter) {
+      const regionResult = this.checkRegionMatch(text, channel.assigned_regions);
+      if (!regionResult.hasMatch) {
+        // Log filtering details for monitoring and analysis
+        logger.info('Regional filter applied', {
+          channel: channel.name,
+          assignedRegions: channel.assigned_regions,
+          textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+          filterReason: 'No assigned region found',
+          fuzzyAttempted: true, // Since we now use fuzzy matching
+          contextualAttempted: true // Since we now use contextual matching
+        });
+        
+        return { 
+          shouldImport: false, 
+          reason: `No assigned region found. Channel covers: ${channel.assigned_regions.join(', ')}`,
+          filterType: 'region'
+        };
+      } else {
+        // Log successful matches for monitoring effectiveness
+        logger.debug('Regional filter passed', {
+          channel: channel.name,
+          assignedRegions: channel.assigned_regions,
+          matchedRegions: regionResult.matchedRegions,
+          textPreview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+        });
+      }
+    }
+    
+    // Use channel-specific settings if available, otherwise use global
+    const minKeywordMatches = channelFiltering.min_keyword_matches || globalFiltering.min_keyword_matches;
+    const requireContextKeywords = channelFiltering.require_context_keywords !== undefined ? 
+      channelFiltering.require_context_keywords : globalFiltering.require_context_keywords;
+    const minTextLength = channelFiltering.min_text_length || globalFiltering.min_text_length;
+    const maxEmojiRatio = globalFiltering.max_emoji_ratio;
+    const maxPunctuationRatio = globalFiltering.max_punctuation_ratio;
+    const maxNumberRatio = globalFiltering.max_number_ratio;
+
+    // Check text length
+    if (text.length < minTextLength) {
+      return { shouldImport: false, reason: `Text too short (${text.length} < ${minTextLength})` };
+    }
+
+    // Check content quality
+    if (!this.isQualityContent(text, maxEmojiRatio, maxPunctuationRatio, maxNumberRatio)) {
+      return { shouldImport: false, reason: 'Failed content quality checks' };
+    }
+
+    // Check for exclude patterns
+    const excludePatterns = channelFiltering.exclude_patterns || this.filteringConfig.exclude_patterns || [];
+    if (this.containsExcludePatterns(text, excludePatterns)) {
+      return { shouldImport: false, reason: 'Contains excluded patterns' };
+    }
+
+    // Enhanced keyword matching
+    const keywordResult = this.findMatchingKeywordsWithContext(text, requireContextKeywords);
+    
+    if (keywordResult.matchedKeywords.length < minKeywordMatches) {
+      return { 
+        shouldImport: false, 
+        reason: `Insufficient keyword matches (${keywordResult.matchedKeywords.length} < ${minKeywordMatches})` 
+      };
+    }
+
+    return {
+      shouldImport: true,
+      matchedKeywords: keywordResult.matchedKeywords,
+      reason: 'Passed all filters'
+    };
+  }
+
+  /**
+   * Check if text mentions any of the assigned regions
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Object} - Match result with details
+   */
+  checkRegionMatch(text, assignedRegions) {
+    const lowerText = text.toLowerCase();
+    const matchedRegions = [];
+
+    // Check for direct region mentions
+    for (const region of assignedRegions) {
+      if (lowerText.includes(region.toLowerCase())) {
+        matchedRegions.push(region);
+      }
+    }
+
+    // Check for region variations/aliases
+    const regionAliases = this.getRegionAliases();
+    for (const region of assignedRegions) {
+      const aliases = regionAliases[region] || [];
+      for (const alias of aliases) {
+        if (lowerText.includes(alias.toLowerCase())) {
+          matchedRegions.push(region);
+          break;
+        }
+      }
+    }
+
+    // Enhanced fuzzy matching for partial region names
+    if (matchedRegions.length === 0) {
+      const fuzzyMatches = this.performFuzzyRegionMatching(text, assignedRegions);
+      matchedRegions.push(...fuzzyMatches);
+    }
+
+    // Context-based region inference
+    if (matchedRegions.length === 0) {
+      const contextualMatches = this.inferRegionFromContext(text, assignedRegions);
+      matchedRegions.push(...contextualMatches);
+    }
+
+    return {
+      hasMatch: matchedRegions.length > 0,
+      matchedRegions: [...new Set(matchedRegions)], // Remove duplicates
+      assignedRegions: assignedRegions
+    };
+  }
+
+  /**
+   * Perform fuzzy matching for region names
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Array} - Array of matched regions
+   */
+  performFuzzyRegionMatching(text, assignedRegions) {
+    const matches = [];
+    const lowerText = text.toLowerCase();
+    
+    // Get fuzzy matching settings from YAML configuration
+    const fuzzyConfig = this.regionConfig.regional_filtering?.fuzzy_matching || {
+      enabled: true,
+      min_match_percentage: 0.6,
+      min_length: 3
+    };
+    
+    // Skip if fuzzy matching is disabled
+    if (!fuzzyConfig.enabled) {
+      return matches;
+    }
+    
+    for (const region of assignedRegions) {
+      const regionLower = region.toLowerCase();
+      
+      // Check for partial matches based on configured percentage and minimum length
+      if (regionLower.length >= fuzzyConfig.min_length) {
+        const minMatchLength = Math.floor(regionLower.length * fuzzyConfig.min_match_percentage);
+        
+        // Check if a substantial part of the region name appears in text
+        for (let i = 0; i <= regionLower.length - minMatchLength; i++) {
+          const substring = regionLower.substring(i, i + minMatchLength);
+          if (lowerText.includes(substring)) {
+            matches.push(region);
+            break;
+          }
+        }
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
+   * Infer region from context clues
+   * @param {string} text - Message text
+   * @param {Array} assignedRegions - Array of region names this channel covers
+   * @returns {Array} - Array of inferred regions
+   */
+  inferRegionFromContext(text, assignedRegions) {
+    const matches = [];
+    const lowerText = text.toLowerCase();
+    
+    // Get context patterns from YAML configuration
+    const contextPatterns = this.regionConfig.contextual_patterns || {};
+
+    for (const region of assignedRegions) {
+      const patterns = contextPatterns[region] || [];
+      for (const pattern of patterns) {
+        if (lowerText.includes(pattern.toLowerCase())) {
+          matches.push(region);
+          break;
+        }
+      }
+    }
+    
+    return matches;
+  }
+
+  /**
+   * Get regional aliases and alternative names
+   */
+  getRegionAliases() {
+    return this.regionConfig.region_aliases;
+  }
+
+  /**
+   * Check content quality based on various metrics
+   */
+  isQualityContent(text, maxEmojiRatio, maxPunctuationRatio, maxNumberRatio) {
+    // Check emoji ratio
+    const emojiCount = (text.match(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu) || []).length;
+    if (emojiCount > text.length * maxEmojiRatio) {
+      return false;
+    }
+
+    // Check punctuation ratio
+    const punctuationCount = (text.match(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/g) || []).length;
+    if (punctuationCount > text.length * maxPunctuationRatio) {
+      return false;
+    }
+
+    // Check number ratio
+    const numberCount = (text.match(/\d/g) || []).length;
+    if (numberCount > text.length * maxNumberRatio) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if text contains exclude patterns
+   */
+  containsExcludePatterns(text, excludePatterns) {
+    const lowerText = text.toLowerCase();
+    return excludePatterns.some(pattern => lowerText.includes(pattern.toLowerCase()));
+  }
+
+  /**
+   * Enhanced keyword matching with context requirements
+   */
+  findMatchingKeywordsWithContext(text, requireContextKeywords) {
     const lowerText = text.toLowerCase();
     const matched = [];
-
+    const contextKeywords = this.keywordsConfig.context_keywords || [];
+    const locationKeywords = this.keywordsConfig.location_keywords || [];
+    
+    // Find all matching keywords
     for (const keyword of this.allKeywords) {
       if (lowerText.includes(keyword.toLowerCase())) {
         matched.push(keyword);
       }
     }
 
-    return matched;
+    // If context keywords are required, check if at least one context keyword is present
+    if (requireContextKeywords) {
+      const hasContextKeyword = matched.some(keyword => 
+        contextKeywords.includes(keyword) || locationKeywords.includes(keyword)
+      );
+      
+      if (!hasContextKeyword) {
+        return { matchedKeywords: [], reason: 'No context keywords found' };
+      }
+    }
+
+    return { matchedKeywords: matched };
   }
 
   /**

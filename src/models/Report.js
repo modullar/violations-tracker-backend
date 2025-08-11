@@ -87,16 +87,52 @@ const ReportSchema = new mongoose.Schema({
     ref: 'ReportParsingJob',
     default: null
   },
-  // Status tracking
+  // Status tracking - Updated with new states
   status: {
     type: String,
-    enum: ['new', 'processing', 'parsed', 'failed', 'ignored'],
-    default: 'new'
+    enum: ['unprocessed', 'processing', 'processed', 'failed', 'ignored', 'retry_pending'],
+    default: 'unprocessed'
   },
   // Error information if processing failed
   error: {
     type: String,
     default: null
+  },
+  // Array of created violation IDs
+  violation_ids: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Violation'
+  }],
+  // Processing metadata for retry logic and performance tracking
+  processing_metadata: {
+    attempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3
+    },
+    last_attempt: {
+      type: Date,
+      default: null
+    },
+    processing_time_ms: {
+      type: Number,
+      default: null,
+      min: 0
+    },
+    violations_created: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    error_details: {
+      type: String,
+      default: null
+    },
+    started_at: {
+      type: Date,
+      default: null
+    }
   }
 }, {
   timestamps: true,
@@ -110,6 +146,15 @@ ReportSchema.index({ parsedByLLM: 1, status: 1 });
 ReportSchema.index({ source_url: 1 }, { unique: true });
 ReportSchema.index({ 'metadata.scrapedAt': -1 });
 ReportSchema.index({ 'metadata.messageId': 1, 'metadata.channel': 1 }, { unique: true });
+
+// New indexes for batch processing
+ReportSchema.index({ 
+  status: 1, 
+  'processing_metadata.attempts': 1, 
+  'metadata.scrapedAt': -1 
+});
+ReportSchema.index({ violation_ids: 1 });
+ReportSchema.index({ 'processing_metadata.last_attempt': 1 });
 
 // Add pagination plugin
 ReportSchema.plugin(mongoosePaginate);
@@ -130,11 +175,33 @@ ReportSchema.methods.toJSON = function() {
   return report;
 };
 
-// Static method to find reports ready for LLM processing
-ReportSchema.statics.findReadyForProcessing = function(limit = 10) {
+// Static method to find reports ready for LLM processing with retry logic
+ReportSchema.statics.findReadyForProcessing = function(limit = 15) {
+  const now = new Date();
+  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000); // 30 minutes ago
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago for stuck processing
+
   return this.find({
-    parsedByLLM: false,
-    status: 'new'
+    $or: [
+      // Fresh unprocessed reports
+      { 
+        status: 'unprocessed',
+        'processing_metadata.attempts': { $lt: 3 }
+      },
+      // Retry pending reports where enough time has passed
+      { 
+        status: 'retry_pending',
+        'processing_metadata.attempts': { $lt: 3 },
+        'processing_metadata.last_attempt': { $lte: thirtyMinutesAgo }
+      },
+      // Stuck processing reports (processing for more than 5 minutes)
+      { 
+        status: 'processing',
+        'processing_metadata.attempts': { $lt: 3 }, // Ensure we don't process maxed out reports
+        'processing_metadata.started_at': { $lte: fiveMinutesAgo }
+      }
+    ],
+    parsedByLLM: false
   })
     .sort({ 'metadata.scrapedAt': -1 })
     .limit(limit);
@@ -171,28 +238,90 @@ ReportSchema.statics.sanitizeData = function(reportData) {
   
   // Ensure required defaults
   if (sanitized.parsedByLLM === undefined) sanitized.parsedByLLM = false;
-  if (!sanitized.status) sanitized.status = 'new';
+  if (!sanitized.status) sanitized.status = 'unprocessed';
   if (!sanitized.metadata) sanitized.metadata = {};
   if (!sanitized.metadata.matchedKeywords) sanitized.metadata.matchedKeywords = [];
   if (sanitized.metadata.mediaCount === undefined) sanitized.metadata.mediaCount = 0;
   if (sanitized.metadata.viewCount === undefined) sanitized.metadata.viewCount = 0;
   if (!sanitized.metadata.language) sanitized.metadata.language = 'unknown';
   
+  // Initialize processing metadata if not present
+  if (!sanitized.processing_metadata) {
+    sanitized.processing_metadata = {
+      attempts: 0,
+      last_attempt: null,
+      processing_time_ms: null,
+      violations_created: 0,
+      error_details: null,
+      started_at: null
+    };
+  }
+  
+  // Initialize violation_ids if not present
+  if (!sanitized.violation_ids) {
+    sanitized.violation_ids = [];
+  }
+  
   return sanitized;
 };
 
+// Instance method to mark as processing
+ReportSchema.methods.markAsProcessing = function() {
+  const maxAttempts = 3;
+  const currentAttempts = this.processing_metadata.attempts || 0;
+  
+  // Check if we've already reached max attempts
+  if (currentAttempts >= maxAttempts) {
+    // Don't increment, just update timestamps and status
+    this.status = 'processing';
+    this.processing_metadata.started_at = new Date();
+    this.processing_metadata.last_attempt = new Date();
+    return this.save();
+  }
+  
+  // Normal processing - increment attempts
+  this.status = 'processing';
+  this.processing_metadata.attempts = currentAttempts + 1;
+  this.processing_metadata.started_at = new Date();
+  this.processing_metadata.last_attempt = new Date();
+  return this.save();
+};
+
 // Instance method to mark as processed
-ReportSchema.methods.markAsProcessed = function(jobId) {
+ReportSchema.methods.markAsProcessed = function(violationIds, processingTimeMs) {
+  this.status = 'processed';
   this.parsedByLLM = true;
-  this.status = 'parsed';
-  this.parsingJobId = jobId;
+  this.violation_ids = violationIds || [];
+  this.processing_metadata.violations_created = violationIds ? violationIds.length : 0;
+  this.processing_metadata.processing_time_ms = processingTimeMs || null;
+  this.processing_metadata.started_at = null;
+  this.error = null;
   return this.save();
 };
 
 // Instance method to mark as failed
 ReportSchema.methods.markAsFailed = function(errorMessage) {
-  this.status = 'failed';
+  const maxAttempts = 3;
+  const currentAttempts = this.processing_metadata.attempts || 0;
+  
+  if (currentAttempts >= maxAttempts) {
+    this.status = 'failed';
+  } else {
+    this.status = 'retry_pending';
+  }
+  
   this.error = errorMessage;
+  this.processing_metadata.error_details = errorMessage;
+  this.processing_metadata.started_at = null;
+  return this.save();
+};
+
+// Instance method to mark as ignored
+ReportSchema.methods.markAsIgnored = function(reason) {
+  this.status = 'ignored';
+  this.error = reason;
+  this.processing_metadata.error_details = reason;
+  this.processing_metadata.started_at = null;
   return this.save();
 };
 
@@ -209,6 +338,34 @@ ReportSchema.methods.extractKeywords = function(keywordsList) {
   
   this.metadata.matchedKeywords = matchedKeywords;
   return matchedKeywords;
+};
+
+// Static method to get regional filtering statistics
+ReportSchema.statics.getRegionalFilteringStats = function(hoursBack = 24) {
+  const startDate = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  
+  return this.aggregate([
+    {
+      $match: {
+        'metadata.scrapedAt': { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: '$metadata.channel',
+        totalReports: { $sum: 1 },
+        regionFiltered: {
+          $sum: {
+            $cond: [
+              { $regexMatch: { input: '$error', regex: /No assigned region found/i } },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    }
+  ]);
 };
 
 const Report = mongoose.model('Report', ReportSchema);
