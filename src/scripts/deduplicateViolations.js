@@ -1,4 +1,13 @@
 /* eslint-disable quotes */
+/**
+ * Smart Deduplication Script for Violations
+ * 
+ * Features:
+ * - Conservative deduplication to minimize false positives
+ * - Extended time window (48 hours) for high similarity cases (≥90%)
+ * - Advanced false positive detection
+ * - Smart merging of duplicate data
+ */
 const mongoose = require('mongoose');
 const Violation = require('../models/Violation');
 const stringSimilarity = require('string-similarity');
@@ -30,7 +39,9 @@ const CONFIG = {
   // Balanced strict thresholds to minimize false positives while catching true duplicates
   SIMILARITY_THRESHOLD: 0.80,     // Balanced at 80% for good precision
   MAX_DISTANCE_KM: 2,             // Balanced at 2km to catch nearby duplicates
-  TIME_WINDOW_HOURS: 3,           // Keep 3 hours for tight time window
+  TIME_WINDOW_HOURS: 3,           // Standard 3 hours for tight time window
+  EXTENDED_TIME_WINDOW_HOURS: 48, // Extended 48 hours for high similarity cases
+  HIGH_SIMILARITY_THRESHOLD: 0.90, // Threshold for extended time window
   MIN_DESCRIPTION_SIMILARITY: 0.35, // Balanced threshold for precision and recall
   CASUALTY_TOLERANCE: 0.3,        // Reduced to 30% tolerance for casualty differences
   
@@ -91,13 +102,18 @@ function detectPerpetratorMismatch(v1, v2, score) {
 
 function validateTimeWindow(v1, v2, score) {
   const timeDiff = calculateTimeDifference(v1.date, v2.date);
+  
+  // Use extended time window for high similarity cases
+  if (score.details.descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD) {
+    return timeDiff <= CONFIG.EXTENDED_TIME_WINDOW_HOURS;
+  }
   if (score.details.descriptionSimilarity > 0.8) {
     return timeDiff <= 1;
   }
   if (score.details.descriptionSimilarity > 0.5) {
     return timeDiff <= 2;
   }
-  return timeDiff <= 3;
+  return timeDiff <= CONFIG.TIME_WINDOW_HOURS;
 }
 
 function validateSemanticContext(v1, v2) {
@@ -423,11 +439,31 @@ function calculateSimilarityScore(v1, v2) {
   score.details.sameType = isExactMatch;
   score.details.relatedType = isRelated;
 
-  // Time similarity
+  // Time similarity with extended window for high similarity cases
   const timeDiff = calculateTimeDifference(v1.date, v2.date);
-  score.time = timeDiff <= CONFIG.TIME_WINDOW_HOURS ? 1 : 0;
+  
+  // Calculate description similarity early to determine time window
+  let descriptionSimilarity = 0;
+  if (v1.description?.en && v2.description?.en) {
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.en);
+  } else if (v1.description?.ar && v2.description?.ar) {
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.ar);
+  } else if (v1.description?.en && v2.description?.ar) {
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.ar) * 0.7;
+  } else if (v1.description?.ar && v2.description?.en) {
+    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.en) * 0.7;
+  }
+  
+  // Use extended time window if description similarity is very high
+  const effectiveTimeWindow = descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD 
+    ? CONFIG.EXTENDED_TIME_WINDOW_HOURS 
+    : CONFIG.TIME_WINDOW_HOURS;
+  
+  score.time = timeDiff <= effectiveTimeWindow ? 1 : 0;
   score.details.timeDiffHours = timeDiff;
-  score.details.withinTimeWindow = timeDiff <= CONFIG.TIME_WINDOW_HOURS;
+  score.details.withinTimeWindow = timeDiff <= effectiveTimeWindow;
+  score.details.usedExtendedTimeWindow = descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD;
+  score.details.descriptionSimilarityForTime = descriptionSimilarity;
 
   // Location similarity
   let distance = Infinity;
@@ -509,25 +545,9 @@ function calculateSimilarityScore(v1, v2) {
   
   score.details.casualtySimilarity = score.casualties;
 
-  // Description similarity - try English first, fall back to Arabic
-  let descriptionSimilarity = 0;
-  
-  if (v1.description?.en && v2.description?.en) {
-    // Both have English descriptions - use English
-    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.en);
-  } else if (v1.description?.ar && v2.description?.ar) {
-    // Both have Arabic descriptions - use Arabic
-    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.ar);
-  } else if (v1.description?.en && v2.description?.ar) {
-    // Cross-language comparison - lower weight
-    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.en, v2.description.ar) * 0.7;
-  } else if (v1.description?.ar && v2.description?.en) {
-    // Cross-language comparison - lower weight
-    descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.en) * 0.7;
-  }
-  
-  score.description = descriptionSimilarity;
-  score.details.descriptionSimilarity = descriptionSimilarity;
+  // Use the description similarity already calculated for time window
+  score.description = score.details.descriptionSimilarityForTime;
+  score.details.descriptionSimilarity = score.details.descriptionSimilarityForTime;
 
   // Calculate weighted total score
   score.total = (
@@ -833,7 +853,7 @@ async function findAndProcessDuplicates() {
         console.log(`   Delete: ${duplicate._id}`);
         console.log(`   Overall Score: ${(score.total * 100).toFixed(1)}%`);
         console.log(`   Type Match: ${score.details.sameType ? '✅' : '❌'}`);
-        console.log(`   Time Window: ${score.details.withinTimeWindow ? '✅' : '❌'} (${score.details.timeDiffHours.toFixed(1)}h)`);
+        console.log(`   Time Window: ${score.details.withinTimeWindow ? '✅' : '❌'} (${score.details.timeDiffHours.toFixed(1)}h)${score.details.usedExtendedTimeWindow ? ' [EXTENDED]' : ''}`);
         console.log(`   Location: ${score.details.withinLocationRadius ? '✅' : '❌'} (${score.details.distanceKm.toFixed(1)}km)`);
         console.log(`   Perpetrator: ${score.details.samePerpetrator ? '✅' : '❌'}`);
         console.log(`   Description: ${(score.details.descriptionSimilarity * 100).toFixed(1)}%`);
