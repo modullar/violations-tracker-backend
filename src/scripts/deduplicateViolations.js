@@ -72,23 +72,54 @@ function extractVictimInfo(description) {
   const patterns = [
     /(?:named|called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi,
     /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:was|were)\s+(?:killed|shot)/gi,
-    /(?:young man|young woman|child|boy|girl)\s+(?:named|called)\s+([A-Z][a-z]+)/gi
+    /(?:young man|young woman|child|boy|girl)\s+(?:named|called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi
   ];
   const victims = [];
   patterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(description)) !== null) {
-      if (match[1]) victims.push(match[1]);
+      if (match[1]) {
+        // Clean up the extracted name - remove extra words
+        const name = match[1].trim();
+        // Only keep if it looks like a proper name (2+ words, no extra terms)
+        if (name.split(' ').length >= 2 && !name.includes('was') && !name.includes('were')) {
+          victims.push(name);
+        }
+      }
     }
   });
-  return victims.map(v => v.trim().toLowerCase());
+  
+  // Clean up the extracted names to get just the actual person names
+  const cleanedVictims = [];
+  victims.forEach(victim => {
+    // Remove common prefixes and suffixes
+    let cleanName = victim
+      .replace(/^(the\s+)?(young\s+)?(man|woman|child|boy|girl)\s+(named|called)\s+/i, '')
+      .replace(/^(the\s+)?(young\s+)?(man|woman|child|boy|girl)\s+/i, '')
+      .trim();
+    
+    // Only keep if it's a proper name (2+ words)
+    if (cleanName.split(' ').length >= 2) {
+      cleanedVictims.push(cleanName);
+    }
+  });
+  
+  return cleanedVictims.map(v => v.trim().toLowerCase());
 }
 
 function detectDifferentVictims(v1, v2) {
   const victims1 = extractVictimInfo(v1.description?.en || '');
   const victims2 = extractVictimInfo(v2.description?.en || '');
   if (victims1.length > 0 && victims2.length > 0) {
-    return !victims1.some(v1 => victims2.some(v2 => v1 === v2));
+    // Use fuzzy matching to handle minor spelling variations
+    return !victims1.some(v1 => victims2.some(v2 => {
+      // Exact match
+      if (v1 === v2) return true;
+      
+      // Check for minor spelling variations (like Ahmad vs Ahmed)
+      const similarity = stringSimilarity.compareTwoStrings(v1, v2);
+      return similarity >= 0.85; // 85% similarity threshold for names (lowered from 90%)
+    }));
   }
   return false;
 }
@@ -159,7 +190,15 @@ function detectSmartFalsePositive(v1, v2, score) {
     const victims1 = extractVictimInfo(v1.description?.en || '');
     const victims2 = extractVictimInfo(v2.description?.en || '');
     if (victims1.length > 0 && victims2.length > 0) {
-      const hasDifferentVictims = !victims1.some(v1 => victims2.some(v2 => v1 === v2));
+      // Use fuzzy matching to handle minor spelling variations
+      const hasDifferentVictims = !victims1.some(v1 => victims2.some(v2 => {
+        // Exact match
+        if (v1 === v2) return true;
+        
+        // Check for minor spelling variations (like Ahmad vs Ahmed)
+        const similarity = stringSimilarity.compareTwoStrings(v1, v2);
+        return similarity >= 0.85; // 85% similarity threshold for names
+      }));
       if (hasDifferentVictims) {
         return true; // False positive - different victims
       }
@@ -419,13 +458,13 @@ function calculateSimilarityScore(v1, v2) {
   // Type similarity - allow related types (case-insensitive)
   const relatedTypes = {
     'SHOOTING': ['MURDER', 'KILLING', 'ASSASSINATION'],
-    'MURDER': ['SHOOTING', 'KILLING', 'ASSASSINATION'],
-    'KILLING': ['SHOOTING', 'MURDER', 'ASSASSINATION'],
+    'MURDER': ['SHOOTING', 'KILLING', 'ASSASSINATION', 'AIRSTRIKE'],
+    'KILLING': ['SHOOTING', 'MURDER', 'ASSASSINATION', 'AIRSTRIKE'],
     'ASSASSINATION': ['SHOOTING', 'MURDER', 'KILLING'],
     'BOMBING': ['EXPLOSION', 'SHELLING', 'AIRSTRIKE'],
     'EXPLOSION': ['BOMBING', 'SHELLING', 'AIRSTRIKE'],
     'SHELLING': ['BOMBING', 'EXPLOSION', 'AIRSTRIKE'],
-    'AIRSTRIKE': ['BOMBING', 'EXPLOSION', 'SHELLING']
+    'AIRSTRIKE': ['BOMBING', 'EXPLOSION', 'SHELLING', 'MURDER', 'KILLING']
   };
   
   // Handle case-insensitive type matching
@@ -926,5 +965,12 @@ module.exports = {
   validateDuplicate,
   calculateDescriptionSimilarity,
   selectBestViolation,
-  smartMerge
+  smartMerge,
+  detectLocationFalsePositive,
+  detectDifferentVictims,
+  detectPerpetratorMismatch,
+  validateTimeWindow,
+  validateSemanticContext,
+  detectSmartFalsePositive,
+  extractVictimInfo
 }; 
