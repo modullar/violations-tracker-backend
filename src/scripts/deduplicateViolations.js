@@ -155,7 +155,10 @@ function validateSemanticContext(v1, v2) {
     'child': ['boy', 'girl', 'teenager', 'young'],
     'soldier': ['army', 'military', 'soldier'],
     'clash': ['fight', 'battle', 'conflict'],
-    'explosion': ['bomb', 'blast', 'detonation']
+    'explosion': ['bomb', 'blast', 'detonation'],
+    'detention': ['arrested', 'detained', 'arrest', 'detention', 'campaign', 'operation', 'security', 'militia', 'pyd', 'sdf'],
+    'civilian': ['civilian', 'civilians', 'citizen', 'citizens', 'resident', 'residents'],
+    'neighborhood': ['neighborhood', 'district', 'area', 'quarter', 'gweiran', 'al-aziziyah']
   };
   let hasSharedSemanticContext = false;
   for (const terms of Object.values(semanticIndicators)) {
@@ -310,6 +313,47 @@ function calculateCasualtySimilarity(violation1, violation2) {
   
   const difference = Math.abs(total1 - total2);
   const maxTotal = Math.max(total1, total2);
+  
+  // Special handling for detention violations - be more lenient for same campaign
+  if (violation1.type === 'DETENTION' && violation2.type === 'DETENTION') {
+    // For detention violations, if they're in the same city and same perpetrator, 
+    // be more lenient with casualty differences as they might be part of the same campaign
+    const location1 = (violation1.location?.name?.en || '').toLowerCase();
+    const location2 = (violation2.location?.name?.en || '').toLowerCase();
+    const perp1 = (violation1.perpetrator_affiliation || '').toLowerCase();
+    const perp2 = (violation2.perpetrator_affiliation || '').toLowerCase();
+    
+    // Check if they're in the same city and have same perpetrator
+    const extractCityName = (text) => {
+      const cities = ['idlib', 'al-hasakah', 'damascus', 'aleppo', 'homs', 'hama', 'latakia', 'tartus', 'daraa', 'quneitra', 'deir ez-zor', 'al-raqqah', 'al-suwayda'];
+      for (const city of cities) {
+        if (text.includes(city)) {
+          return city;
+        }
+      }
+      return null;
+    };
+    
+    const city1 = extractCityName(location1);
+    const city2 = extractCityName(location2);
+    const sameCity = city1 && city2 && city1 === city2;
+    const samePerpetrator = perp1 === perp2;
+    
+    if (sameCity && samePerpetrator) {
+      // For same city and perpetrator, be more lenient with casualty differences
+      // This accounts for the fact that detention counts often increase over time in the same campaign
+      const baseSimilarity = Math.max(0, 1 - (difference / maxTotal));
+      
+      // Boost similarity for detention campaigns
+      if (difference <= 10) {
+        return Math.min(1.0, baseSimilarity + 0.3); // Boost by 30% for small differences
+      } else if (difference <= 30) {
+        return Math.min(1.0, baseSimilarity + 0.2); // Boost by 20% for medium differences
+      } else if (difference <= 50) {
+        return Math.min(1.0, baseSimilarity + 0.1); // Boost by 10% for larger differences
+      }
+    }
+  }
   
   return Math.max(0, 1 - (difference / maxTotal));
 }
@@ -528,8 +572,20 @@ function calculateSimilarityScore(v1, v2) {
       const name1Lower = name1.toLowerCase();
       const name2Lower = name2.toLowerCase();
       
-      const containsIdlib = (text) => text.includes('idlib');
-      const isSameCity = containsIdlib(name1Lower) && containsIdlib(name2Lower);
+      // Extract city names from location strings
+      const extractCityName = (text) => {
+        const cities = ['idlib', 'al-hasakah', 'damascus', 'aleppo', 'homs', 'hama', 'latakia', 'tartus', 'daraa', 'quneitra', 'deir ez-zor', 'al-raqqah', 'al-suwayda'];
+        for (const city of cities) {
+          if (text.includes(city)) {
+            return city;
+          }
+        }
+        return null;
+      };
+      
+      const city1 = extractCityName(name1Lower);
+      const city2 = extractCityName(name2Lower);
+      const isSameCity = city1 && city2 && city1 === city2;
       
       if (isSameCity) {
         // Both locations mention the same city - check if they're the same area
@@ -966,6 +1022,7 @@ module.exports = {
   calculateDescriptionSimilarity,
   selectBestViolation,
   smartMerge,
+  clusterViolations,
   detectLocationFalsePositive,
   detectDifferentVictims,
   detectPerpetratorMismatch,
