@@ -252,4 +252,30 @@ describe('ClaudeParser Service Tests', () => {
       expect(result.invalid[0].errors).toContain('Violation type is required');
     });
   });
+
+  describe('extractViolationsJson', () => {
+    it('should extract JSON from a code block', () => {
+      const content = 'Here is the data:\n\n```json\n[{"type":"AIRSTRIKE"}]\n```\nMore text.';
+      const result = claudeParser.extractViolationsJson(content);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0].type).toBe('AIRSTRIKE');
+    });
+
+    it('should extract JSON from a raw array', () => {
+      const content = '[{"type":"SHELLING"}]';
+      const result = claudeParser.extractViolationsJson(content);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0].type).toBe('SHELLING');
+    });
+
+    it('should throw if no JSON is found', () => {
+      const content = 'No JSON here!';
+      expect(() => claudeParser.extractViolationsJson(content)).toThrow('Failed to extract structured data from the response');
+    });
+
+    it('should throw if JSON is invalid', () => {
+      const content = '```json\nnot valid json\n```';
+      expect(() => claudeParser.extractViolationsJson(content)).toThrow('Failed to parse JSON from Claude response');
+    });
+  });
 });

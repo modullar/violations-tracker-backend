@@ -42,6 +42,12 @@ const {
   mergeLocalizedString 
 } = require('./merge');
 
+// Process operations
+const { 
+  processReport, 
+  createViolationsFromReport 
+} = require('./process');
+
 module.exports = {
   // Create
   createSingleViolation,
@@ -75,5 +81,9 @@ module.exports = {
   mergeVictims,
   mergeMediaLinks,
   mergeTags,
-  mergeLocalizedString
+  mergeLocalizedString,
+  
+  // Process
+  processReport,
+  createViolationsFromReport
 };

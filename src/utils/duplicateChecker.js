@@ -4,7 +4,7 @@ const stringSimilarity = require('string-similarity');
 // Configuration
 const SIMILARITY_THRESHOLD = 0.75;
 const MAX_DISTANCE_METERS = 100;
-const COMPARISON_DATE_TOLERANCE = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const COMPARISON_DATE_TOLERANCE = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
 /**
  * Calculate distance between two points using Haversine formula
@@ -142,7 +142,7 @@ async function findPotentialDuplicates(newViolationData, options = {}) {
   const { limit = 5 } = options;
 
   try {
-    // Build query conditions
+    // Build query conditions for 12-hour window
     const violationDate = new Date(newViolationData.date);
     const query = {
       type: newViolationData.type,

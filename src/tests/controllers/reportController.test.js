@@ -371,7 +371,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the first detailed report about قصف air strikes that occurred in حلب city with significant impact',
           date: new Date('2024-01-15'),
           parsedByLLM: false,
-          status: 'new',
+          status: 'unprocessed',
           metadata: {
             channel: 'channel1',
             messageId: '1',
@@ -387,7 +387,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the second comprehensive report about انفجار explosive incidents in دمشق with casualties',
           date: new Date('2024-01-16'),
           parsedByLLM: true,
-          status: 'parsed',
+          status: 'processed',
           metadata: {
             channel: 'channel2',
             messageId: '1',
@@ -562,7 +562,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the first comprehensive statistical report with adequate length for validation',
           date: new Date(),
           parsedByLLM: true,
-          status: 'parsed',
+          status: 'processed',
           metadata: {
             channel: 'channel1',
             messageId: '1',
@@ -576,7 +576,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the second comprehensive statistical report with adequate length for validation',
           date: new Date(),
           parsedByLLM: false,
-          status: 'new',
+          status: 'unprocessed',
           metadata: {
             channel: 'channel2',
             messageId: '1',
@@ -632,7 +632,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the first comprehensive report ready for processing with adequate length',
           date: new Date(),
           parsedByLLM: false,
-          status: 'new',
+          status: 'unprocessed',
           metadata: { channel: 'channel1', messageId: '1', scrapedAt: new Date() }
         },
         {
@@ -640,7 +640,7 @@ describe('Report Controller Tests', () => {
           text: 'This is the second comprehensive report ready for processing with adequate length',
           date: new Date(),
           parsedByLLM: false,
-          status: 'new',
+          status: 'unprocessed',
           metadata: { channel: 'channel1', messageId: '2', scrapedAt: new Date() }
         },
         {
@@ -648,7 +648,7 @@ describe('Report Controller Tests', () => {
           text: 'This is a comprehensive report that has already been processed with adequate length',
           date: new Date(),
           parsedByLLM: true,
-          status: 'parsed',
+          status: 'processed',
           metadata: { channel: 'channel1', messageId: '3', scrapedAt: new Date() }
         }
       ];
@@ -664,7 +664,7 @@ describe('Report Controller Tests', () => {
 
       expect(res.body.success).toBe(true);
       expect(res.body.data).toHaveLength(2);
-      expect(res.body.data.every(report => !report.parsedByLLM && report.status === 'new')).toBe(true);
+      expect(res.body.data.every(report => !report.parsedByLLM && report.status === 'unprocessed')).toBe(true);
     });
 
     it('should support limit parameter', async () => {
@@ -697,7 +697,7 @@ describe('Report Controller Tests', () => {
         text: 'This is a comprehensive test report to mark as processed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
-        status: 'new',
+        status: 'unprocessed',
         metadata: {
           channel: 'testchannel',
           messageId: `mark-processed-${testCounter}`,
@@ -717,7 +717,7 @@ describe('Report Controller Tests', () => {
 
       expect(res.body.success).toBe(true);
       expect(res.body.data.parsedByLLM).toBe(true);
-      expect(res.body.data.status).toBe('parsed');
+      expect(res.body.data.status).toBe('processed');
     });
 
     it('should return 404 for non-existent report', async () => {
@@ -754,7 +754,7 @@ describe('Report Controller Tests', () => {
         text: 'This is a comprehensive test report to mark as failed with adequate length for validation',
         date: new Date(),
         parsedByLLM: false,
-        status: 'new',
+        status: 'unprocessed',
         metadata: {
           channel: 'testchannel',
           messageId: `mark-failed-${testCounter}`,
@@ -763,8 +763,27 @@ describe('Report Controller Tests', () => {
       });
     });
 
-    it('should mark report as failed as admin', async () => {
+    it('should mark report as retry_pending for first failure', async () => {
       const errorMessage = 'Processing timeout';
+
+      const res = await request(app)
+        .put(`/api/reports/${testReport._id}/mark-failed`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ errorMessage })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('retry_pending');
+      expect(res.body.data.error).toBe(errorMessage);
+    });
+
+    it('should mark report as failed after max attempts', async () => {
+      // First set the report to have max attempts
+      await testReport.updateOne({
+        'processing_metadata.attempts': 3
+      });
+
+      const errorMessage = 'Processing timeout after max attempts';
 
       const res = await request(app)
         .put(`/api/reports/${testReport._id}/mark-failed`)
