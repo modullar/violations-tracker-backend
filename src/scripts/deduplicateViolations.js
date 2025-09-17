@@ -134,16 +134,34 @@ function detectPerpetratorMismatch(v1, v2, score) {
 function validateTimeWindow(v1, v2, score) {
   const timeDiff = calculateTimeDifference(v1.date, v2.date);
   
-  // Use extended time window for high similarity cases
+  // Use extended time window ONLY for very high text description similarity
+  // This prevents false positives from same location/type with generic descriptions
   if (score.details.descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD) {
+    // 90%+ description similarity: Allow extended window (48 hours)
     return timeDiff <= CONFIG.EXTENDED_TIME_WINDOW_HOURS;
   }
-  if (score.details.descriptionSimilarity > 0.8) {
-    return timeDiff <= 1;
+  
+  if (score.details.descriptionSimilarity >= 0.80) {
+    // 80%+ description similarity: Allow moderate extension (24 hours)
+    return timeDiff <= 24;
   }
-  if (score.details.descriptionSimilarity > 0.5) {
+  
+  if (score.details.descriptionSimilarity >= 0.75) {
+    // 75%+ description similarity: Allow small extension (12 hours)
+    return timeDiff <= 12;
+  }
+  
+  if (score.details.descriptionSimilarity >= 0.65) {
+    // 65%+ description similarity: Allow minimal extension (6 hours)
+    return timeDiff <= 6;
+  }
+  
+  if (score.details.descriptionSimilarity >= 0.5) {
+    // 50%+ description similarity: Standard window (3 hours)
     return timeDiff <= 2;
   }
+  
+  // Low description similarity: Strict window (3 hours)
   return timeDiff <= CONFIG.TIME_WINDOW_HOURS;
 }
 
@@ -154,13 +172,21 @@ function validateSemanticContext(v1, v2) {
     'player': ['football player', 'sports player', 'player'],
     'child': ['boy', 'girl', 'teenager', 'young'],
     'soldier': ['army', 'military', 'soldier'],
-    'clash': ['fight', 'battle', 'conflict'],
+    'clash': ['clash', 'clashes', 'fight', 'battle', 'conflict'],
+    'dispute': ['dispute', 'disputes', 'quarrel', 'altercation'],
+    'tribal': ['tribal', 'tribe', 'clan'],
+    'family': ['family', 'families', 'between families'],
+    'weapons': ['weapons', 'weapon', 'gun', 'guns', 'firearms'],
     'explosion': ['bomb', 'blast', 'detonation'],
     'detention': ['arrested', 'detained', 'arrest', 'detention', 'campaign', 'operation', 'security', 'militia', 'pyd', 'sdf'],
     'civilian': ['civilian', 'civilians', 'citizen', 'citizens', 'resident', 'residents'],
-    'neighborhood': ['neighborhood', 'district', 'area', 'quarter', 'gweiran', 'al-aziziyah']
+    'neighborhood': ['neighborhood', 'district', 'area', 'quarter', 'gweiran', 'al-aziziyah'],
+    'family_clash': ['family', 'families', 'vendetta', 'clash between families', 'family dispute', 'family feud'],
+    'armed_clash': ['armed clash', 'armed conflict', 'gunfight', 'shooting', 'gunfire', 'armed dispute']
   };
   let hasSharedSemanticContext = false;
+  
+  // First check for exact shared terms
   for (const terms of Object.values(semanticIndicators)) {
     const hasTerm1 = terms.some(term => desc1.includes(term));
     const hasTerm2 = terms.some(term => desc2.includes(term));
@@ -169,6 +195,35 @@ function validateSemanticContext(v1, v2) {
       break;
     }
   }
+  
+  // If no exact shared terms, check for related semantic categories
+  if (!hasSharedSemanticContext) {
+    const relatedCategories = [
+      ['clash', 'dispute'], // clash and dispute are related
+      ['tribal', 'family'], // tribal and family conflicts are related
+      ['weapons', 'clash'], // weapons used in clashes
+      ['weapons', 'dispute'], // weapons used in disputes
+      ['family', 'clash'], // family clashes
+      ['tribal', 'dispute'] // tribal disputes
+    ];
+    
+    for (const [category1, category2] of relatedCategories) {
+      const terms1 = semanticIndicators[category1] || [];
+      const terms2 = semanticIndicators[category2] || [];
+      
+      const hasCategory1InDesc1 = terms1.some(term => desc1.includes(term));
+      const hasCategory2InDesc2 = terms2.some(term => desc2.includes(term));
+      const hasCategory1InDesc2 = terms1.some(term => desc2.includes(term));
+      const hasCategory2InDesc1 = terms2.some(term => desc1.includes(term));
+      
+      // If one description has category1 and the other has category2 (related categories)
+      if ((hasCategory1InDesc1 && hasCategory2InDesc2) || (hasCategory1InDesc2 && hasCategory2InDesc1)) {
+        hasSharedSemanticContext = true;
+        break;
+      }
+    }
+  }
+  
   return hasSharedSemanticContext;
 }
 
@@ -314,29 +369,48 @@ function calculateCasualtySimilarity(violation1, violation2) {
   const difference = Math.abs(total1 - total2);
   const maxTotal = Math.max(total1, total2);
   
+  // Special handling for same-day events in same location - be more lenient with casualty differences
+  const timeDiff = Math.abs(new Date(violation1.date) - new Date(violation2.date)) / (1000 * 60 * 60); // hours
+  const location1 = (violation1.location?.name?.en || '').toLowerCase();
+  const location2 = (violation2.location?.name?.en || '').toLowerCase();
+  
+  // Check if they're on the same day (within 24 hours) and in the same city
+  const sameDay = timeDiff <= 24;
+  const extractCityName = (text) => {
+    const cities = ['idlib', 'al-hasakah', 'damascus', 'aleppo', 'homs', 'hama', 'latakia', 'tartus', 'daraa', 'quneitra', 'deir ez-zor', 'al-raqqah', 'al-suwayda', 'tafas'];
+    for (const city of cities) {
+      if (text.includes(city)) {
+        return city;
+      }
+    }
+    return null;
+  };
+  
+  const city1 = extractCityName(location1);
+  const city2 = extractCityName(location2);
+  const sameCity = city1 && city2 && city1 === city2;
+  
+  if (sameDay && sameCity) {
+    // For same-day events in same city, be more lenient with casualty differences
+    // This accounts for the fact that casualty counts often vary between reports of the same incident
+    const baseSimilarity = Math.max(0, 1 - (difference / maxTotal));
+    
+    // Boost similarity for same-day, same-location events
+    if (difference <= 5) {
+      return Math.min(1.0, baseSimilarity + 0.4); // Boost by 40% for small differences (1-2 casualties)
+    } else if (difference <= 10) {
+      return Math.min(1.0, baseSimilarity + 0.3); // Boost by 30% for medium differences
+    } else if (difference <= 20) {
+      return Math.min(1.0, baseSimilarity + 0.2); // Boost by 20% for larger differences
+    }
+  }
+  
   // Special handling for detention violations - be more lenient for same campaign
   if (violation1.type === 'DETENTION' && violation2.type === 'DETENTION') {
     // For detention violations, if they're in the same city and same perpetrator, 
     // be more lenient with casualty differences as they might be part of the same campaign
-    const location1 = (violation1.location?.name?.en || '').toLowerCase();
-    const location2 = (violation2.location?.name?.en || '').toLowerCase();
     const perp1 = (violation1.perpetrator_affiliation || '').toLowerCase();
     const perp2 = (violation2.perpetrator_affiliation || '').toLowerCase();
-    
-    // Check if they're in the same city and have same perpetrator
-    const extractCityName = (text) => {
-      const cities = ['idlib', 'al-hasakah', 'damascus', 'aleppo', 'homs', 'hama', 'latakia', 'tartus', 'daraa', 'quneitra', 'deir ez-zor', 'al-raqqah', 'al-suwayda'];
-      for (const city of cities) {
-        if (text.includes(city)) {
-          return city;
-        }
-      }
-      return null;
-    };
-    
-    const city1 = extractCityName(location1);
-    const city2 = extractCityName(location2);
-    const sameCity = city1 && city2 && city1 === city2;
     const samePerpetrator = perp1 === perp2;
     
     if (sameCity && samePerpetrator) {
@@ -440,6 +514,9 @@ function calculateDescriptionSimilarity(desc1, desc2) {
     
     // Event-specific indicators (high value)
     'clash': ['clash', 'fight', 'confrontation', 'battle'],
+    'dispute': ['dispute', 'conflict', 'quarrel', 'altercation'],
+    'tribal': ['tribal', 'tribe', 'clan', 'family'],
+    'family': ['family', 'families', 'between families', 'family dispute'],
     'explosion': ['explosion', 'blast', 'bomb', 'detonation'],
     'airstrike': ['airstrike', 'drone', 'aircraft', 'bombing'],
     
@@ -464,23 +541,85 @@ function calculateDescriptionSimilarity(desc1, desc2) {
         semanticBoost += 0.3; // High-value person indicators
       } else if (category === 'neighborhood' || category === 'village' || category === 'checkpoint') {
         semanticBoost += 0.2; // High-value location indicators
-      } else if (category === 'clash' || category === 'explosion' || category === 'airstrike') {
-        semanticBoost += 0.2; // High-value event indicators
+      } else if (category === 'clash' || category === 'dispute' || category === 'tribal' || category === 'family' || category === 'explosion' || category === 'airstrike') {
+        semanticBoost += 0.25; // High-value event indicators (increased for conflict terms)
       } else {
         semanticBoost += 0.05; // Low-value common terms
       }
     }
   }
   
+  // Special boost for related conflict terms (clash vs dispute, tribal vs family)
+  const conflictTermPairs = [
+    ['clash', 'dispute'], ['clash', 'conflict'], ['dispute', 'conflict'],
+    ['tribal', 'family'], ['tribal', 'clan'], ['family', 'clan'],
+    ['fight', 'battle'], ['fight', 'confrontation'], ['battle', 'confrontation']
+  ];
+  
+  for (const [term1, term2] of conflictTermPairs) {
+    const hasTerm1InDesc1 = desc1Lower.includes(term1);
+    const hasTerm2InDesc1 = desc1Lower.includes(term2);
+    const hasTerm1InDesc2 = desc2Lower.includes(term1);
+    const hasTerm2InDesc2 = desc2Lower.includes(term2);
+    
+    // If one description has term1 and the other has term2 (related terms)
+    if ((hasTerm1InDesc1 && hasTerm2InDesc2) || (hasTerm2InDesc1 && hasTerm1InDesc2)) {
+      semanticBoost += 0.2; // Boost for related conflict terms
+    }
+  }
+  
   // Apply semantic boost
   finalSimilarity = Math.min(1.0, finalSimilarity + semanticBoost);
   
-  // Penalize if descriptions are too different in key aspects
-  const hasKeyWords1 = desc1Lower.includes('killed') || desc1Lower.includes('shot') || desc1Lower.includes('dead');
-  const hasKeyWords2 = desc2Lower.includes('killed') || desc2Lower.includes('shot') || desc2Lower.includes('dead');
+  // Penalize if descriptions have opposite outcomes (critical difference)
+  const outcomeKeywords = {
+    death: ['killed', 'shot', 'dead', 'died', 'death', 'murdered', 'assassinated'],
+    injury: ['injured', 'wounded', 'hurt', 'bruises', 'wounds', 'casualties'],
+    detention: ['arrested', 'detained', 'captured', 'kidnapped']
+  };
   
-  if (hasKeyWords1 !== hasKeyWords2) {
-    finalSimilarity *= 0.8; // Reduce similarity if one mentions death/killing and the other doesn't
+  const extractOutcomes = (text) => {
+    const outcomes = [];
+    for (const [outcome, keywords] of Object.entries(outcomeKeywords)) {
+      if (keywords.some(keyword => text.includes(keyword))) {
+        outcomes.push(outcome);
+      }
+    }
+    return outcomes;
+  };
+  
+  const outcomes1 = extractOutcomes(desc1Lower);
+  const outcomes2 = extractOutcomes(desc2Lower);
+  
+  // Check for opposite outcomes
+  const hasDeath1 = outcomes1.includes('death');
+  const hasDeath2 = outcomes2.includes('death');
+  const hasInjury1 = outcomes1.includes('injury');
+  const hasInjury2 = outcomes2.includes('injury');
+  
+  // Heavy penalty for opposite outcomes (death vs injury)
+  if ((hasDeath1 && hasInjury2 && !hasDeath2) || (hasDeath2 && hasInjury1 && !hasDeath1)) {
+    finalSimilarity *= 0.3; // Severe penalty - these are clearly different incidents
+  } else if (hasDeath1 !== hasDeath2) {
+    finalSimilarity *= 0.6; // Moderate penalty for death vs no death
+  }
+  
+  // Additional penalty for different casualty counts when outcomes are similar
+  const extractNumbers = (text) => {
+    const numbers = text.match(/\d+/g);
+    return numbers ? numbers.map(n => parseInt(n)) : [];
+  };
+  
+  const numbers1 = extractNumbers(desc1);
+  const numbers2 = extractNumbers(desc2);
+  
+  // If both have casualty numbers and they're very different, reduce similarity
+  if (numbers1.length > 0 && numbers2.length > 0) {
+    const maxNum1 = Math.max(...numbers1);
+    const maxNum2 = Math.max(...numbers2);
+    if (Math.abs(maxNum1 - maxNum2) > 2 && maxNum1 > 0 && maxNum2 > 0) {
+      finalSimilarity *= 0.8; // Penalty for very different casualty counts
+    }
   }
   
   return finalSimilarity;
@@ -537,16 +676,56 @@ function calculateSimilarityScore(v1, v2) {
     descriptionSimilarity = calculateDescriptionSimilarity(v1.description.ar, v2.description.en) * 0.7;
   }
   
-  // Use extended time window if description similarity is very high
-  const effectiveTimeWindow = descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD 
-    ? CONFIG.EXTENDED_TIME_WINDOW_HOURS 
-    : CONFIG.TIME_WINDOW_HOURS;
+  // Calculate effective time window based on multiple factors
+  let effectiveTimeWindow = CONFIG.TIME_WINDOW_HOURS;
+  let usedExtendedTimeWindow = false;
   
-  score.time = timeDiff <= effectiveTimeWindow ? 1 : 0;
-  score.details.timeDiffHours = timeDiff;
-  score.details.withinTimeWindow = timeDiff <= effectiveTimeWindow;
-  score.details.usedExtendedTimeWindow = descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD;
+  if (descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD) {
+    effectiveTimeWindow = CONFIG.EXTENDED_TIME_WINDOW_HOURS;
+    usedExtendedTimeWindow = true;
+  } else if (descriptionSimilarity > 0.8) {
+    effectiveTimeWindow = 12; // Extended to 12 hours for very high similarity
+    usedExtendedTimeWindow = true;
+  } else if (descriptionSimilarity > 0.7) {
+    effectiveTimeWindow = 6; // Extended to 6 hours for high similarity
+    usedExtendedTimeWindow = true;
+  }
+  
+  // Store description similarity for later use in validation
   score.details.descriptionSimilarityForTime = descriptionSimilarity;
+  
+  // Calculate time score with improved logic
+  let timeWindowValid = false;
+  
+  // Use extended time window ONLY for very high text description similarity
+  // This prevents false positives from same location/type with generic descriptions
+  if (descriptionSimilarity >= CONFIG.HIGH_SIMILARITY_THRESHOLD) {
+    // 90%+ description similarity: Allow extended window (48 hours)
+    timeWindowValid = timeDiff <= CONFIG.EXTENDED_TIME_WINDOW_HOURS;
+  } else if (descriptionSimilarity >= 0.80) {
+    // 80%+ description similarity: Allow moderate extension (24 hours)
+    timeWindowValid = timeDiff <= 24;
+  } else if (descriptionSimilarity >= 0.75) {
+    // 75%+ description similarity: Allow small extension (12 hours)
+    timeWindowValid = timeDiff <= 12;
+  } else if (descriptionSimilarity >= 0.65) {
+    // 65%+ description similarity: Allow minimal extension (6 hours)
+    timeWindowValid = timeDiff <= 6;
+  } else if (descriptionSimilarity >= 0.5) {
+    // 50%+ description similarity: Standard window (3 hours)
+    timeWindowValid = timeDiff <= 2;
+  } else {
+    // Low description similarity: Strict window (3 hours)
+    timeWindowValid = timeDiff <= CONFIG.TIME_WINDOW_HOURS;
+  }
+  
+  // Remove the special case that was too permissive
+  // Only rely on very high description similarity for time window extension
+  
+  score.time = timeWindowValid ? 1 : 0;
+  score.details.timeDiffHours = timeDiff;
+  score.details.withinTimeWindow = timeWindowValid;
+  score.details.usedExtendedTimeWindow = usedExtendedTimeWindow;
 
   // Location similarity
   let distance = Infinity;
@@ -623,17 +802,56 @@ function calculateSimilarityScore(v1, v2) {
   
   // Related perpetrator groups that should be considered similar
   const relatedPerpetrators = {
-    'unknown': ['various_armed_groups', 'unknown', 'other'],
-    'various_armed_groups': ['unknown', 'various_armed_groups', 'other'],
-    'other': ['unknown', 'various_armed_groups', 'other']
+    'unknown': ['various_armed_groups', 'unknown', 'other', 'tribal_groups', 'family_groups', 'local_gangs'],
+    'various_armed_groups': ['unknown', 'various_armed_groups', 'other', 'tribal_groups', 'family_groups', 'local_gangs'],
+    'other': ['unknown', 'various_armed_groups', 'other', 'tribal_groups', 'family_groups', 'local_gangs'],
+    'tribal_groups': ['unknown', 'various_armed_groups', 'other', 'tribal_groups', 'family_groups', 'local_gangs'],
+    'family_groups': ['unknown', 'various_armed_groups', 'other', 'tribal_groups', 'family_groups', 'local_gangs'],
+    'local_gangs': ['unknown', 'various_armed_groups', 'other', 'tribal_groups', 'family_groups', 'local_gangs']
   };
   
   const isExactPerpMatch = perp1 === perp2;
   const isRelatedPerp = relatedPerpetrators[perp1]?.includes(perp2) || relatedPerpetrators[perp2]?.includes(perp1);
   
-  score.perpetrator = isExactPerpMatch ? 1 : (isRelatedPerp ? 0.8 : 0);
+  // Fuzzy matching for perpetrator affiliations that might be similar
+  let fuzzyPerpMatch = false;
+  if (!isExactPerpMatch && !isRelatedPerp) {
+    // Check for fuzzy matches in perpetrator descriptions
+    const perpKeywords = {
+      'tribal': ['tribal', 'tribe', 'clan', 'family', 'families'],
+      'gangs': ['gangs', 'gang', 'armed groups', 'groups', 'militias'],
+      'unknown': ['unknown', 'unidentified', 'various', 'multiple'],
+      'local': ['local', 'regional', 'area', 'district']
+    };
+    
+    // Extract keywords from perpetrator affiliations
+    const extractKeywords = (perpText) => {
+      const keywords = [];
+      for (const [category, terms] of Object.entries(perpKeywords)) {
+        if (terms.some(term => perpText.includes(term))) {
+          keywords.push(category);
+        }
+      }
+      return keywords;
+    };
+    
+    const keywords1 = extractKeywords(perp1);
+    const keywords2 = extractKeywords(perp2);
+    
+    // If they share any keyword categories, consider them related
+    fuzzyPerpMatch = keywords1.some(k => keywords2.includes(k));
+    
+    // Special case: "Various Armed Groups & Gangs" vs "Unknown" should be considered related
+    // for tribal/family disputes as they often involve unidentified local groups
+    if ((perp1.includes('various') && perp1.includes('gangs') && perp2 === 'unknown') ||
+        (perp2.includes('various') && perp2.includes('gangs') && perp1 === 'unknown')) {
+      fuzzyPerpMatch = true;
+    }
+  }
+  
+  score.perpetrator = isExactPerpMatch ? 1 : (isRelatedPerp || fuzzyPerpMatch ? 0.8 : 0);
   score.details.samePerpetrator = isExactPerpMatch;
-  score.details.relatedPerpetrator = isRelatedPerp;
+  score.details.relatedPerpetrator = isRelatedPerp || fuzzyPerpMatch;
 
   // Casualty similarity using all casualty fields
   score.casualties = calculateCasualtySimilarity(v1, v2);
@@ -690,13 +908,24 @@ function validateDuplicate(v1, v2, score) {
   }
 
   const meetsCore = meetsEssential && descriptionOk;
-  const meetsThreshold = score.total >= CONFIG.SIMILARITY_THRESHOLD;
+  
+  // Check for high-confidence cases with strong location/time matches
+  const isHighConfidenceCase = 
+    score.details.withinTimeWindow && 
+    score.details.withinLocationRadius && 
+    (score.details.sameType || score.details.relatedType) &&
+    score.details.descriptionSimilarity >= 0.3; // Minimum description threshold
+  
+  // Use lower threshold for high-confidence cases
+  const effectiveThreshold = isHighConfidenceCase ? 0.75 : CONFIG.SIMILARITY_THRESHOLD;
+  const meetsThreshold = score.total >= effectiveThreshold;
+  
   const strongIndicators = [
     score.details.sameType,
     score.details.samePerpetrator,
     score.details.descriptionSimilarity >= 0.6
   ].filter(Boolean).length;
-  const hasStrongEvidence = strongIndicators >= 1 || score.total >= 0.85;
+  const hasStrongEvidence = strongIndicators >= 1 || score.total >= 0.85 || isHighConfidenceCase;
 
   // --- Advanced false positive detection ---
   const isFalsePositive =
@@ -838,37 +1067,15 @@ function smartMerge(keepViolation, duplicates) {
     }
 
     // Merge source URLs - combine unique URLs
-    if (duplicate.source_url && (duplicate.source_url.en || duplicate.source_url.ar)) {
-      const currentSourceUrl = merged.source_url || { en: '', ar: '' };
-      const duplicateSourceUrl = duplicate.source_url || { en: '', ar: '' };
+    if (duplicate.source_urls && duplicate.source_urls.length > 0) {
+      const currentSourceUrls = merged.source_urls || [];
+      const duplicateSourceUrls = duplicate.source_urls || [];
       
-      // Combine English source URLs
-      if (duplicateSourceUrl.en && currentSourceUrl.en && !currentSourceUrl.en.includes(duplicateSourceUrl.en)) {
-        merged.source_url = {
-          en: currentSourceUrl.en ? `${currentSourceUrl.en}; ${duplicateSourceUrl.en}` : duplicateSourceUrl.en,
-          ar: currentSourceUrl.ar || ''
-        };
-      } else if (duplicateSourceUrl.en && !currentSourceUrl.en) {
-        // No existing English source URL, just add the new one
-        merged.source_url = {
-          en: duplicateSourceUrl.en,
-          ar: currentSourceUrl.ar || ''
-        };
-      }
+      // Combine unique URLs from both violations
+      const allUrls = [...currentSourceUrls, ...duplicateSourceUrls];
+      const uniqueUrls = [...new Set(allUrls)].filter(url => url && url.trim()); // Remove duplicates and empty URLs
       
-      // Combine Arabic source URLs
-      if (duplicateSourceUrl.ar && currentSourceUrl.ar && !currentSourceUrl.ar.includes(duplicateSourceUrl.ar)) {
-        merged.source_url = {
-          en: merged.source_url?.en || currentSourceUrl.en || '',
-          ar: currentSourceUrl.ar ? `${currentSourceUrl.ar}; ${duplicateSourceUrl.ar}` : duplicateSourceUrl.ar
-        };
-      } else if (duplicateSourceUrl.ar && !currentSourceUrl.ar) {
-        // No existing Arabic source URL, just add the new one
-        merged.source_url = {
-          en: merged.source_url?.en || currentSourceUrl.en || '',
-          ar: duplicateSourceUrl.ar
-        };
-      }
+      merged.source_urls = uniqueUrls;
     }
   }
 
